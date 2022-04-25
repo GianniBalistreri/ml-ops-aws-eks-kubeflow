@@ -1,6 +1,9 @@
 # Misc
 .DS_Store
 
+# Kubekonfig
+kubeconfig_eks-cluster
+
 # Local .terraform directories
 **/.terraform/*
 
