@@ -34,13 +34,11 @@ jobs:
         echo "Installing ksonnet ..."
         brew install ksonnet/tap/ks
         export NAMESPACE=kubeflow
-    #    kubectl create namespace ${NAMESPACE}
         export KUBEFLOW_VERSION=0.2.5
         export KUBEFLOW_DEPLOY=false
         echo "Downloading Kubeflow ..."
         curl https://raw.githubusercontent.com/kubeflow/kubeflow/v${KUBEFLOW_VERSION}/scripts/deploy.sh | bash
         cd kubeflow_ks_app/
-        #ks env set default --namespace ${NAMESPACE}
         ks param set kubeflow-core reportUsage false
         echo "Deploying Kubeflow on AWS EKS ..."
         ks apply default
