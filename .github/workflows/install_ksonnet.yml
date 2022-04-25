@@ -17,4 +17,4 @@ jobs:
     - name: Install ksonnet
       run: |
         brew install ksonnet/tap/ks
-        echo ks version
+        ks version
