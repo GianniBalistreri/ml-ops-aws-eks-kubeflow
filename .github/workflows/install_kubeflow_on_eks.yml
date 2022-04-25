@@ -1,0 +1,62 @@
+name: Install Kubeflow on AWS EKS
+
+# Controls when the action will run. Workflow runs when manually triggered using the UI
+# or API.
+on:
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  install:
+    # The type of runner that the job will run on
+    runs-on: macos-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    
+    - name: Check out code
+      uses: actions/checkout@v2
+    
+    ## Configure AWS credentials
+    #- name: Configure AWS credentials
+    #  uses: aws-actions/configure-aws-credentials@v1
+    #  with:
+    #    role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+    #    role-duration-seconds: 1800
+    #    aws-region: eu-central-1
+
+    # Login to AWS EKS
+    - name: Install Kubeflow
+        uses: cancue/eks-action@v0.0.2
+        env:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: eu-central-1
+          cluster_name: $EKS_CLUSTER_NAME
+        with:
+          args: |
+            brew install kubectl
+            brew install ksonnet/tap/ks
+            export NAMESPACE=kubeflow
+            kubectl create namespace ${NAMESPACE}
+            export KUBEFLOW_VERSION=0.2.5
+            export KUBEFLOW_DEPLOY=false
+            curl https://raw.githubusercontent.com/kubeflow/kubeflow/v${KUBEFLOW_VERSION}/scripts/deploy.sh | bash
+            cd kubeflow_ks_app/
+            ks env set default --namespace ${NAMESPACE}
+            ks param set kubeflow-core reportUsage false
+            ks apply default
+
+    #- name: Install Kubeflow
+    #  run: |
+    #    brew install kubectl
+    #    brew install ksonnet/tap/ks
+    #    export NAMESPACE=kubeflow
+    #    kubectl create namespace ${NAMESPACE}
+    #    export KUBEFLOW_VERSION=0.2.5
+    #    export KUBEFLOW_DEPLOY=false
+    #    curl https://raw.githubusercontent.com/kubeflow/kubeflow/v${KUBEFLOW_VERSION}/scripts/deploy.sh | bash
+    #    cd kubeflow_ks_app/
+    #    ks env set default --namespace ${NAMESPACE}
+    #    ks param set kubeflow-core reportUsage false
+    #    ks apply default
