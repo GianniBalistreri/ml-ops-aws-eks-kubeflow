@@ -1,4 +1,4 @@
-name: Install Kubeflow on AWS EKS
+name: Test
 
 # Controls when the action will run. Workflow runs when manually triggered using the UI
 # or API.
@@ -7,7 +7,7 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  install:
+  deploy:
     # The type of runner that the job will run on
     runs-on: macos-latest
 
@@ -17,46 +17,31 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v2
     
-    ## Configure AWS credentials
-    #- name: Configure AWS credentials
-    #  uses: aws-actions/configure-aws-credentials@v1
-    #  with:
-    #    role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-    #    role-duration-seconds: 1800
-    #    aws-region: eu-central-1
+    # Configure AWS credentials
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        #role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+        #role-duration-seconds: 1800
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: eu-central-1
+        cluster_name: $EKS_CLUSTER_NAME
 
-    # Login to AWS EKS
     - name: Install Kubeflow
-        uses: cancue/eks-action@v0.0.2
-        env:
-          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_region: eu-central-1
-          cluster_name: $EKS_CLUSTER_NAME
-        with:
-          args: |
-            brew install kubectl
-            brew install ksonnet/tap/ks
-            export NAMESPACE=kubeflow
-            kubectl create namespace ${NAMESPACE}
-            export KUBEFLOW_VERSION=0.2.5
-            export KUBEFLOW_DEPLOY=false
-            curl https://raw.githubusercontent.com/kubeflow/kubeflow/v${KUBEFLOW_VERSION}/scripts/deploy.sh | bash
-            cd kubeflow_ks_app/
-            ks env set default --namespace ${NAMESPACE}
-            ks param set kubeflow-core reportUsage false
-            ks apply default
-
-    #- name: Install Kubeflow
-    #  run: |
-    #    brew install kubectl
-    #    brew install ksonnet/tap/ks
-    #    export NAMESPACE=kubeflow
-    #    kubectl create namespace ${NAMESPACE}
-    #    export KUBEFLOW_VERSION=0.2.5
-    #    export KUBEFLOW_DEPLOY=false
-    #    curl https://raw.githubusercontent.com/kubeflow/kubeflow/v${KUBEFLOW_VERSION}/scripts/deploy.sh | bash
-    #    cd kubeflow_ks_app/
-    #    ks env set default --namespace ${NAMESPACE}
-    #    ks param set kubeflow-core reportUsage false
-    #    ks apply default
+      run: |
+        echo "Installing kubectl ..."
+        brew install kubectl
+        echo "Installing ksonnet ..."
+        brew install ksonnet/tap/ks
+        export NAMESPACE=kubeflow
+        kubectl create namespace ${NAMESPACE}
+    #    #export KUBEFLOW_VERSION=0.2.5
+        #export KUBEFLOW_DEPLOY=false
+        #echo "Downloading Kubeflow ..."
+        #curl https://raw.githubusercontent.com/kubeflow/kubeflow/v${KUBEFLOW_VERSION}/scripts/deploy.sh | bash
+        #cd kubeflow_ks_app/
+        #ks env set default --namespace ${NAMESPACE}
+        #ks param set kubeflow-core reportUsage false
+        #echo "Deploying Kubeflow on AWS EKS ..."
+        #ks apply default
