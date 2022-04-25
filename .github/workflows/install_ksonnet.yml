@@ -23,10 +23,9 @@ jobs:
       with:
         #role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
         #role-duration-seconds: 1800
-        aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws_region: eu-central-1
-        cluster_name: $EKS_CLUSTER_NAME
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: eu-central-1
 
     - name: Install Kubeflow
       run: |
@@ -35,13 +34,13 @@ jobs:
         echo "Installing ksonnet ..."
         brew install ksonnet/tap/ks
         export NAMESPACE=kubeflow
-        kubectl create namespace ${NAMESPACE}
-    #    #export KUBEFLOW_VERSION=0.2.5
-        #export KUBEFLOW_DEPLOY=false
-        #echo "Downloading Kubeflow ..."
-        #curl https://raw.githubusercontent.com/kubeflow/kubeflow/v${KUBEFLOW_VERSION}/scripts/deploy.sh | bash
-        #cd kubeflow_ks_app/
+    #    kubectl create namespace ${NAMESPACE}
+        export KUBEFLOW_VERSION=0.2.5
+        export KUBEFLOW_DEPLOY=false
+        echo "Downloading Kubeflow ..."
+        curl https://raw.githubusercontent.com/kubeflow/kubeflow/v${KUBEFLOW_VERSION}/scripts/deploy.sh | bash
+        cd kubeflow_ks_app/
         #ks env set default --namespace ${NAMESPACE}
-        #ks param set kubeflow-core reportUsage false
-        #echo "Deploying Kubeflow on AWS EKS ..."
-        #ks apply default
+        ks param set kubeflow-core reportUsage false
+        echo "Deploying Kubeflow on AWS EKS ..."
+        ks apply default
