@@ -47,6 +47,6 @@ jobs:
         export CONFIG_URI="https://raw.githubusercontent.com/kubeflow/manifests/v1.2-branch/kfdef/kfctl_aws.v1.2.0.yaml"
         mkdir kubeflow-cluster && cd kubeflow-cluster
         wget -O kfctl_aws.yaml $CONFIG_URI
-        aws eks update-kubeconfig --name
+        aws eks update-kubeconfig --name kubeconfig_kubeflow-cluster
         kfctl apply -V -f kfctl_aws.yaml
         kubectl -n kubeflow get all
