@@ -1,0 +1,64 @@
+name: TEST Install Kubeflow on AWS EKS
+
+# Controls when the action will run. Workflow runs when manually triggered using the UI
+# or API.
+on:
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  deploy:
+    # The type of runner that the job will run on
+    runs-on: macos-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    
+    - name: Check out code
+      uses: actions/checkout@v2
+    
+    # Configure AWS credentials
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        #role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+        #role-duration-seconds: 1800
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: eu-central-1
+
+    - name: Install Kubeflow
+      run: |
+        aws configure set region eu-central-1
+        aws configure set access_key ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws configure set secret_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        mkdir -p kubeconfig
+        aws s3 cp s3://gfb-ml-ops-tf-infrastructure/eks-kubeflow/kubeconfig_kubeflow-cluster ./kubeconfig/
+        brew install kubectl
+        brew install aws-iam-authenticator
+        export KUBECONFIG=./kubeconfig/kubeconfig_kubeflow-cluster
+        export NAMESPACE=kubeflow
+        export KUBEFLOW_VERSION=0.2.0
+        export KUBEFLOW_DEPLOY=false
+        curl --silent --location "https://github.com/kubeflow/kfctl/releases/download/v1.0.1/kfctl_v1.0.1-0-gf3edb9b_linux.tar.gz" | tar xz -C /tmp
+        sudo mv -v /tmp/kfctl /usr/local/bin
+        cat << EoF > kf-install.sh
+        export AWS_CLUSTER_NAME=eksworkshop-eksctl
+        export KF_NAME=\kubeflow-cluster
+        export BASE_DIR=${HOME}/environment
+        export KF_DIR=\${BASE_DIR}/\${KF_NAME}
+        export CONFIG_URI="https://raw.githubusercontent.com/kubeflow/manifests/v1.0-branch/kfdef/kfctl_aws.v1.0.1.yaml"
+        export CONFIG_FILE=\${KF_DIR}/kfctl_aws.yaml
+        EoF
+        source kf-install.sh
+        mkdir -p ${KF_DIR}
+        cd ${KF_DIR}
+        wget -O kfctl_aws.yaml $CONFIG_URI
+        sed -i '/region: eu-central-1/ a \      enablePodIamPolicy: true' ${CONFIG_FILE}
+        sed -i -e 's/kubeflow-aws/'"kubeflow-cluster"'/' ${CONFIG_FILE}
+        sed -i "s@eu-central-1@$AWS_REGION@" ${CONFIG_FILE}
+        sed -i "s@roles:@#roles:@" ${CONFIG_FILE}
+        sed -i "s@- eksctl-eksworkshop-eksctl-nodegroup-ng-a2-NodeInstanceRole-xxxxxxx@#- eksctl-eksworkshop-eksctl-nodegroup-ng-a2-NodeInstanceRole-xxxxxxx@" ${CONFIG_FILE}
+        cd ${KF_DIR}
+        kfctl apply -V -f ${CONFIG_FILE}
+        kubectl -n kubeflow get all
