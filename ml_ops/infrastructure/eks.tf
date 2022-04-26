@@ -1,5 +1,5 @@
 locals {
-  cluster_name = "eks-cluster"
+  cluster_name = "kubeflow-cluster"
 }
 
 module "eks" {
