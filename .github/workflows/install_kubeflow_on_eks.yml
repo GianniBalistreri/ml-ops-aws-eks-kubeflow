@@ -42,8 +42,16 @@ jobs:
         kubectl create namespace ${NAMESPACE}
         export KUBEFLOW_VERSION=0.2.5
         export KUBEFLOW_DEPLOY=false
-        curl https://raw.githubusercontent.com/kubeflow/kubeflow/v${KUBEFLOW_VERSION}/scripts/deploy.sh | bash
-        cd ./kubeflow_ks_app/
-        ks env set default --namespace ${NAMESPACE}
-        ks param set kubeflow-core reportUsage false
-        ks apply default
+        export KUBEFLOW_SRC=/tmp/kubeflow-aws
+        export KUBEFLOW_TAG=master
+        mkdir -p ${KUBEFLOW_SRC} && cd ${KUBEFLOW_SRC}
+        curl https://raw.githubusercontent.com/kubeflow/kubeflow/${KUBEFLOW_TAG}/scripts/download.sh | bash
+        export KFAPP=kfapp
+        export REGION=eu-central-1
+        export AWS_CLUSTER_NAME=kubeflow-aws
+        ${KUBEFLOW_SRC}/scripts/kfctl.sh init ${KFAPP} --platform aws --awsClusterName ${AWS_CLUSTER_NAME} --awsRegion ${REGION}
+        cd ${KFAPP}
+        ${KUBEFLOW_SRC}/scripts/kfctl.sh generate platform
+        ${KUBEFLOW_SRC}/scripts/kfctl.sh apply platform
+        ${KUBEFLOW_SRC}/scripts/kfctl.sh generate k8s
+        ${KUBEFLOW_SRC}/scripts/kfctl.sh apply k8s
