@@ -75,7 +75,7 @@ jobs:
         KUBEFLOW_KS_DIR=${KUBEFLOW_KS_DIR:-"`pwd`/${DEPLOYMENT_NAME}_ks_app"}
 
         cd $(dirname "${KUBEFLOW_KS_DIR}")
-        ks init
+        ks init kubeflow
         cd "${KUBEFLOW_KS_DIR}"
 
         # Add the local registry
