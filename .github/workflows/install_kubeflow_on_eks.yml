@@ -39,7 +39,6 @@ jobs:
         brew install aws-iam-authenticator
         export KUBECONFIG=./kubeconfig/kubeconfig_kubeflow-cluster
         export NAMESPACE=kubeflow
-        kubectl create namespace ${NAMESPACE}
         export KUBEFLOW_VERSION=0.2.5
         export KUBEFLOW_DEPLOY=false
         export KUBEFLOW_SRC=/tmp/kubeflow-aws
@@ -48,7 +47,7 @@ jobs:
         curl https://raw.githubusercontent.com/kubeflow/kubeflow/${KUBEFLOW_TAG}/scripts/download.sh | bash
         export KFAPP=kfapp
         export REGION=eu-central-1
-        export AWS_CLUSTER_NAME=kubeflow-aws
+        export AWS_CLUSTER_NAME=kubeflow-cluster
         ${KUBEFLOW_SRC}/scripts/kfctl.sh init ${KFAPP} --platform aws --awsClusterName ${AWS_CLUSTER_NAME} --awsRegion ${REGION}
         cd ${KFAPP}
         ${KUBEFLOW_SRC}/scripts/kfctl.sh generate platform
