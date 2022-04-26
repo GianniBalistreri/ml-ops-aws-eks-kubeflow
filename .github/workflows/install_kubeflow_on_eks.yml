@@ -26,22 +26,25 @@ jobs:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: eu-central-1
-        cluster_name: $EKS_CLUSTER_NAME
 
     - name: Install Kubeflow
       run: |
-        echo "Installing kubectl ..."
+        brew install awscli
+        aws configure set region eu-central-1
+        aws configure set access_key ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws configure set secret_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        mkdir -p kubeconfig
+        aws s3 cp s3://gfb-ml-ops-tf-infrastructure/eks-kubeflow/kubeconfig_kubeflow-cluster ./kubeconfig/
         brew install kubectl
-        echo "Installing ksonnet ..."
         brew install ksonnet/tap/ks
+        brew install aws-iam-authenticator
+        export KUBECONFIG=./kubeconfig/kubeconfig_kubeflow-cluster
         export NAMESPACE=kubeflow
         kubectl create namespace ${NAMESPACE}
         export KUBEFLOW_VERSION=0.2.5
         export KUBEFLOW_DEPLOY=false
-        echo "Downloading Kubeflow ..."
         curl https://raw.githubusercontent.com/kubeflow/kubeflow/v${KUBEFLOW_VERSION}/scripts/deploy.sh | bash
-        cd kubeflow_ks_app/
+        cd ./kubeflow_ks_app/
         ks env set default --namespace ${NAMESPACE}
         ks param set kubeflow-core reportUsage false
-        echo "Deploying Kubeflow on AWS EKS ..."
         ks apply default
