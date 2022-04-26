@@ -29,7 +29,6 @@ jobs:
 
     - name: Install Kubeflow
       run: |
-        brew install awscli
         aws configure set region eu-central-1
         aws configure set access_key ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws configure set secret_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
