@@ -9,7 +9,7 @@ on:
 jobs:
   deploy:
     # The type of runner that the job will run on
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -34,7 +34,11 @@ jobs:
         aws configure set secret_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         mkdir -p kubeconfig
         aws s3 cp s3://gfb-ml-ops-tf-infrastructure/eks-kubeflow/kubeconfig_kubeflow-cluster ./kubeconfig/
-        brew install kubectl
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+        curl -o aws-iam-authenticator https://amazon-eks.s3.eu-central-1.amazonaws.com/1.15.10/2020-02-22/bin/linux/amd64/aws-iam-authenticator
+        chmod +x aws-iam-authenticator
+        sudo mv aws-iam-authenticator /usr/local/bin
         brew install aws-iam-authenticator
         export KUBECONFIG=./kubeconfig/kubeconfig_kubeflow-cluster
         export NAMESPACE=kubeflow
