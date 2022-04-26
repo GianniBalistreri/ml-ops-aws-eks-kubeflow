@@ -41,7 +41,7 @@ jobs:
         export NAMESPACE=kubeflow
         export KUBEFLOW_VERSION=0.2.5
         export KUBEFLOW_DEPLOY=false
-        export KUBEFLOW_SRC=/tmp/kubeflow-aws
+        export KUBEFLOW_SRC=./tmp/kubeflow-aws
         export KUBEFLOW_TAG=master
         mkdir -p ${KUBEFLOW_SRC} && cd ${KUBEFLOW_SRC}
         curl https://raw.githubusercontent.com/kubeflow/kubeflow/${KUBEFLOW_TAG}/scripts/download.sh | bash
