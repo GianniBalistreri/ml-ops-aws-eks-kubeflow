@@ -43,6 +43,7 @@ jobs:
         sudo mv aws-iam-authenticator /usr/local/bin
         export KUBECONFIG=./kubeconfig/kubeconfig_kubeflow-cluster
         export NAMESPACE=kubeflow
+        kubectl create namespace ${NAMESPACE}
         wget https://github.com/kubeflow/kfctl/releases/download/v1.2.0/kfctl_v1.2.0-0-gbc038f9_linux.tar.gz
         tar -xvf kfctl_v1.2.0-0-gbc038f9_linux.tar.gz
         export PATH=$PATH:$PWD
