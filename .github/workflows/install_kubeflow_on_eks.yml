@@ -40,7 +40,7 @@ jobs:
         export KUBECONFIG=./kubeconfig/kubeconfig_kubeflow-cluster
         export NAMESPACE=kubeflow
         kubectl create namespace ${NAMESPACE}
-        export KUBEFLOW_VERSION=1.5
+        export KUBEFLOW_VERSION=0.2.2
         export KUBEFLOW_DEPLOY=false
         curl https://raw.githubusercontent.com/kubeflow/kubeflow/v${KUBEFLOW_VERSION}/scripts/deploy.sh | bash
         cd ./kubeflow_ks_app/
