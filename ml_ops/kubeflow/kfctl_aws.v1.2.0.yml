@@ -110,7 +110,7 @@ spec:
       enablePodIamPolicy: true
       # If you don't use IAM Role for Service Account, you can still use node instance roles.
       roles:
-      - eks-node-role #eksctl-kubeflow-aws-nodegroup-ng-a2-NodeInstanceRole-xxxxxxx
+      - eksctl-kubeflow-aws-nodegroup-ng-a2-NodeInstanceRole-AROARIMKKG74VN3LXBNO7
   repos:
   - name: manifests
     uri: https://github.com/kubeflow/manifests/archive/v1.2.0.tar.gz
