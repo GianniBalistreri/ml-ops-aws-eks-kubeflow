@@ -48,7 +48,7 @@ jobs:
         sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
         export KUBECONFIG=./kubeconfig/kubeconfig_kubeflow-cluster
         export NAMESPACE=kubeflow
-        kubectl create namespace ${NAMESPACE}
+        #kubectl create namespace ${NAMESPACE}
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
