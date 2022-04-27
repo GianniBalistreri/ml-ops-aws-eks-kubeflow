@@ -107,7 +107,7 @@ spec:
           password: 12341234
           username: admin@kubeflow.org
       region: eu-central-1
-      enablePodIamPolicy: false
+      enablePodIamPolicy: true
       # If you don't use IAM Role for Service Account, you can still use node instance roles.
       #roles:
       #- eksctl-kubeflow-aws-nodegroup-ng-a2-NodeInstanceRole-XXXXX
