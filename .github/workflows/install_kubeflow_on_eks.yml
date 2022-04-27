@@ -11,6 +11,10 @@ jobs:
     # The type of runner that the job will run on
     runs-on: macos-latest
 
+    permissions:
+      id-token: write
+      contents: read
+
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     
