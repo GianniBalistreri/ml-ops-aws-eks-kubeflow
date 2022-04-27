@@ -17,7 +17,10 @@ data "aws_eks_cluster_auth" "cluster" {
 data "aws_iam_policy_document" "github_allow" {
   statement {
     effect  = "Allow"
-    actions = ["sts:AssumeRoleWithWebIdentity"]
+    actions = [
+      "sts:AssumeRole",
+      "sts:AssumeRoleWithWebIdentity"
+      ]
     principals {
       type        = "Federated"
       identifiers = [aws_iam_openid_connect_provider.githubOidc.arn]
