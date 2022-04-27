@@ -1,6 +1,9 @@
 apiVersion: kfdef.apps.kubeflow.org/v1
 kind: KfDef
 metadata:
+  #clusterName: arn:aws:eks:eu-central-1:${ AWS_ACCOUNT_ID}:cluster
+  creationTimestamp: null
+  name: kubeflow-cluster
   namespace: kubeflow
 spec:
   applications:
