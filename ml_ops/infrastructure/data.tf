@@ -18,7 +18,6 @@ data "aws_iam_policy_document" "github_allow" {
   statement {
     effect = "Allow"
     actions = [
-      "sts:AssumeRole",
       "sts:AssumeRoleWithWebIdentity"
     ]
     principals {
@@ -29,6 +28,21 @@ data "aws_iam_policy_document" "github_allow" {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
       values   = ["repo:GianniBalistreri/ml-ops-aws-eks-kubeflow:*"]
+    }
+  }
+  statement {
+    effect = "Allow"
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
+    ]
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.githubOidc.arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
     }
   }
 }
