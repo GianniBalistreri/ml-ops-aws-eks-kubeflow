@@ -48,7 +48,7 @@ jobs:
         wget https://github.com/kubeflow/kfctl/releases/download/v1.2.0/kfctl_v1.2.0-0-gbc038f9_linux.tar.gz
         tar -xvf kfctl_v1.2.0-0-gbc038f9_linux.tar.gz
         export PATH=$PATH:$PWD
-        export CONFIG_URI="https://raw.githubusercontent.com/kubeflow/manifests/v1.2-branch/kfdef/kfctl_aws.v1.2.0.yaml"
+        export CONFIG_URI="https://raw.githubusercontent.com/GianniBalistreri/ml-ops-aws-eks-kubeflow/main/ml_ops/kubeflow/kfctl_aws.v1.2.0.yml"
         mkdir kubeflow-cluster && cd kubeflow-cluster
         wget -O kfctl_aws.yaml $CONFIG_URI
         aws eks update-kubeconfig --name kubeflow-cluster
