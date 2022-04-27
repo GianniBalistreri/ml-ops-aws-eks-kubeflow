@@ -49,18 +49,6 @@ jobs:
         export KUBECONFIG=./kubeconfig/kubeconfig_kubeflow-cluster
         export NAMESPACE=kubeflow
         #kubectl create namespace ${NAMESPACE}
-
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        #aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        #aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-        role-duration-seconds: 1800
-        aws-region: eu-central-1
-
-    - name: Continue installation
-      run: |
         wget https://github.com/kubeflow/kfctl/releases/download/v1.2.0/kfctl_v1.2.0-0-gbc038f9_linux.tar.gz
         tar -xvf kfctl_v1.2.0-0-gbc038f9_linux.tar.gz
         export PATH=$PATH:$PWD
@@ -71,4 +59,4 @@ jobs:
         kfctl apply -V -f kfctl_aws.yaml
         kubectl -n kubeflow get all
         kubectl get ingress -n istio-system
-        kubectl patch service -n istio-system istio-ingressgateway -p '{"spec": {"type": "LoadBalancer"}}'  
+        kubectl patch service -n istio-system istio-ingressgateway -p '{"spec": {"type": "LoadBalancer"}}'
