@@ -1,7 +1,7 @@
 apiVersion: kfdef.apps.kubeflow.org/v1
 kind: KfDef
 metadata:
-  #clusterName: arn:aws:eks:eu-central-1:${ AWS_ACCOUNT_ID}:cluster
+  #clusterName: arn:aws:eks:eu-central-1:${ AWS_ACCOUNT_ID}:cluster/kubeflow-cluster
   creationTimestamp: null
   name: kubeflow-cluster
   namespace: kubeflow
@@ -109,8 +109,8 @@ spec:
       region: eu-central-1
       enablePodIamPolicy: true
       # If you don't use IAM Role for Service Account, you can still use node instance roles.
-      #roles:
-      #- eksctl-kubeflow-aws-nodegroup-ng-a2-NodeInstanceRole-xxxxxxx
+      roles:
+      - eks-node-role #eksctl-kubeflow-aws-nodegroup-ng-a2-NodeInstanceRole-xxxxxxx
   repos:
   - name: manifests
     uri: https://github.com/kubeflow/manifests/archive/v1.2.0.tar.gz
