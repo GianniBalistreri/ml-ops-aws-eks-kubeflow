@@ -54,3 +54,5 @@ jobs:
         aws eks update-kubeconfig --name kubeflow-cluster
         kfctl apply -V -f kfctl_aws.yaml
         kubectl -n kubeflow get all
+        kubectl get ingress -n istio-system
+        kubectl patch service -n istio-system istio-ingressgateway -p '{"spec": {"type": "LoadBalancer"}}'  
