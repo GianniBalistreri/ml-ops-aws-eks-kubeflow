@@ -27,8 +27,8 @@ jobs:
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-        role-duration-seconds: 1800
+        #role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+        #role-duration-seconds: 1800
         aws-region: eu-central-1
 
     - name: Install Kubeflow
@@ -48,7 +48,7 @@ jobs:
         sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
         export KUBECONFIG=./kubeconfig/kubeconfig_kubeflow-cluster
         export NAMESPACE=kubeflow
-        kubectl create namespace ${NAMESPACE}
+        #kubectl create namespace ${NAMESPACE}
         wget https://github.com/kubeflow/kfctl/releases/download/v1.2.0/kfctl_v1.2.0-0-gbc038f9_linux.tar.gz
         tar -xvf kfctl_v1.2.0-0-gbc038f9_linux.tar.gz
         export PATH=$PATH:$PWD
