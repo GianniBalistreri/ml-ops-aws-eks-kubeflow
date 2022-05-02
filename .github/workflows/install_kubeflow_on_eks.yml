@@ -79,3 +79,6 @@ jobs:
 
         # Expose istio-ingress to Load Balancer:
         kubectl patch service -n istio-system istio-ingressgateway -p '{"spec": {"type": "LoadBalancer"}}'
+
+        # Port forwarding istio-ingress address is empty:
+        kubectl port-forward kubeflow/istio-ingressgateway -n istio-system 7777:80
