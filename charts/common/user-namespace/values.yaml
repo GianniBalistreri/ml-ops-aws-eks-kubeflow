@@ -1,0 +1,2 @@
+awsIamForServiceAccount:
+  awsIamRole: arn:aws:iam::711117404296:role/kubeflow-user-role

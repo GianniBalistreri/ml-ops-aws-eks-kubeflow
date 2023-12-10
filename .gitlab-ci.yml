@@ -1,0 +1,219 @@
+stages:
+  - aws_infra_deploy
+  - aws_infra_destroy
+  - misc
+
+iac_plan_prod:
+  stage: .pre
+  image: hashicorp/terraform:1.6
+  tags:
+    - xxx
+  variables:
+    TF_VAR_aws_account_id: $AWS_ACCOUNT_ID_PRODUCTION
+    TF_VAR_aws_region: $AWS_REGION
+  before_script:
+    - export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID_PRODUCTION
+    - export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY_PRODUCTION
+    - cd deployments/enterprise/terraform/modules
+  script:
+    - terraform init
+    - terraform plan
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main' && $DEX_PWD == '' && $DEX_USER == ''
+      when: always
+
+vpc_deploy_prod:
+  stage: aws_infra_deploy
+  image: hashicorp/terraform:1.6
+  tags:
+    - xxx
+  needs:
+    - iac_plan_prod
+  allow_failure: false
+  variables:
+    TF_VAR_aws_account_id: $AWS_ACCOUNT_ID_PRODUCTION
+    TF_VAR_aws_region: $AWS_REGION
+  before_script:
+    - export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID_PRODUCTION
+    - export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY_PRODUCTION
+    - cd deployments/enterprise/terraform/modules
+  script:
+    - terraform apply -target="module.vpc" -auto-approve
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main' && $DEX_PWD == '' && $DEX_USER == ''
+      when: manual
+    - when: never
+
+eks_deploy_prod:
+  stage: aws_infra_deploy
+  image: hashicorp/terraform:1.6
+  tags:
+    - xxx
+  needs:
+    - vpc_deploy_prod
+  allow_failure: false
+  variables:
+    TF_VAR_aws_account_id: $AWS_ACCOUNT_ID_PRODUCTION
+    TF_VAR_aws_region: $AWS_REGION
+  before_script:
+    - export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID_PRODUCTION
+    - export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY_PRODUCTION
+    - cd deployments/enterprise/terraform/modules
+  script:
+    - terraform apply -target="module.eks_blueprints" -auto-approve
+    - terraform apply -target="module.eks_blueprints_kubernetes_addons" -auto-approve
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main' && $DEX_PWD == '' && $DEX_USER == ''
+      when: manual
+    - when: never
+
+kubeflow_deploy_prod:
+  stage: aws_infra_deploy
+  image: hashicorp/terraform:1.6
+  tags:
+    - xxx
+  needs:
+    - eks_deploy_prod
+  allow_failure: false
+  variables:
+    TF_VAR_aws_account_id: $AWS_ACCOUNT_ID_PRODUCTION
+    TF_VAR_aws_region: $AWS_REGION
+  before_script:
+    - export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID_PRODUCTION
+    - export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY_PRODUCTION
+    - cd deployments/enterprise/terraform/modules
+  script:
+    - terraform apply -target="module.kubeflow_components" -auto-approve
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main' && $DEX_PWD == '' && $DEX_USER == ''
+      when: manual
+    - when: never
+
+monitoring_deploy_prod:
+  stage: aws_infra_deploy
+  image: hashicorp/terraform:1.6
+  tags:
+    - xxx
+  needs:
+    - kubeflow_deploy_prod
+  allow_failure: false
+  variables:
+    TF_VAR_aws_account_id: $AWS_ACCOUNT_ID_PRODUCTION
+    TF_VAR_aws_region: $AWS_REGION
+  before_script:
+    - export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID_PRODUCTION
+    - export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY_PRODUCTION
+    - cd deployments/enterprise/terraform/modules
+  script:
+    - terraform apply -target="module.monitoring" -auto-approve
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main' && $DEX_PWD == '' && $DEX_USER == ''
+      when: manual
+    - when: never
+
+vpc_destroy_prod:
+  stage: aws_infra_destroy
+  image: hashicorp/terraform:1.6
+  tags:
+    - xxx
+  needs:
+    - eks_destroy_prod
+  allow_failure: false
+  variables:
+    TF_VAR_aws_account_id: $AWS_ACCOUNT_ID_PRODUCTION
+    TF_VAR_aws_region: $AWS_REGION
+  before_script:
+    - export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID_PRODUCTION
+    - export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY_PRODUCTION
+    - cd deployments/enterprise/terraform/modules
+  script:
+    - terraform destroy -target="module.vpc" -auto-approve
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main' && $DEX_PWD == '' && $DEX_USER == ''
+      when: manual
+    - when: never
+
+eks_destroy_prod:
+  stage: aws_infra_destroy
+  image: hashicorp/terraform:1.6
+  tags:
+    - xxx
+  needs:
+    - kubeflow_destroy_prod
+  allow_failure: false
+  variables:
+    TF_VAR_aws_account_id: $AWS_ACCOUNT_ID_PRODUCTION
+    TF_VAR_aws_region: $AWS_REGION
+  before_script:
+    - export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID_PRODUCTION
+    - export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY_PRODUCTION
+    - cd deployments/enterprise/terraform/modules
+  script:
+    - terraform destroy -target="module.eks_blueprints" -auto-approve
+    - terraform destroy -target="module.eks_blueprints_kubernetes_addons" -auto-approve
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main' && $DEX_PWD == '' && $DEX_USER == ''
+      when: manual
+    - when: never
+
+kubeflow_destroy_prod:
+  stage: aws_infra_destroy
+  image: hashicorp/terraform:1.6
+  tags:
+    - xxx
+  needs:
+    - monitoring_destroy_prod
+  allow_failure: false
+  variables:
+    TF_VAR_aws_account_id: $AWS_ACCOUNT_ID_PRODUCTION
+    TF_VAR_aws_region: $AWS_REGION
+  before_script:
+    - export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID_PRODUCTION
+    - export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY_PRODUCTION
+    - cd deployments/enterprise/terraform/modules
+  script:
+    - terraform destroy -target="module.kubeflow_components" -auto-approve
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main' && $DEX_PWD == '' && $DEX_USER == ''
+      when: manual
+    - when: never
+
+monitoring_destroy_prod:
+  stage: aws_infra_destroy
+  image: hashicorp/terraform:1.6
+  tags:
+    - xxx
+  variables:
+    TF_VAR_aws_account_id: $AWS_ACCOUNT_ID_PRODUCTION
+    TF_VAR_aws_region: $AWS_REGION
+  before_script:
+    - export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID_PRODUCTION
+    - export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY_PRODUCTION
+    - cd deployments/enterprise/terraform/modules
+  script:
+    - terraform destroy -target="module.monitoring" -auto-approve
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main' && $DEX_PWD == '' && $DEX_USER == ''
+      when: manual
+    - when: never
+
+dex_user_registration_prod:
+  stage: misc
+  image: ubuntu:23.10
+  tags:
+    - xxx
+  needs: []
+  variables:
+    TF_VAR_aws_account_id: $AWS_ACCOUNT_ID_PRODUCTION
+    TF_VAR_aws_region: $AWS_REGION
+  before_script:
+    - export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID_PRODUCTION
+    - export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY_PRODUCTION
+    - apt-get update
+    - apt-get install -y zip
+  script:
+    - xxx
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main' && $DEX_PWD != '' && $DEX_USER != ''
+      when: manual
+    - when: never

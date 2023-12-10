@@ -1,0 +1,84 @@
+include {
+  path = find_in_parent_folders()
+}
+
+terraform {
+  source = "../../../modules"
+}
+
+inputs = {
+  environment                                       = "staging"
+  kubeflow_version                                  = "1.7"
+  domain_name                                       = "xxx-kubeflow"
+  sub_domain_name                                   = "dev"
+  second_sub_domain_name                            = "kubeflow"
+  top_level_domain_name                             = "io"
+  cluster_region                                    = "eu-central-1"
+  cluster_name                                      = "kubeflow"
+  eks_version                                       = "1.25"
+  eks_cpu_nodegroup_name                            = "managed-ondemand-cpu"
+  eks_cpu_node_instance_type                        = "m5.xlarge"
+  eks_cpu_min_size                                  = 5
+  eks_cpu_desired_size                              = 5
+  eks_cpu_max_size                                  = 10
+  eks_gpu_nodegroup_name                            = "managed-ondemand-gpu"
+  eks_gpu_node_instance_type                        = null
+  eks_gpu_min_size                                  = 3
+  eks_gpu_desired_size                              = 3
+  eks_gpu_max_size                                  = 5
+  eks_gpu_ami_type                                  = "AL2_x86_64_GPU"
+  use_cognito                                       = false
+  cognito_user_pool_client_allowed_oauth_flows      = ["code"]
+  cognito_user_pool_name                            = "kubeflow-user"
+  http_header_name                                  = "x-api-key"
+  http_header_values                                = ["token1", "token2"]
+  load_balancer_scheme                              = "internet-facing"
+  ecr_suffix                                        = "ml-ops"
+  ecr_analytical_data_types                         = "analytical-data-types"
+  ecr_data_health_check                             = "data-health-check"
+  ecr_evolutionary_algorithm                        = "evolutionary-algorithm"
+  ecr_feature_engineering                           = "feature-engineering"
+  ecr_feature_importance                            = "feature-importance"
+  ecr_feature_selector                              = "feature-selector"
+  ecr_model_evaluation                              = "model-evaluation"
+  ecr_model_generator_clustering                    = "model-generator-clustering"
+  ecr_model_generator_grow_net                      = "model-generator-grow-net"
+  ecr_model_generator_supervised                    = "model-generator-supervised"
+  ecr_sampling                                      = "sampling"
+  ecr_slack_alerting                                = "slack-alerting"
+  use_s3                                            = true
+  s3_bucket_kubeflow_artifact_store                 = "xxx-kubeflow-artifact-store-staging"
+  s3_bucket_ml_ops_interim                          = "xxx-ml-ops-interim-staging"
+  s3_bucket_ml_ops_model_store                      = "xxx-ml-ops-model-store-staging"
+  s3_bucket_raw_tracking_data_tag_name              = "ML-Ops interim data"
+  use_rds                                           = true
+  db_name                                           = "kubeflow"
+  db_username                                       = "admin"
+  db_password                                       = "1234_bla_bla_bla_TT"
+  db_class                                          = "db.m5.large"
+  db_allocated_storage                              = "20"
+  db_mysql_engine_version                           = "8.0.34"
+  db_backup_retention_period                        = 7
+  db_storage_type                                   = "gp2"
+  db_deletion_protection                            = false
+  db_max_allocated_storage                          = 1000
+  db_publicly_accessible                            = false
+  db_multi_az                                       = "true"
+  db_secret_recovery_window_in_days                 = 7
+  db_tags                                           = {}
+  pipeline_s3_credential_option                     = "irsa"
+  use_aws_telemetry                                 = true
+  notebook_enable_culling                           = true
+  notebook_cull_idle_time                           = 30
+  notebook_idleness_check_period                    = 5
+  grafana_workspace_name                            = "kubeflow"
+  grafana_workspace_account_access_type             = "CURRENT_ACCOUNT"
+  grafana_workspace_auth_providers                  = ["AWS_SSO"]
+  grafana_workspace_permission_type                 = "SERVICE_MANAGED"
+  grafana_workspace_data_sources                    = ["CLOUDWATCH", "PROMETHEUS"]
+  grafana_workspace_notification_destinations       = ["SNS"]
+  prometheus_workspace_name                         = "kubeflow-prometheus"
+  cloudwatch_prometheus_log_group_retention_in_days = 365
+  kf_helm_repo_path                                 = "../../../.."
+  tags                                              = {}
+}

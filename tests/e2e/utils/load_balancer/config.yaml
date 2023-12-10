@@ -1,0 +1,12 @@
+cluster:
+  name: kubeflow
+  region: eu-central-1
+kubeflow:
+  alb:
+    scheme: internet-facing
+route53:
+  rootDomain:
+    hostedZoneId: Z07891421KARWE6B83ZPX
+    name: shopware-kubeflow.io
+  subDomain:
+    name: platform.shopware-kubeflow.io
