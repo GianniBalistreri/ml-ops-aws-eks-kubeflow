@@ -107,7 +107,8 @@ class KubeflowUserManagement:
             raise KubeflowUserManagementException(f'User email address ({self.user_email}) not found')
         _found_target_to_delete: bool = False
         _found_credential_section: bool = False
-        _counter: int = 0
+        _static_password_element_counter: int = 0
+        _max_static_password_elements: int = len(list(_credentials.keys()))
         _new_credentials: List[str] = []
         _config_yaml: List[str] = ['apiVersion: v1', 'data:', '  config.yaml: |']
         for line in _dex_config_yaml.split('\n'):
@@ -118,12 +119,13 @@ class KubeflowUserManagement:
                         _config_yaml.append(new_cred)
                 else:
                     if action == 'add':
-                        _key: str = list(_credentials.keys())[_counter]
-                        if line.find(_key) >= 0:
-                            _current_credential: str = line.split(_key)[1].split('\n')[0]
-                            _new_line: str = line.replace(f'{_key}{_current_credential}', f'{_key} {_credentials[list(_credentials.keys())[_counter]]}')
-                            _new_credentials.append(f'    {_new_line}')
-                            _counter += 1
+                        if _static_password_element_counter < _max_static_password_elements:
+                            _key: str = list(_credentials.keys())[_static_password_element_counter]
+                            if line.find(_key) >= 0:
+                                _current_credential: str = line.split(_key)[1].split('\n')[0]
+                                _new_line: str = line.replace(f'{_key}{_current_credential}', f'{_key} {_credentials[list(_credentials.keys())[_static_password_element_counter]]}')
+                                _new_credentials.append(f'    {_new_line}')
+                                _static_password_element_counter += 1
             else:
                 if line.find('staticPasswords:') >= 0:
                     _found_credential_section = True
