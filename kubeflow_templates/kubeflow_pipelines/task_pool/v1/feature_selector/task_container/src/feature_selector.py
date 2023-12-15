@@ -4,12 +4,14 @@ Feature selector of structured (tabular) data used in supervised machine learnin
 
 """
 
+import copy
 import numpy as np
 import os
 import pandas as pd
 import random
 
 from custom_logger import Log
+from evaluate_machine_learning import sml_fitness_score
 from typing import Dict, List
 
 
@@ -24,16 +26,92 @@ class FeatureSelector:
     """
     Class for calculating shapley values (shapley additive explanations) for feature importance evaluation and feature selection
     """
-    def __init__(self, df: pd.DataFrame, model: object):
+    def __init__(self,
+                 target_feature: str,
+                 features: List[str],
+                 train_df: pd.DataFrame,
+                 test_df: pd.DataFrame,
+                 model: object,
+                 ml_type: str,
+                 init_pairs: int = 3,
+                 init_games: int = 5,
+                 increasing_pair_size_factor: float = 0.5,
+                 games: int = 3,
+                 penalty_factor: float = 0.1,
+                 max_iter: int = 50,
+                 max_players: int = -1,
+                 ):
         """
-        :param df: pd.DataFrame
-            Data set
+        :param target_feature: str
+            Name of the target feature
+
+        :param features: List[str]
+            Name of the features
+
+        :param train_df: pd.DataFrame
+            Training data set
+
+        :param test_df: pd.DataFrame
+            Testing data set
 
         :param model: object
             Instanced model object of a decision tree
+
+        :param ml_type: str
+            Abbreviated name of the machine learning type
+                -> clf_binary: Binary classification
+                -> clf_multi: Multi-Classification
+                -> reg: Regression
+
+        :param init_pairs: int
+            Number of players in each starting game of the tournament
+
+        :param init_games: int
+            Number of penalty games to qualify players for the tournament
+
+        :param increasing_pair_size_factor: float
+            Factor for increasing amount of player in each game in each step
+
+        :param games: int
+            Number of games to play in each step of the tournament
+
+        :param penalty_factor: float
+            Amount of players to exclude from the tournament because of their poor contribution capabilities
+
+        :param max_iter: int
+            Maximum number of steps of the tournament
+
+        :param max_players: int
+            Maximum number of features used for training machine learning model
         """
-        self.df: pd.DataFrame = df
+        self.target_feature: str = target_feature
+        self.features: List[str] = features
+        self.n_features: int = len(self.features)
+        self.train_df: pd.DataFrame = train_df
+        self.test_df: pd.DataFrame = test_df
+        self.n_cases: int = self.train_df.shape[0]
         self.model: object = model
+        self.ml_type: str = ml_type
+        if self.ml_type not in ['clf_binary', 'clf_multi', 'reg']:
+            raise FeatureSelectorException(f'ML type ({self.ml_type}) not supported')
+        if self.ml_type == 'reg':
+            self.ml_metric: str = 'rmse_norm'
+        elif self.ml_type == 'clf_binary':
+            self.ml_metric: str = 'roc_auc'
+        elif self.ml_type == 'clf_multi':
+            self.ml_metric: str = 'cohen_kappa'
+        self.init_pairs: int = init_pairs
+        self.init_games: int = init_games
+        self.pair_size_factor: float = increasing_pair_size_factor
+        self.game: int = 0
+        self.games: int = games
+        self.penalty_factor: float = penalty_factor
+        self.max_iter: int = max_iter
+        self.max_players: int = max_players if max_players > 1 else len(self.features)
+        self.pairs: List[np.array] = []
+        self.tournament: bool = False
+        self.shapley_additive_explanation: dict = dict(sum={}, game={}, tournament={})
+        self.imp_score: Dict[str, float] = {}
 
     def _game(self, iteration: int):
         """
@@ -43,37 +121,19 @@ class FeatureSelector:
             Number of current iteration
         """
         for pair in self.pairs:
+            _game: object = copy.deepcopy(self.model)
+            _game.train(x=self.train_df[pair].values, y=self.train_df[self.target_feature].values)
             if self.ml_type == 'reg':
-                _game: ModelGeneratorReg = ModelGeneratorReg(model_name=self.feature_tournament_ai.get('model_name'),
-                                                             reg_params=self.feature_tournament_ai.get('param')
-                                                             )
-                _game.generate_model()
-                _game.train(x=self.train_test.get('x_train')[pair].values,
-                            y=self.train_test.get('y_train').values,
-                            #validation=dict(x_val=self.train_test.get('x_val')[pair].values,
-                            #                y_val=self.train_test.get('y_val').values
-                            #                )
-                            )
-                _pred = _game.predict(x=self.train_test.get('x_test')[pair].values)
-                _game.eval(obs=self.train_test.get('y_test').values, pred=_pred, train_error=False)
+                _pred = _game.predict(x=self.test_df[pair].values)
+                _game.eval(obs=self.test_df[self.target_feature].values, pred=_pred, train_error=False)
                 _game_score: float = sml_fitness_score(ml_metric=tuple([0, _game.fitness['test'].get(self.ml_metric)]),
                                                        train_test_metric=tuple([_game.fitness['train'].get(self.ml_metric), _game.fitness['test'].get(self.ml_metric)]),
                                                        train_time_in_seconds=_game.train_time,
                                                        capping_to_zero=True
                                                        )
             else:
-                _game: ModelGeneratorClf = ModelGeneratorClf(model_name=self.feature_tournament_ai.get('model_name'),
-                                                             clf_params=self.feature_tournament_ai.get('param')
-                                                             )
-                _game.generate_model()
-                _game.train(x=self.train_test.get('x_train')[pair].values,
-                            y=self.train_test.get('y_train').values,
-                            #validation=dict(x_val=self.train_test.get('x_val')[pair].values,
-                            #                y_val=self.train_test.get('y_val').values
-                            #                )
-                            )
-                _pred = _game.predict(x=self.train_test.get('x_test')[pair].values, probability=False)
-                _game.eval(obs=self.train_test.get('y_test').values, pred=_pred, train_error=False)
+                _pred = _game.predict(x=self.test_df[pair].values, probability=False)
+                _game.eval(obs=self.test_df[self.target_feature].values, pred=_pred, train_error=False)
                 _game_score: float = sml_fitness_score(ml_metric=tuple([1, _game.fitness['test'].get(self.ml_metric)]),
                                                        train_test_metric=tuple([_game.fitness['train'].get(self.ml_metric), _game.fitness['test'].get(self.ml_metric)]),
                                                        train_time_in_seconds=_game.train_time,
@@ -144,8 +204,6 @@ class FeatureSelector:
                 if i < self.init_games:
                     break
                 self._permutation(n=_permutation_space)
-            for thread in self.threads.keys():
-                self.threads.get(thread).get()
             if i + 1 == self.init_games:
                 _shapley_matrix: pd.DataFrame = pd.DataFrame(data=self.shapley_additive_explanation['sum'], index=['score']).transpose()
                 _sorted_shapley_matrix = _shapley_matrix.sort_values(by='score', axis=0, ascending=False, inplace=False)
@@ -171,12 +229,7 @@ class FeatureSelector:
     def main(self,
              imp_threshold: float = 0.01,
              redundant_threshold: float = 0.01,
-             aggregate_feature_imp: Dict[str, dict] = None,
-             visualize_feature_importance: bool = True,
-             visualize_variant_scores: bool = True,
-             visualize_core_feature_scores: bool = True,
-             visualize_game_stats: bool = True,
-             plot_type: str = 'bar'
+             aggregate_feature_imp: Dict[str, dict] = None
              ) -> dict:
         """
         Select most important features based on shapley values
@@ -192,23 +245,6 @@ class FeatureSelector:
                 -> core: Aggregate feature importance score by each core (original) feature
                 -> level: Aggregate feature importance score by the processing level of each feature
 
-        :param visualize_feature_importance: bool
-            Whether to visualize feature importance scores or not
-
-        :param visualize_variant_scores: bool
-            Whether to visualize all variants of feature processing importance scores separately or not
-
-        :param visualize_core_feature_scores: bool
-            Whether to visualize summarized core feature importance scores or not
-
-        :param visualize_game_stats: bool
-            Whether to visualize game statistics or not
-
-        :param plot_type: str
-            Name of the plot type
-                -> pie: Pie Chart
-                -> bar: Bar Chart
-
         :return dict
             Results of feature tournament like shapley values, redundant features, important features, reduction scores and evaluated metrics
         """
@@ -216,6 +252,7 @@ class FeatureSelector:
         _imp_plot: dict = {}
         _core_features: List[str] = []
         _processed_features: List[str] = []
+        _visualization_data: dict = {}
         _imp_threshold: float = imp_threshold if (imp_threshold >= 0) and (imp_threshold <= 1) else 0.7
         _df: pd.DataFrame = pd.DataFrame(data=self.shapley_additive_explanation.get('total'), index=['score']).transpose()
         _df = _df.sort_values(by='score', axis=0, ascending=False, inplace=False)
@@ -238,49 +275,6 @@ class FeatureSelector:
         # _game_df['game'] = _game_df.index.values
         _tournament_df: pd.DataFrame = pd.DataFrame(data=self.shapley_additive_explanation.get('tournament'))
         # _tournament_df['game'] = _tournament_df.index.values
-        _file_paths: List[str] = []
-        if visualize_game_stats:
-            _file_paths.append(os.path.join(str(self.path), 'feature_tournament_game_stats.html'))
-            DataVisualizer(df=_game_df,
-                           title='Feature Tournament Game Stats (Shapley Scores)',
-                           features=_game_df.columns.tolist(),
-                           melt=True,
-                           plot_type='violin',
-                           file_path=_file_paths[0] if self.path is not None else None
-                           ).run()
-            _file_paths.append(os.path.join(str(self.path), 'feature_tournament_game_size.html'))
-            DataVisualizer(df=_tournament_df,
-                           title='Feature Tournament Stats (Game Size)',
-                           features=_tournament_df.columns.tolist(),
-                           plot_type='heat',
-                           file_path=_file_paths[1] if self.path is not None else None
-                           ).run()
-        _file_paths.append(os.path.join(str(self.path), 'feature_importance_shapley.html'))
-        if visualize_feature_importance:
-            _imp_plot: dict = {'Feature Importance (Shapley Scores)': dict(df=_df,
-                                                                           plot_type=plot_type,
-                                                                           render=True if self.path is None else False,
-                                                                           file_path=_file_paths[-1] if self.path is not None else None,
-                                                                           kwargs=dict(layout={},
-                                                                                       y=_df['score'].values,
-                                                                                       x=_df.index.values.tolist(),
-                                                                                       marker=dict(color=_df['score'],
-                                                                                                   colorscale='rdylgn',
-                                                                                                   autocolorscale=True
-                                                                                                   )
-                                                                                       )
-                                                                           )
-                               }
-            DataVisualizer(subplots=_imp_plot,
-                           height=500,
-                           width=500
-                           ).run()
-        if self.mlflow_log:
-            self._mlflow_tracking(stats={'Feature Score (Feature Tournament)': _df,
-                                         'Game Size (Feature Tournament)': _tournament_df,
-                                         'Game Score (Feature Tournament)': _game_df
-                                         },
-                                  file_paths=_file_paths)
         if aggregate_feature_imp is not None:
             _aggre_score: dict = {}
             for core_feature in aggregate_feature_imp.keys():
@@ -298,28 +292,7 @@ class FeatureSelector:
                 _processed_feature_matrix: pd.DataFrame = pd.DataFrame(data=_feature_scores, index=['score']).transpose()
                 _processed_feature_matrix.sort_values(by='score', axis=0, ascending=False, inplace=True)
                 _processed_features.append(_processed_feature_matrix.index.values.tolist()[0])
-                if visualize_variant_scores:
-                    _variant_scores = {'Feature Importance (Preprocessing Variants {})'.format(core_feature): dict(
-                        data=_processed_feature_matrix,
-                        plot_type=plot_type,
-                        melt=True,
-                        render=True if self.path is None else False,
-                        file_path='{}feature_importance_processing_variants.html'.format(
-                            self.path) if self.path is not None else None,
-                        kwargs=dict(layout={},
-                                    y=_processed_feature_matrix['score'].values,
-                                    x=_processed_feature_matrix.index.values,
-                                    marker=dict(color=_processed_feature_matrix['score'],
-                                                colorscale='rdylgn',
-                                                autocolorscale=True
-                                                )
-                                    )
-                    )
-                    }
-                    DataVisualizer(subplots=_variant_scores,
-                                   height=500,
-                                   width=500
-                                   ).run()
+                # TODO: prepare dict and save it for next viz step
             _core_imp_matrix: pd.DataFrame = pd.DataFrame(data=_aggre_score, index=['abs_score']).transpose()
             _core_imp_matrix['rel_score'] = _core_imp_matrix['abs_score'] / sum(_core_imp_matrix['abs_score'])
             _core_imp_matrix.sort_values(by='abs_score', axis=0, ascending=False, inplace=True)
@@ -327,48 +300,11 @@ class FeatureSelector:
             for core in _raw_core_features:
                 _core_features.extend(aggregate_feature_imp[core])
                 _core_features = list(set(_core_features))
-            if visualize_core_feature_scores:
-                _core_feature_scores_plot: dict = {'Feature Importance (Core Feature Aggregation)': dict(data=_core_imp_matrix,
-                                                                                                         plot_type=plot_type,
-                                                                                                         melt=False,
-                                                                                                         render=True if self.path is None else False,
-                                                                                                         file_path='{}feature_importance_core_aggregation.html'.format(
-                                                                                                             self.path) if self.path is not None else None,
-                                                                                                         kwargs=dict(layout={},
-                                                                                                                     y=_core_imp_matrix[
-                                                                                                                         'abs_score'].values,
-                                                                                                                     x=_core_imp_matrix[
-                                                                                                                         'abs_score'].index.values,
-                                                                                                                     marker=dict(
-                                                                                                                         color=
-                                                                                                                         _core_imp_matrix[
-                                                                                                                             'abs_score'],
-                                                                                                                         colorscale='rdylgn',
-                                                                                                                         autocolorscale=True
-                                                                                                                     )
-                                                                                                                     )
-                                                                                                         )
-                                                   }
-                DataVisualizer(subplots=_core_feature_scores_plot,
-                               height=500,
-                               width=500
-                               ).run()
-        if self.ml_type == 'reg':
-            _model_generator: ModelGeneratorReg = ModelGeneratorReg(model_name=self.feature_tournament_ai.get('model_name'),
-                                                                    reg_params=self.feature_tournament_ai.get('param')
-                                                                    )
-        else:
-            _model_generator: ModelGeneratorClf = ModelGeneratorClf(model_name=self.feature_tournament_ai.get('model_name'),
-                                                                    clf_params=self.feature_tournament_ai.get('param')
-                                                                    )
-        _model_generator.generate_model()
-        _train_test_split: dict = MLSampler(df=self.df,
-                                            target=self.target,
-                                            features=_imp_features
-                                            ).train_test_sampling(validation_split=0.1)
-        _model_generator.train(x=_train_test_split.get('x_train').values, y=_train_test_split.get('y_train').values)
-        _pred = _model_generator.predict(x=_train_test_split.get('x_test').values)
-        _model_generator.eval(obs=_train_test_split.get('y_test').values, pred=_pred)
+            # TODO: prepare dict and save it for next viz step
+        _model_generator: object = copy.deepcopy(self.model)
+        _model_generator.train(x=self.train_df[self.features].values, y=self.train_df[self.target_feature].values)
+        _pred = _model_generator.predict(x=self.test_df[self.features].values)
+        _model_generator.eval(obs=self.test_df[self.target_feature].values, pred=_pred)
         _model_test_score: float = _model_generator.fitness['test'].get(self.ml_metric)
         if self.ml_type == 'reg':
             _threshold: float = _model_test_score * (1 + redundant_threshold)
@@ -381,9 +317,9 @@ class FeatureSelector:
             if len(_features) == 1:
                 _result['important'] = _features
                 break
-            _model_generator.train(x=_train_test_split.get('x_train')[_features].values, y=_train_test_split.get('y_train').values)
-            _pred = _model_generator.predict(x=_train_test_split.get('x_test')[_features].values)
-            _model_generator.eval(obs=_train_test_split.get('y_test').values, pred=_pred)
+            _model_generator.train(x=self.train_df[_features].values, y=self.train_df[self.target_feature].values)
+            _pred = _model_generator.predict(x=self.test_df[_features].values)
+            _model_generator.eval(obs=self.test_df[self.target_feature].values, pred=_pred)
             _new_model_test_score: float = _model_generator.fitness['test'].get(self.ml_metric)
             if self.ml_type == 'reg':
                 if _threshold <= _new_model_test_score:
@@ -403,9 +339,7 @@ class FeatureSelector:
                     _result['redundant'].append(_imp_features[i])
                     _result['model_metric'].append(_model_test_score)
                     _result['reduction'].update({_imp_features[i]: _model_test_score - _new_model_test_score})
-        Log(write=False,
-            level='info'
-            ).log(msg=f'Number of redundant features: {len(_result["redundant"])}\nNumber of important features: {len(_result["important"])}')
+        Log().log(msg=f'Number of redundant features: {len(_result["redundant"])}\nNumber of important features: {len(_result["important"])}')
         return dict(imp_features=_imp_features,
                     imp_score=self.imp_score,
                     imp_threshold=imp_threshold,
@@ -416,5 +350,6 @@ class FeatureSelector:
                     reduction=_result['reduction'],
                     model_metric=_result['model_metric'],
                     base_metric=_model_test_score,
-                    threshold=_threshold
+                    threshold=_threshold,
+                    viz=_visualization_data
                     )

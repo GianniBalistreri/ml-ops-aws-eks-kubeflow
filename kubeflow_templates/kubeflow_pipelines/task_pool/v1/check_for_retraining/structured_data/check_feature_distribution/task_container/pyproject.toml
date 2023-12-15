@@ -6,7 +6,9 @@ authors = ["gianni <g.balistreri@shopware.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
-easyexplore = "^0.7.3"
+boto3 = "^1.28.39"
+pandas = "^2.1.0"
+s3fs = "^2023.9.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
