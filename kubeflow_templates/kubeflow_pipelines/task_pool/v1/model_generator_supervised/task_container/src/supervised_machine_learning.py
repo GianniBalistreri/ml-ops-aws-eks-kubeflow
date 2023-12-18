@@ -11,12 +11,13 @@ import pandas as pd
 import os
 
 from catboost import CatBoostClassifier, CatBoostRegressor
+from custom_logger import Log
 from datetime import datetime
 from pygam import GAM
-from sklearn.ensemble import AdaBoostClassifier, AdaBoostRegressor, GradientBoostingClassifier, GradientBoostingRegressor, RandomForestClassifier, RandomForestRegressor
-from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor, kneighbors_graph
-from sklearn.linear_model import ElasticNet, Lasso, LogisticRegression
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
+from sklearn.ensemble import AdaBoostClassifier, AdaBoostRegressor, GradientBoostingClassifier, GradientBoostingRegressor, RandomForestClassifier, RandomForestRegressor
+from sklearn.linear_model import ElasticNet, Lasso, LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor, kneighbors_graph
 from sklearn.svm import LinearSVC, LinearSVR, NuSVC, NuSVR, SVC, SVR
 from sklearn.tree import BaseDecisionTree, DecisionTreeClassifier, DecisionTreeRegressor, ExtraTreeClassifier, ExtraTreeRegressor
 from typing import Dict, List
@@ -1693,6 +1694,7 @@ class ModelGeneratorClf(Classification):
         self.target_labels: List[str] = labels
         self.train_time = None
         self.multi = None
+        self.creation_time: str = None
 
     def generate_model(self):
         """
@@ -1721,6 +1723,7 @@ class ModelGeneratorClf(Classification):
                 self.model_param = copy.deepcopy(self.clf_params)
         self.model_param_mutation = 'new_model'
         self.model = copy.deepcopy(getattr(Classification(clf_params=self.clf_params), _model)())
+        Log().log(msg=f'Generate classifier: {self.model}')
 
     def generate_params(self, param_rate: float = 0.1, force_param: dict = None):
         """
@@ -1757,6 +1760,7 @@ class ModelGeneratorClf(Classification):
         self.model_param = copy.deepcopy(_new_model_params)
         self.clf_params = self.model_param
         self.model = getattr(Classification(clf_params=self.clf_params, **self.kwargs), CLF_ALGORITHMS.get(self.model_name))()
+        Log().log(msg=f'Generate hyperparameter for classifier: Rate={param_rate}, Changed={self.model_param_mutated}')
 
     def get_model_parameter(self) -> dict:
         """
@@ -1778,6 +1782,7 @@ class ModelGeneratorClf(Classification):
                         if param[0] in _param.keys():
                             _param.update({param[0]: param[1]})
                     _model_param.update({model: copy.deepcopy(_param)})
+                    Log().log(msg=f'Get standard hyperparameter for classifier: {model}')
         return _model_param
 
     def predict(self, x: np.ndarray, probability: bool = False) -> np.array:
@@ -1815,6 +1820,7 @@ class ModelGeneratorClf(Classification):
 
         :param validation: dict
         """
+        Log().log(msg=f'Train classifier: Model={self.model_name}, Cases={x.shape[0]}, Predictors={x.shape[1]}, Hyperparameter={self.model_param}')
         _t0: datetime = datetime.now()
         if hasattr(self.model, 'fit'):
             if 'eval_set' in self.model.fit.__code__.co_varnames and validation is not None:
@@ -1839,6 +1845,8 @@ class ModelGeneratorClf(Classification):
             raise SupervisedMLException('Training (fitting) method not supported by given model object')
         self.train_time = (datetime.now() - _t0).seconds
         self.multi = True if len(pd.unique(values=y)) > 2 else False
+        self.creation_time = str(datetime.now())
+        Log().log(msg=f'Classifier trained after {self.train_time} seconds')
 
 
 class ModelGeneratorReg(Regression):
@@ -1887,6 +1895,7 @@ class ModelGeneratorReg(Regression):
         self.model_param_mutated: dict = {}
         self.model_param_mutation: str = ''
         self.train_time = None
+        self.creation_time: str = None
 
     def generate_model(self):
         """
@@ -1916,6 +1925,7 @@ class ModelGeneratorReg(Regression):
                 self.model_param = copy.deepcopy(self.reg_params)
         self.model_param_mutation = 'new_model'
         self.model = getattr(Regression(reg_params=self.reg_params, **self.kwargs), _model)()
+        Log().log(msg=f'Generate regressor: {self.model}')
 
     def generate_params(self, param_rate: float = 0.1, force_param: dict = None):
         """
@@ -1954,6 +1964,7 @@ class ModelGeneratorReg(Regression):
         self.model_param = copy.deepcopy(_new_model_params)
         self.reg_params = self.model_param
         self.model = getattr(Regression(reg_params=self.reg_params, **self.kwargs), REG_ALGORITHMS.get(self.model_name))()
+        Log().log(msg=f'Generate hyperparameter for regressor: Rate={param_rate}, Changed={self.model_param_mutated}')
 
     def get_model_parameter(self) -> dict:
         """
@@ -2004,6 +2015,7 @@ class ModelGeneratorReg(Regression):
 
         :param validation: dict
         """
+        Log().log(msg=f'Train regressor: Model={self.model_name}, Cases={x.shape[0]}, Predictors={x.shape[1]}, Hyperparameter={self.model_param}')
         _t0: datetime = datetime.now()
         if hasattr(self.model, 'fit'):
             if 'eval_set' in self.model.fit.__code__.co_varnames and validation is not None:
@@ -2023,3 +2035,5 @@ class ModelGeneratorReg(Regression):
         else:
             raise SupervisedMLException('Training (fitting) method not supported by given model object')
         self.train_time = (datetime.now() - _t0).seconds
+        self.creation_time: str = str(datetime.now())
+        Log().log(msg=f'Regressor trained after {self.train_time} seconds')

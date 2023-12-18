@@ -5,43 +5,70 @@ Task: ... (Function to run in container)
 """
 
 import argparse
-import boto3
-import json
-import os
 import numpy as np
 import pandas as pd
-import pickle
 
-from datetime import datetime
+from aws import save_file_to_s3
+from file_handler import file_handler
 from supervised_machine_learning import ModelGeneratorClf, ModelGeneratorReg
-from typing import NamedTuple, List
+from typing import Any, List, NamedTuple
 
+MODEL_ARTIFACT_FILE_TYPE: List[str] = ['p', 'pkl', 'pickle']
 
-PARSER = argparse.ArgumentParser(description="generate supervised machine learning models")
-PARSER.add_argument('-msg', type=str, required=True, default=None, help='slack message to send')
-PARSER.add_argument('-pipeline_status', type=str, required=True, default=None, help='pipeline status')
-PARSER.add_argument('-aws_region', type=str, required=False, default='eu-central-1', help='AWS region code')
-PARSER.add_argument('-slack_channel', type=str, required=False, default='slack-arcana-analytica', help='name of the destined slack channel')
+PARSER = argparse.ArgumentParser(description="generate non-neural network supervised machine learning models")
+PARSER.add_argument('-ml_type', type=str, required=True, default=None, help='name of the machine learning type')
+PARSER.add_argument('-model_name', type=str, required=True, default=None, help='name of the machine learning model')
+PARSER.add_argument('-target_feature', type=str, required=True, default=None, help='name of the target feature')
+PARSER.add_argument('-train_data_set_path', type=str, required=True, default=None, help='complete file path of the training data set')
+PARSER.add_argument('-test_data_set_path', type=str, required=True, default=None, help='complete file path of the test data set')
+PARSER.add_argument('-val_data_set_path', type=str, required=False, default=None, help='complete file path of the validation data set')
+PARSER.add_argument('-model_id', type=int, required=False, default=None, help='pre-defined model id')
+PARSER.add_argument('-model_param', type=Any, required=False, default=None, help='pre-defined model hyperparameter')
+PARSER.add_argument('-param_rate', type=float, required=False, default=0.0, help='')
+PARSER.add_argument('-warm_start', type=int, required=False, default=1, help='')
+PARSER.add_argument('-train_model', type=int, required=True, default=1, help='whether to train machine learning model or not')
+PARSER.add_argument('-sep', type=str, required=False, default=',', help='file separator')
+PARSER.add_argument('-prediction_variable_name', type=str, required=False, default='prediction', help='name of the prediction variable used for evaluation')
+PARSER.add_argument('-output_path_model', type=str, required=True, default=None, help='file path of the model output')
+PARSER.add_argument('-output_path_metadata', type=str, required=True, default=None, help='file path of the metadata output')
+PARSER.add_argument('-output_path_evaluation_train_data', type=str, required=True, default=None, help='complete file path of the evaluation training data output')
+PARSER.add_argument('-output_path_evaluation_test_data', type=str, required=True, default=None, help='complete file path of the evaluation test data output')
+PARSER.add_argument('-output_path_evaluation_val_data', type=str, required=True, default=None, help='complete file path of the evaluation validation data output')
+PARSER.add_argument('-output_path_evaluation_data', type=str, required=True, default=None, help='file path of the evaluation data paths output')
+PARSER.add_argument('-output_path_model_customized', type=str, required=False, default=None, help='file path of the evaluation data paths output')
 ARGS = PARSER.parse_args()
 
 
+class ModelGeneratorException(Exception):
+    """
+    Class for handling exceptions for function generate_model
+    """
+    pass
+
+
 def generate_model(ml_type: str,
-                   target_feature_name: str,
+                   model_name: str,
+                   target_feature: str,
                    train_data_set_path: str,
                    test_data_set_path: str,
-                   val_data_set_path: str,
                    output_path_model: str,
                    output_path_metadata: str,
-                   model_name: str,
-                   model_param: dict = None,
+                   output_path_evaluation_train_data: str,
+                   output_path_evaluation_test_data: str,
+                   output_path_evaluation_data: str,
                    model_id: int = None,
-                   mutate_or_adjust: bool = False,
-                   train_model: bool = False,
+                   model_param: dict = None,
+                   param_rate: float = 0.0,
+                   warm_start: bool = True,
+                   train_model: bool = True,
                    sep: str = ',',
-                   ) -> NamedTuple('outputs', [('model', str),
-                                               ('metadata', str),
-                                               ('param', dict),
-                                               ('training_duration_in_sec', int)
+                   prediction_variable_name: str = 'prediction',
+                   val_data_set_path: str = None,
+                   output_path_evaluation_val_data: str = None,
+                   output_path_model_customized: str = None,
+                   ) -> NamedTuple('outputs', [('model_artifact', str),
+                                               ('metadata', dict),
+                                               ('evaluation_data', dict)
                                                ]):
     """
     Generate supervised machine learning model
@@ -52,7 +79,10 @@ def generate_model(ml_type: str,
             -> clf_binary: Binary Classification
             -> clf_multi: Multi-Classification
 
-    :param target_feature_name: str
+    :param model_name: str
+        Abbreviated name of the supervised machine learning model
+
+    :param target_feature: str
         Name of the target feature
 
     :param train_data_set_path: str
@@ -61,85 +91,141 @@ def generate_model(ml_type: str,
     :param test_data_set_path: str
         Complete file path of the tests data set
 
-    :param val_data_set_path: str
-        Complete file path of the validation data set
-
     :param output_path_model: str
-        Path of the model to save
+        Path of the model output
 
     :param output_path_metadata: str
-        Path of the metadata to save
+        Path of the output metadata
 
-    :param project_name: str
-        Name of the project (used in file names)
+    :param output_path_evaluation_train_data: str
+        Path of the evaluation training data set output
 
-    :param model_name: str
-        Abbreviated name of the supervised machine learning model
+    :param output_path_evaluation_test_data: str
+        Path of the evaluation test data set output
 
-    :param model_param: dict
-        Model parameter configuration used for training
+    :param output_path_evaluation_data: str
+        Path of the evaluation data set output
 
     :param model_id: int
-        Model identifier (used in evolutionary framework)
+        Model ID
 
-    :param mutate_or_adjust: bool
-        Whether to mutate or adjust hyperparameter of the model (used in evolutionary framework)
+    :param model_param: dict
+        Model hyperparameter set
+
+    :param param_rate: float
+        Rate for changing given hyperparameter set
+
+    :param warm_start: bool
+        Whether to use standard hyperparameter set or not
+
+    :param train_model: bool
+        Whether to train model or not
 
     :param sep: str
         Separator
 
+    :param prediction_variable_name: str
+        Name of the prediction variable for evaluation step afterward
+
+    :param val_data_set_path: str
+        Complete file path of the validation data set
+
+    :param output_path_evaluation_val_data: str
+        Path of the evaluation validation data set output
+
+    :param output_path_model_customized: str
+        Complete file path of the trained model artifact
+
     :return: NamedTuple
         Path of the sampled data sets and metadata about each data set
     """
-    _s3_resource: boto3 = boto3.resource('s3')
+    _file_type: str = output_path_model.split('.')[-1]
+    if _file_type not in MODEL_ARTIFACT_FILE_TYPE:
+        raise ModelGeneratorException(f'Model artifact file type ({_file_type}) not supported. Supported types are: {MODEL_ARTIFACT_FILE_TYPE}')
+    if output_path_model_customized is not None:
+        _file_type: str = output_path_model_customized.split('.')[-1]
+        if _file_type not in MODEL_ARTIFACT_FILE_TYPE:
+            raise ModelGeneratorException(f'Model artifact file type ({_file_type}) not supported. Supported types are: {MODEL_ARTIFACT_FILE_TYPE}')
+    _model_param: dict = model_param
     if ml_type == 'reg':
-        _model_generator: ModelGeneratorReg = ModelGeneratorReg(model_name=model_name, reg_params=model_param)
+        if warm_start:
+            _model_param = ModelGeneratorReg(model_name=model_name).get_model_parameter()
+        _model_generator: ModelGeneratorReg = ModelGeneratorReg(model_name=model_name, reg_params=_model_param)
     else:
-        _model_generator: ModelGeneratorClf = ModelGeneratorClf(model_name=model_name, clf_params=model_param)
+        if warm_start:
+            _model_param = ModelGeneratorClf(model_name=model_name).get_model_parameter()
+        _model_generator: ModelGeneratorClf = ModelGeneratorClf(model_name=model_name, clf_params=_model_param)
     _model_generator.generate_model()
-    if mutate_or_adjust:
-        _model_generator.generate_params(param_rate=0.1, force_param=None)
+    if param_rate > 0 and not warm_start:
+        _model_generator.generate_params(param_rate=param_rate, force_param=None)
+    _metadata: dict = dict(id=model_id,
+                           param=_model_generator.model_param,
+                           param_changed=_model_generator.model_param_mutated,
+                           train_time_in_sec=_model_generator.train_time,
+                           creation_time=_model_generator.creation_time
+                           )
     if train_model:
         _train_df: pd.DataFrame = pd.read_csv(filepath_or_buffer=train_data_set_path, sep=sep)
         _test_df: pd.DataFrame = pd.read_csv(filepath_or_buffer=test_data_set_path, sep=sep)
         _val_df: pd.DataFrame = pd.read_csv(filepath_or_buffer=val_data_set_path, sep=sep)
         _features: List[str] = _train_df.columns.tolist()
-        if target_feature_name in _features:
-            del _features[_features.index(target_feature_name)]
-        _model_generator.train(x=_train_df[_features], y=_train_df[target_feature_name])
+        if target_feature in _features:
+            del _features[_features.index(target_feature)]
+        _model_generator.train(x=_train_df[_features], y=_train_df[target_feature])
+        _metadata.update({'train_time_in_sec': _model_generator.train_time,
+                          'creation_time': _model_generator.creation_time
+                          })
         _pred_train: np.ndarray = _model_generator.predict(x=_train_df[_features])
         _pred_test: np.ndarray = _model_generator.predict(x=_test_df[_features])
         _pred_val: np.ndarray = _model_generator.predict(x=_val_df[_features])
-        _train_df['prediction'] = _pred_train.tolist()
-        _test_df['prediction'] = _pred_test.tolist()
-        _val_df['prediction'] = _pred_val.tolist()
-        _train_df.to_csv(path_or_buf='', sep=sep, header=True, index=False)
-        _test_df.to_csv(path_or_buf='', sep=sep, header=True, index=False)
-        _val_df.to_csv(path_or_buf='', sep=sep, header=True, index=False)
-        if model_id is None:
-            _model_file_name: str = f'{project_name}_model_{str(datetime.now())}.p'
-        else:
-            _model_file_name: str = f'{project_name}_model_{model_id}_{str(datetime.now())}.p'
-        _s3_model_obj: _s3_resource.Object = _s3_resource.Object(output_path_model, _model_file_name)
-        _s3_model_obj.put(Body=pickle.dumps(obj=_model_generator.model, protocol=pickle.HIGHEST_PROTOCOL))
+        _train_df[prediction_variable_name] = _pred_train.tolist()
+        _test_df[prediction_variable_name] = _pred_test.tolist()
+        _val_df[prediction_variable_name] = _pred_val.tolist()
+        _train_df.to_csv(path_or_buf=output_path_evaluation_train_data, sep=sep, header=True, index=False)
+        _test_df.to_csv(path_or_buf=output_path_evaluation_test_data, sep=sep, header=True, index=False)
+        if output_path_evaluation_val_data is not None:
+            _val_df.to_csv(path_or_buf=output_path_evaluation_val_data, sep=sep, header=True, index=False)
+        _evaluation_data: dict = dict(train=output_path_evaluation_train_data,
+                                      test=output_path_evaluation_test_data,
+                                      val_data_set_path=output_path_evaluation_val_data
+                                      )
+        file_handler(file_path=output_path_model, obj=_model_generator.model)
+        if output_path_model_customized is not None:
+            save_file_to_s3(file_path=output_path_model_customized, obj=_model_generator.model)
     else:
-        _s3_model_obj: _s3_resource.Object = _s3_resource.Object(output_path_model, _model_file_name)
-        _s3_model_obj.put(Body=pickle.dumps(obj=_model_generator, protocol=pickle.HIGHEST_PROTOCOL))
-    return [_model_file_name, _model_generator.model_param, _model_generator.train_time]
+        _evaluation_data: dict = None
+        file_handler(file_path=output_path_model, obj=_model_generator)
+        if output_path_model_customized is not None:
+            save_file_to_s3(file_path=output_path_model_customized, obj=_model_generator)
+    for file_path, obj in [(output_path_metadata, _metadata),
+                           (output_path_evaluation_data, _evaluation_data)
+                           ]:
+        file_handler(file_path=file_path, obj=obj)
+    return [_model_generator.model,
+            _metadata,
+            _evaluation_data
+            ]
 
 
 if __name__ == '__main__':
     generate_model(ml_type=ARGS.ml_type,
-                   target_feature_name=ARGS.target_feature_name,
+                   model_name=ARGS.model_name,
+                   target_feature=ARGS.target_feature,
                    train_data_set_path=ARGS.train_data_set_path,
                    test_data_set_path=ARGS.test_data_set_path,
-                   val_data_set_path=ARGS.val_data_set_path,
                    output_path_model=ARGS.output_path_model,
                    output_path_metadata=ARGS.output_path_metadata,
-                   model_name=ARGS.model_name,
-                   model_param=ARGS.model_param,
+                   output_path_evaluation_train_data=ARGS.output_path_evaluation_train_data,
+                   output_path_evaluation_test_data=ARGS.output_path_evaluation_test_data,
+                   output_path_evaluation_data=ARGS.output_path_evaluation_data,
                    model_id=ARGS.model_id,
-                   mutate_or_adjust=ARGS.mutate_or_adjust,
-                   train_model=ARGS.train_model,
-                   sep=ARGS.sep
+                   model_param=ARGS.model_param,
+                   param_rate=ARGS.param_rate,
+                   warm_start=bool(ARGS.warm_start),
+                   train_model=bool(ARGS.train_model),
+                   sep=ARGS.sep,
+                   prediction_variable_name=ARGS.prediction_variable_name,
+                   val_data_set_path=ARGS.val_data_set_path,
+                   output_path_evaluation_val_data=ARGS.output_path_evaluation_val_data,
+                   output_path_model_customized=ARGS.output_path_model_customized
                    )
