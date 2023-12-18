@@ -5,16 +5,11 @@ Task: ... (Function to run in container)
 """
 
 import argparse
-import random
 
 from aws import file_exists, load_file_from_s3, save_file_to_s3
-from datetime import datetime
-from evolutionary_algorithm import (
-    EVOLUTIONARY_ALGORITHMS, EvolutionaryAlgorithmException, adjust_swarm, check_for_stopping, generate_meta_data_template,
-    mating_pool, select_best_individual
-)
+from evolutionary_algorithm import EvolutionaryAlgorithm
 from file_handler import file_handler
-from typing import Any, Dict, List, NamedTuple
+from typing import Any, List, NamedTuple
 
 
 PARSER = argparse.ArgumentParser(description="evolutionary algorithm")
@@ -67,7 +62,7 @@ def evolutionary_algorithm(metadata_file_path: str,
                            output_file_path_iteration_history: str,
                            output_file_path_evolution_history: str,
                            output_file_path_evolution_gradient: str,
-                           validation_data_file_path: str = None,
+                           val_data_file_path: str = None,
                            algorithm: str = 'ga',
                            max_generations: int = 10,
                            pop_size: int = 64,
@@ -83,7 +78,8 @@ def evolutionary_algorithm(metadata_file_path: str,
                            timer_in_seconds: int = 43200,
                            re_populate: bool = False,
                            max_trials: int = 2,
-                           model_params: dict = None
+                           model_params: dict = None,
+                           environment_reaction: dict = None
                            ) -> NamedTuple('outputs', [('metadata', dict),
                                                        ('evolve', str),
                                                        ('stopping_reason', str),
@@ -111,7 +107,7 @@ def evolutionary_algorithm(metadata_file_path: str,
     :param output_file_path_iteration_history:
     :param output_file_path_evolution_history:
     :param output_file_path_evolution_gradient:
-    :param validation_data_file_path:
+    :param val_data_file_path:
     :param algorithm:
     :param max_generations:
     :param pop_size:
@@ -133,71 +129,47 @@ def evolutionary_algorithm(metadata_file_path: str,
     """
     if file_exists(file_path=metadata_file_path):
         _metadata: dict = load_file_from_s3(file_path=metadata_file_path)
-        # TODO: gather population data
-        _metadata['iteration_history']['population']
-        _metadata['iteration_history']['inheritance']
-        _elapsed_time_in_seconds_of_previous_iteration: int = (datetime.now() - _metadata['start_time']).seconds
-        _metadata['iteration_history']['time'].append(_elapsed_time_in_seconds_of_previous_iteration)
-        # TODO: gather evolution history data
-        # TODO: gather evolution gradient data
-        _check_for_stopping: dict = check_for_stopping(metadata=_metadata)
-        _stopping_reason: str = _check_for_stopping.get('stopping_reason')
-        if _check_for_stopping.get('evolve'):
-            _evolve: str = 'true'
-            _metadata['current_iteration'] += 1
-            if _metadata['algorithm'] == 'random':
-                _algorithm: str = random.choice(EVOLUTIONARY_ALGORITHMS)
-            elif _metadata['algorithm'] in ['ga_si', 'si_ga']:
-                if _metadata['current_iteration_algorithm'][-1] == 'ga':
-                    _algorithm: str = 'si'
-                else:
-                    _algorithm: str = 'ga'
-            else:
-                _algorithm: str = _metadata['algorithm']
-            _metadata['current_iteration_algorithm'].append(_algorithm)
-            if _algorithm == 'ga':
-                _mating_pool = mating_pool(metadata=_metadata)
-                _metadata['generated_individuals'].extend(_mating_pool.get('new_ids'))
-                _generator_instructions: List[dict] = _mating_pool.get('mutations')
-            elif _algorithm == 'si':
-                _best_idx: Dict[str, int] = select_best_individual(fitness_scores=_metadata['current_iteration_meta_data']['fitness_score'])
-                _metadata['best_local_idx'] = _best_idx.get('best_local_idx')
-                _metadata['best_global_idx'] = _best_idx.get('best_global_idx')
-                _swarm_adjustments: dict = adjust_swarm(metadata=_metadata)
-                _metadata['generated_individuals'].extend(_swarm_adjustments.get('new_ids'))
-                _generator_instructions: List[dict] = _swarm_adjustments.get('adjustments')
-            else:
-                raise EvolutionaryAlgorithmException(f'Evolutionary algorithm ({_algorithm}) not supported')
-        else:
+        _evolutionary_algorithm: EvolutionaryAlgorithm = EvolutionaryAlgorithm(metadata=_metadata)
+        if environment_reaction is not None:
+            _evolutionary_algorithm.gather_metadata(environment_reaction=environment_reaction)
+        _re_populate: bool = _evolutionary_algorithm.check_for_re_population()
+        if _re_populate:
+            _evolutionary_algorithm.generate_metadata_template()
             _evolve: str = 'false'
-            _generator_instructions: List[dict] = []
-            _metadata['end_time'] = datetime.now()
+            _stopping_reason: str = None
+            _generator_instructions: List[dict] = _evolutionary_algorithm.populate()
+        else:
+            _check_for_stopping: dict = _evolutionary_algorithm.check_for_stopping()
+            _stopping_reason: str = _check_for_stopping.get('stopping_reason')
+            if _check_for_stopping.get('evolve'):
+                _evolve: str = 'true'
+                _generator_instructions: List[dict] = _evolutionary_algorithm.main()
+            else:
+                _evolve: str = 'false'
+                _generator_instructions: List[dict] = []
     else:
-        _metadata: dict = generate_meta_data_template()
+        _evolutionary_algorithm: EvolutionaryAlgorithm = EvolutionaryAlgorithm(metadata=None)
+        _evolutionary_algorithm.generate_metadata_template()
         _evolve: str = 'false'
         _stopping_reason: str = None
-        _generator_instructions: List[dict] = []
-    _current_iteration_meta_data: dict = _metadata['current_iteration_meta_data']
-    _iteration_history: dict = _metadata['iteration_history']
-    _evolution_history: dict = _metadata['evolution_history']
-    _evolution_gradient: dict = _metadata['evolution_gradient']
-    for file_path, obj in [(output_file_path_metadata, _metadata),
+        _generator_instructions: List[dict] = _evolutionary_algorithm.populate()
+    for file_path, obj in [(output_file_path_metadata, _evolutionary_algorithm.metadata),
                            (output_file_path_evolve, _evolve),
                            (output_file_path_stopping_reason, _stopping_reason),
                            (output_file_path_generator_instructions, _generator_instructions),
-                           (output_file_path_current_iteration_meta_data, _current_iteration_meta_data),
-                           (output_file_path_iteration_history, _iteration_history),
-                           (output_file_path_evolution_history, _evolution_history),
-                           (output_file_path_evolution_gradient, _evolution_gradient)
+                           (output_file_path_current_iteration_meta_data, _evolutionary_algorithm.metadata['current_iteration_meta_data']),
+                           (output_file_path_iteration_history, _evolutionary_algorithm.metadata['iteration_history']),
+                           (output_file_path_evolution_history, _evolutionary_algorithm.metadata['evolution_history']),
+                           (output_file_path_evolution_gradient, _evolutionary_algorithm.metadata['evolution_gradient'])
                            ]:
         file_handler(file_path=file_path, obj=obj)
-    return [_metadata,
+    return [_evolutionary_algorithm.metadata,
             _evolve,
             _stopping_reason,
-            _current_iteration_meta_data,
-            _iteration_history,
-            _evolution_history,
-            _evolution_gradient
+            _evolutionary_algorithm.metadata['current_iteration_meta_data'],
+            _evolutionary_algorithm.metadata['iteration_history'],
+            _evolutionary_algorithm.metadata['evolution_history'],
+            _evolutionary_algorithm.metadata['evolution_gradient']
             ]
 
 
