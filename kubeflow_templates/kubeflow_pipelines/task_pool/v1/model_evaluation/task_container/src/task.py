@@ -19,14 +19,22 @@ PARSER = argparse.ArgumentParser(description="calculate metrics for evaluating m
 PARSER.add_argument('-ml_type', type=str, required=True, default=None, help='machine learning type')
 PARSER.add_argument('-target_feature_name', type=str, required=True, default=None, help='name of the target feature')
 PARSER.add_argument('-prediction_feature_name', type=str, required=True, default=None, help='name of the prediction variable')
-PARSER.add_argument('-output_path_metrics', type=str, required=True, default=None, help='output file path of the metric')
 PARSER.add_argument('-train_data_set_path', type=str, required=True, default=None, help='complete file path of the training data set')
 PARSER.add_argument('-test_data_set_path', type=str, required=True, default=None, help='complete file path of the test data set')
-PARSER.add_argument('-val_data_set_path', type=str, required=False, default=None, help='complete file path of the validation data set')
-PARSER.add_argument('-prediction_feature_name', type=str, required=True, default=None, help='name of the prediction variable')
-PARSER.add_argument('-sep', type=str, required=False, default=',', help='column separator')
 PARSER.add_argument('-metrics', type=list, required=False, default=None, help='metrics to calculate')
-PARSER.add_argument('-output_bucket_name', type=str, required=False, default=None, help='output S3 bucket name')
+PARSER.add_argument('-labels', type=list, required=False, default=None, help='class labels')
+PARSER.add_argument('-model_id', type=str, required=False, default=None, help='model identifier')
+PARSER.add_argument('-sep', type=str, required=False, default=',', help='column separator')
+PARSER.add_argument('-val_data_set_path', type=str, required=False, default=None, help='complete file path of the validation data set')
+PARSER.add_argument('-output_path_metrics', type=str, required=True, default=None, help='file path of the metric output')
+PARSER.add_argument('-metadata_file_path', type=str, required=True, default=None, help='file path of the metadata output')
+PARSER.add_argument('-metric_file_path', type=str, required=True, default=None, help='file path of the metric output')
+PARSER.add_argument('-table_file_path', type=str, required=True, default=None, help='file path of the table output')
+PARSER.add_argument('-output_path_confusion_matrix', type=str, required=True, default=None, help='file path of the confusion matrix putput')
+PARSER.add_argument('-output_path_roc_curve', type=str, required=True, default=None, help='file path of the roc curve putput')
+PARSER.add_argument('-output_path_confusion_matrix', type=str, required=True, default=None, help='file path of the confusion matrix putput')
+PARSER.add_argument('-output_path_metric_table', type=str, required=True, default=None, help='file path of the metric table putput')
+PARSER.add_argument('-output_path_metrics_customized', type=str, required=False, default=None, help='complete file path of the metrics output')
 ARGS = PARSER.parse_args()
 
 KFP_METRIC_TYPE: List[str] = ['accuracy-score', 'roc-auc-score']
@@ -171,14 +179,32 @@ def evaluate_machine_learning(ml_type: str,
     :param prediction_var_name: str
         Name of the variable containing predictions
 
-    :param output_path_metrics: str
-        Path of the output metric results to save
-
     :param train_data_set_path: str
         Complete file path of the training data set
 
     :param test_data_set_path: str
         Complete file path of the tests data set
+
+    :param metadata_file_path: str
+        File path of the metadata output file
+
+    :param metric_file_path: str
+        File path of the metric output file
+
+    :param table_file_path: str
+        File path of the table output file
+
+    :param output_path_metrics: str
+        Path of the output metric results to save
+
+    :param metrics: List[str]
+        Abbreviated names of metrics to apply
+
+    :param labels: List[str]
+        Class labels of the target feature
+
+    :param model_id: str
+        Model identifier
 
     :param val_data_set_path: str
         Complete file path of the validation data set
@@ -186,8 +212,14 @@ def evaluate_machine_learning(ml_type: str,
     :param sep: str
         Separator
 
-    :param metrics: List[str]
-        Abbreviated names of metrics to apply
+    :param output_path_confusion_matrix: str
+        Complete file path of the confusion matrix visualization output
+
+    :param output_path_roc_curve: str
+        Complete file path of the roc curve visualization output
+
+    :param output_path_metric_table: str
+        Complete file path of the metric table visualization output
 
     :param output_path_metrics_customized: str
         Name of the output S3 bucket
@@ -337,7 +369,7 @@ def evaluate_machine_learning(ml_type: str,
                 _val_metric_value.append(val_metric_value)
         _df_table['val'] = _val_metric_value
         _header.append('val')
-    _df_table.set_index(keys=_train_metric_name)
+    _df_table.set_index(keys=_train_metric_name, inplace=True)
     _df_table.to_csv(path_or_buf=output_path_metric_table, sep=sep, header=False, index=True)
     _table_metadata: Dict[str, List[Dict[str, str]]] = _generate_kfp_visualization_template(file_paths=[output_path_metric_table],
                                                                                             metric_types=['table'],
@@ -354,11 +386,19 @@ if __name__ == '__main__':
     evaluate_machine_learning(ml_type=ARGS.ml_type,
                               target_feature_name=ARGS.target_feature_name,
                               prediction_var_name=ARGS.prediction_var_name,
-                              output_path_metrics=ARGS.output_path_metrics,
                               train_data_set_path=ARGS.train_data_set_path,
                               test_data_set_path=ARGS.test_data_set_path,
+                              metadata_file_path='metadata_viz.json',
+                              metric_file_path='metric_viz.json',
+                              table_file_path='table_viz.json',
+                              output_path_metrics=ARGS.output_path_metrics,
+                              metrics=ARGS.metrics,
+                              labels=ARGS.labels,
+                              model_id=ARGS.model_id,
                               val_data_set_path=ARGS.val_data_set_path,
                               sep=ARGS.sep,
-                              metrics=ARGS.metrics,
-                              output_bucket_name=ARGS.output_bucket_name
+                              output_path_confusion_matrix=ARGS.output_path_confusion_matrix,
+                              output_path_roc_curve=ARGS.output_path_roc_curve,
+                              output_path_metric_table=ARGS.output_path_metric_table,
+                              output_path_metrics_customized=ARGS.output_path_metrics_customized
                               )
