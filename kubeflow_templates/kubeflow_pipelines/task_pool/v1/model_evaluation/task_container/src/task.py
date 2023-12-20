@@ -253,7 +253,7 @@ def evaluate_machine_learning(ml_type: str,
                                                                   index=_labels,
                                                                   columns=_labels
                                                                   )
-                _df_confusion_matrix.to_csv(path_or_buf=output_path_confusion_matrix, header=False, index=True)
+                _df_confusion_matrix.to_csv(path_or_buf=output_path_confusion_matrix, sep=sep, header=False, index=True)
                 _confusion_metadata: Dict[str, List[Dict[str, str]]] = _generate_kfp_visualization_template(file_paths=[output_path_confusion_matrix],
                                                                                                             metric_types=['confusion_matrix'],
                                                                                                             target_feature=target_feature_name,
@@ -283,7 +283,7 @@ def evaluate_machine_learning(ml_type: str,
                         _df_roc['tpr'] = _tpr
                         _df_roc['fpr'] = _fpr
                         _df_roc['thresholds'] = _thresholds
-                        _df_roc.to_csv(path_or_buf=output_path_roc_curve, header=False, index=False)
+                        _df_roc.to_csv(path_or_buf=output_path_roc_curve, sep=sep, header=False, index=False)
                         _roc_metadata: Dict[str, List[Dict[str, str]]] = _generate_kfp_visualization_template(file_paths=[output_path_roc_curve],
                                                                                                               metric_types=['roc'],
                                                                                                               target_feature=target_feature_name,
@@ -315,26 +315,30 @@ def evaluate_machine_learning(ml_type: str,
     file_handler(file_path=output_path_metrics, obj=_evaluation)
     if output_path_metrics_customized is not None:
         save_file_to_s3(file_path=output_path_metrics_customized, obj=_evaluation)
+    _skip_metric_summary_table: List[str] = ['classification_report', 'confusion']
     _header: List[str] = ['train', 'test']
     _df_table: pd.DataFrame = pd.DataFrame()
     _train_metric_name: List[str] = []
     _train_metric_value: List[float] = []
     for train_metric_name, train_metric_value in _evaluation['train'].items():
-        _train_metric_name.append(train_metric_name)
-        _train_metric_value.append(train_metric_value)
+        if train_metric_name not in _skip_metric_summary_table:
+            _train_metric_name.append(train_metric_name)
+            _train_metric_value.append(train_metric_value)
     _df_table['train'] = _train_metric_value
     _test_metric_value: List[float] = []
-    for _, test_metric_value in _evaluation['test'].items():
-        _test_metric_value.append(test_metric_value)
+    for test_metric_name, test_metric_value in _evaluation['test'].items():
+        if test_metric_name not in _skip_metric_summary_table:
+            _test_metric_value.append(test_metric_value)
     _df_table['test'] = _test_metric_value
     if val_data_set_path is not None:
         _val_metric_value: List[float] = []
-        for _, val_metric_value in _evaluation['val'].items():
-            _val_metric_value.append(val_metric_value)
+        for val_metric_name, val_metric_value in _evaluation['val'].items():
+            if val_metric_name not in _skip_metric_summary_table:
+                _val_metric_value.append(val_metric_value)
         _df_table['val'] = _val_metric_value
         _header.append('val')
     _df_table.set_index(keys=_train_metric_name)
-    _df_table.to_csv(path_or_buf=output_path_metric_table, header=False, index=True)
+    _df_table.to_csv(path_or_buf=output_path_metric_table, sep=sep, header=False, index=True)
     _table_metadata: Dict[str, List[Dict[str, str]]] = _generate_kfp_visualization_template(file_paths=[output_path_metric_table],
                                                                                             metric_types=['table'],
                                                                                             target_feature=target_feature_name,
