@@ -5,13 +5,14 @@ Task: ... (Function to run in container)
 """
 
 import argparse
-import boto3
-import json
 import pandas as pd
 
+from aws import save_file_to_s3
+from custom_logger import Log
 from evaluate_machine_learning import EvalClf, EvalReg, ML_METRIC, sml_fitness_score, SML_SCORE
-from kfp.v2.dsl import ClassificationMetrics, Metrics, Output
-from typing import NamedTuple, List
+from file_handler import file_handler
+from kfp.components import OutputPath
+from typing import Dict, List, NamedTuple
 
 
 PARSER = argparse.ArgumentParser(description="calculate metrics for evaluating machine learning models")
@@ -24,21 +25,135 @@ PARSER.add_argument('-test_data_set_path', type=str, required=True, default=None
 PARSER.add_argument('-val_data_set_path', type=str, required=False, default=None, help='complete file path of the validation data set')
 PARSER.add_argument('-prediction_feature_name', type=str, required=True, default=None, help='name of the prediction variable')
 PARSER.add_argument('-sep', type=str, required=False, default=',', help='column separator')
-PARSER.add_argument('-metrics', type=str, required=False, default=None, help='metrics to calculate')
+PARSER.add_argument('-metrics', type=list, required=False, default=None, help='metrics to calculate')
 PARSER.add_argument('-output_bucket_name', type=str, required=False, default=None, help='output S3 bucket name')
 ARGS = PARSER.parse_args()
+
+KFP_METRIC_TYPE: List[str] = ['accuracy-score', 'roc-auc-score']
+
+
+class ModelEvaluationException(Exception):
+    """
+    Class for handling exceptions for function evaluate_machine_learning
+    """
+    pass
+
+
+def _generate_kfp_metric_template(file_paths: List[str],
+                                  metric_types: List[str],
+                                  metric_values: List[float],
+                                  metric_formats: List[str]
+                                  ) -> Dict[str, List[Dict[str, str]]]:
+    """
+    Generate Kubeflow pipeline metric template
+
+    :param file_paths: List[str]
+        Complete file path of the plots
+
+    :param metric_types: List[str]
+        Name of the pre-defined kfp metrics
+            -> accuracy-score: Accuracy
+            -> roc-auc-score: ROC-AUC
+
+    :param metric_values: List[float]
+        Metric value
+
+    :param metric_formats: List[str]
+        Value formats of the Kubeflow pipeline metric
+            -> RAW: raw value
+            -> PERCENTAGE: scaled percentage value
+
+    :return: Dict[str, List[Dict[str, str]]]
+        Configured Kubeflow pipeline metric template
+    """
+    _metric: Dict[str, List[Dict[str, str]]] = dict(metrics=[])
+    for file_path, metric_type, metric_value, metric_format in zip(file_paths, metric_types, metric_values, metric_formats):
+        if metric_type in KFP_METRIC_TYPE:
+            _plot_config: Dict[str, str] = dict(name=metric_type, format=metric_format, numberValue=metric_values)
+        else:
+            raise ModelEvaluationException(f'Kubeflow pipeline metric ({metric_type}) not supported')
+        _metric['metrics'].append(_plot_config)
+    return _metric
+
+
+def _generate_kfp_visualization_template(file_paths: List[str],
+                                         metric_types: List[str],
+                                         target_feature: str = None,
+                                         prediction_feature: str = None,
+                                         labels: List[str] = None,
+                                         header: List[str] = None
+                                         ) -> Dict[str, List[Dict[str, str]]]:
+    """
+    Generate Kubeflow pipeline visualization template
+
+    :param file_paths: List[str]
+        Complete file path of the plots
+
+    :param metric_types: List[str]
+        Name of the pre-defined kfp visualization
+            -> confusion_matrix: Confusion matrix
+            -> roc: ROC-AUC
+            -> table: Data table
+
+    :return: Dict[str, List[Dict[str, str]]]
+        Configured Kubeflow pipeline metadata template
+    """
+    _metadata: Dict[str, List[Dict[str, str]]] = dict(outputs=[])
+    for file_path, metric_type in zip(file_paths, metric_types):
+        if metric_type == 'confusion_matrix':
+            _plot_config: Dict[str, str] = dict(type=metric_type,
+                                                format='csv',
+                                                schema=None,
+                                                target_col=target_feature,
+                                                predicted_col=prediction_feature,
+                                                labels=labels,
+                                                storage='s3',
+                                                source=file_path
+                                                )
+        elif metric_type == 'roc':
+            _schema: List[Dict[str, str]] = list()
+            _schema.append(dict(name='fpr', type='NUMBER'))
+            _schema.append(dict(name='tpr', type='NUMBER'))
+            _schema.append(dict(name='thresholds', type='NUMBER'))
+            _plot_config: Dict[str, str] = dict(type=metric_type,
+                                                format='csv',
+                                                schema=_schema,
+                                                target_col=target_feature,
+                                                predicted_col=prediction_feature,
+                                                storage='s3',
+                                                source=file_path
+                                                )
+        elif metric_type == 'table':
+            _plot_config: Dict[str, str] = dict(type=metric_type,
+                                                format='csv',
+                                                header=header,
+                                                storage='s3',
+                                                source=file_path
+                                                )
+        else:
+            raise ModelEvaluationException(f'Kubeflow pipeline visualization ({metric_type}) not supported')
+        _metadata['outputs'].append(_plot_config)
+    return _metadata
 
 
 def evaluate_machine_learning(ml_type: str,
                               target_feature_name: str,
                               prediction_var_name: str,
-                              output_path_metrics: str,
                               train_data_set_path: str,
                               test_data_set_path: str,
+                              metadata_file_path: OutputPath(),
+                              metric_file_path: OutputPath(),
+                              table_file_path: OutputPath(),
+                              output_path_metrics: str,
+                              metrics: List[str] = None,
+                              labels: List[str] = None,
+                              model_id: str = None,
                               val_data_set_path: str = None,
                               sep: str = ',',
-                              metrics: List[str] = None,
-                              output_bucket_name: str = None
+                              output_path_confusion_matrix: str = None,
+                              output_path_roc_curve: str = None,
+                              output_path_metric_table: str = None,
+                              output_path_metrics_customized: str = None
                               ) -> NamedTuple('outputs', [('metrics', dict)]):
     """
     Evaluate supervised machine learning models using most common metrics
@@ -74,7 +189,7 @@ def evaluate_machine_learning(ml_type: str,
     :param metrics: List[str]
         Abbreviated names of metrics to apply
 
-    :param output_bucket_name: str
+    :param output_path_metrics_customized: str
         Name of the output S3 bucket
 
     :return: NamedTuple
@@ -89,8 +204,15 @@ def evaluate_machine_learning(ml_type: str,
     if metrics is None:
         _metrics: List[str] = ML_METRIC.get(ml_type)
     else:
-        _metrics: List[str] = metrics
-    _evaluation: dict = dict(train={}, test={}, val={})
+        _metrics: List[str] = []
+        for ml_metric in metrics:
+            if ml_metric in ML_METRIC:
+                _metrics.append(ml_metric)
+            else:
+                Log().log(msg=f'Evaluation metric ({ml_metric}) not supported')
+        if len(_metrics) == 0:
+            raise ModelEvaluationException('No supported evaluation metric found')
+    _evaluation: dict = dict(train={}, test={}, val={}, sml_score=None, model_id=model_id, target=target_feature_name)
     for metric in _metrics:
         if ml_type == 'reg':
             _evaluation['train'].update({metric: getattr(EvalReg(obs=_train_df[target_feature_name].values,
@@ -120,6 +242,65 @@ def evaluate_machine_learning(ml_type: str,
                                                                 ),
                                                         metric)
                                         })
+            if metric == 'confusion' and output_path_confusion_matrix is not None:
+                if labels is None:
+                    _labels: List[str] = [str(label) for label in _test_df[target_feature_name].unique()]
+                else:
+                    _labels: List[str] = labels
+                _df_confusion_matrix: pd.DataFrame = pd.DataFrame(data=EvalClf(obs=_test_df[target_feature_name].values,
+                                                                               pred=_test_df[prediction_var_name].values,
+                                                                               ).confusion(normalize=None),
+                                                                  index=_labels,
+                                                                  columns=_labels
+                                                                  )
+                _df_confusion_matrix.to_csv(path_or_buf=output_path_confusion_matrix, header=False, index=True)
+                _confusion_metadata: Dict[str, List[Dict[str, str]]] = _generate_kfp_visualization_template(file_paths=[output_path_confusion_matrix],
+                                                                                                            metric_types=['confusion_matrix'],
+                                                                                                            target_feature=target_feature_name,
+                                                                                                            prediction_feature=prediction_var_name,
+                                                                                                            labels=_labels,
+                                                                                                            header=None
+                                                                                                            )
+                file_handler(file_path=metadata_file_path, obj=_confusion_metadata)
+            if ml_type == 'clf_binary':
+                _metric_value: float = _evaluation['test'][metric] * 100
+                if metric == 'accuracy':
+                    _metric_type: str = 'accuracy-score'
+                elif metric == 'roc_auc':
+                    _metric_type: str = 'roc-auc-score'
+                    if output_path_roc_curve is not None:
+                        _df_roc: pd.DataFrame = pd.DataFrame()
+                        _roc_curve: dict = EvalClf(obs=_test_df[target_feature_name].values,
+                                                   pred=_test_df[prediction_var_name].values,
+                                                   ).roc_curve()
+                        _tpr: List[float] = []
+                        _fpr: List[float] = []
+                        _thresholds: List[float] = []
+                        for i in range(0, len(_test_df[target_feature_name].unique()), 1):
+                            _tpr.append(_roc_curve['true_positive_rate'][i])
+                            _fpr.append(_roc_curve['false_positive_rate'][i])
+                            _thresholds.append(_roc_curve['roc_auc'][i])
+                        _df_roc['tpr'] = _tpr
+                        _df_roc['fpr'] = _fpr
+                        _df_roc['thresholds'] = _thresholds
+                        _df_roc.to_csv(path_or_buf=output_path_roc_curve, header=False, index=False)
+                        _roc_metadata: Dict[str, List[Dict[str, str]]] = _generate_kfp_visualization_template(file_paths=[output_path_roc_curve],
+                                                                                                              metric_types=['roc'],
+                                                                                                              target_feature=target_feature_name,
+                                                                                                              prediction_feature=prediction_var_name,
+                                                                                                              labels=None,
+                                                                                                              header=None
+                                                                                                              )
+                        file_handler(file_path=metadata_file_path, obj=_roc_metadata)
+                else:
+                    _metric_type: str = None
+                if _metric_type is not None:
+                    _metric: Dict[str, List[Dict[str, str]]] = _generate_kfp_metric_template(file_paths=[],
+                                                                                             metric_types=[_metric_type],
+                                                                                             metric_values=[_metric_value],
+                                                                                             metric_formats=['PERCENTAGE']
+                                                                                             )
+                    file_handler(file_path=metric_file_path, obj=_metric)
             if _val_df is not None:
                 _evaluation['val'].update({metric: getattr(EvalClf(obs=_val_df[target_feature_name].values,
                                                                    pred=_val_df[prediction_var_name].values
@@ -131,12 +312,37 @@ def evaluate_machine_learning(ml_type: str,
                                                      train_test_metric=tuple([_evaluation['train'][SML_SCORE['ml_metric'][ml_type]], _evaluation['test'][SML_SCORE['ml_metric'][ml_type]]]),
                                                      train_time_in_seconds=1.0
                                                      )
-    with open(output_path_metrics.split('/')[-1], 'w') as _file:
-        json.dump(_evaluation, _file)
-    if output_bucket_name is not None:
-        _s3_resource: boto3 = boto3.resource('s3')
-        _s3_obj: _s3_resource.Object = _s3_resource.Object(output_bucket_name, output_path_metrics)
-        _s3_obj.put(Body=(bytes(json.dumps(_evaluation).encode('UTF-8'))))
+    file_handler(file_path=output_path_metrics, obj=_evaluation)
+    if output_path_metrics_customized is not None:
+        save_file_to_s3(file_path=output_path_metrics_customized, obj=_evaluation)
+    _header: List[str] = ['train', 'test']
+    _df_table: pd.DataFrame = pd.DataFrame()
+    _train_metric_name: List[str] = []
+    _train_metric_value: List[float] = []
+    for train_metric_name, train_metric_value in _evaluation['train'].items():
+        _train_metric_name.append(train_metric_name)
+        _train_metric_value.append(train_metric_value)
+    _df_table['train'] = _train_metric_value
+    _test_metric_value: List[float] = []
+    for _, test_metric_value in _evaluation['test'].items():
+        _test_metric_value.append(test_metric_value)
+    _df_table['test'] = _test_metric_value
+    if val_data_set_path is not None:
+        _val_metric_value: List[float] = []
+        for _, val_metric_value in _evaluation['val'].items():
+            _val_metric_value.append(val_metric_value)
+        _df_table['val'] = _val_metric_value
+        _header.append('val')
+    _df_table.set_index(keys=_train_metric_name)
+    _df_table.to_csv(path_or_buf=output_path_metric_table, header=False, index=True)
+    _table_metadata: Dict[str, List[Dict[str, str]]] = _generate_kfp_visualization_template(file_paths=[output_path_metric_table],
+                                                                                            metric_types=['table'],
+                                                                                            target_feature=target_feature_name,
+                                                                                            prediction_feature=prediction_var_name,
+                                                                                            labels=labels,
+                                                                                            header=_header
+                                                                                            )
+    file_handler(file_path=table_file_path, obj=_table_metadata)
     return [_evaluation]
 
 

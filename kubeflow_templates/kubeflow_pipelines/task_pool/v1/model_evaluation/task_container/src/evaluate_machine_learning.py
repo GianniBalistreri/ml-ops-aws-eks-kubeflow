@@ -284,7 +284,7 @@ class EvalClf:
         """
         return cohen_kappa_score(y1=self.obs, y2=self.pred, labels=None, weights=None, sample_weight=None)
 
-    def confusion(self, normalize: str = None) -> pd.DataFrame:
+    def confusion(self, normalize: str = None) -> np.ndarray:
         """
         Confusion matrix for classification problems
 
@@ -295,7 +295,7 @@ class EvalClf:
                 -> all: Confusion matrix normalized by both observations and predictions
                 -> None: No normalization
 
-        :return: pd.DataFrame
+        :return: np.ndarray
             Confusion Matrix
         """
         return confusion_matrix(y_true=self.obs, y_pred=self.pred, labels=None, sample_weight=None, normalize=normalize)

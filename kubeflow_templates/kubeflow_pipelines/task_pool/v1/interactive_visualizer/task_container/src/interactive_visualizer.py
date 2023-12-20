@@ -179,7 +179,7 @@ class InteractiveVisualizer:
              aggregate_feature_imp: Dict[str, dict] = None,
              feature_importance_processing_variants: bool = False,
              feature_importance_core_features_aggregation: bool = False
-             ) -> None:
+             ) -> List[str]:
         """
         Generate interactive visualization
 
@@ -198,6 +198,7 @@ class InteractiveVisualizer:
         :param feature_importance_processing_variants:
         :param feature_importance_core_features_aggregation:
         """
+        _file_paths: List[str] = []
         if special_plots:
             if feature_tournament_game_stats:
                 DataVisualizer(df=self.df,
@@ -318,3 +319,5 @@ class InteractiveVisualizer:
                            rows_sub=self.rows_sub,
                            cols_sub=self.cols_sub
                            ).run()
+
+        return _file_paths

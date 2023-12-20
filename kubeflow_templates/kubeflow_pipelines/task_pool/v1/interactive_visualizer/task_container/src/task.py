@@ -5,57 +5,102 @@ Task: ... (Function to run in container)
 """
 
 import argparse
-import boto3
 import json
-import os
 import pandas as pd
-import pickle
 
-from custom_logger import Log
-from interactive_visualizer import ENGINEERING_METH, MIN_FEATURES_BY_METH, FeatureEngineer
+from interactive_visualizer import InteractiveVisualizer
+from kfp.components import OutputPath
 from typing import Any, Dict, NamedTuple, List
 
-PARSER = argparse.ArgumentParser(description="feature importance")
+PARSER = argparse.ArgumentParser(description="interactive visualizer")
 PARSER.add_argument('-data_set_path', type=str, required=True, default=None, help='file path of the data set')
+PARSER.add_argument('-plot_type', type=str, required=True, default=None, help='abbreviated name of the plot type to use')
+PARSER.add_argument('-title', type=str, required=False, default='', help='title of the visualization')
+PARSER.add_argument('-feature_names', type=str, required=False, default=None, help='feature names to visualize')
+PARSER.add_argument('-time_features', type=str, required=False, default=None, help='feature names used as grouping features by time')
+PARSER.add_argument('-graph_features', type=str, required=False, default=None, help='feature names used to build network graph')
+PARSER.add_argument('-group_by', type=str, required=False, default=None, help='feature names used as grouping feature')
 PARSER.add_argument('-analytical_data_types', type=Any, required=True, default=None, help='assignment of features to analytical data types')
-PARSER.add_argument('-target_feature_name', type=str, required=True, default=None, help='name of the target feature')
-PARSER.add_argument('-output_bucket_name', type=str, required=True, default=None, help='name of the S3 output bucket')
-PARSER.add_argument('-output_file_path_data_set', type=str, required=True, default=None, help='file path of the data set')
-PARSER.add_argument('-output_file_path_processor_obj', type=str, required=True, default=None, help='file path of output processor objects')
-PARSER.add_argument('-output_file_path_target', type=str, required=True, default=None, help='file path of the output target feature')
-PARSER.add_argument('-output_file_path_predictors', type=str, required=True, default=None, help='file path of the output predictors')
-PARSER.add_argument('-output_file_path_engineered_feature_names', type=str, required=True, default=None, help='file path of the output processed features')
-PARSER.add_argument('-feature_engineering_config', type=Any, required=False, default=None, help='feature engineering pre-defined config file')
-PARSER.add_argument('-feature_names', type=str, required=False, default=None, help='pre-defined feature names used for feature engineering')
-PARSER.add_argument('-exclude', type=str, required=False, default=None, help='pre-defined feature names to exclude')
-PARSER.add_argument('-exclude_original_data', type=str, required=False, default=None, help='exclude all original features (especially numeric features)')
+PARSER.add_argument('-melt', type=int, required=False, default=0, help='whether to combine group by plots')
+PARSER.add_argument('-brushing', type=int, required=False, default=0, help='whether to use brushing for parallel category plot or not')
+PARSER.add_argument('-xaxis_label', type=list, required=False, default=None, help='Labels for the x-axis')
+PARSER.add_argument('-yaxis_label', type=list, required=False, default=None, help='Labels for the y-axis')
+PARSER.add_argument('-zaxis_label', type=list, required=False, default=None, help='Labels for the z-axis')
+PARSER.add_argument('-annotations', type=list, required=True, default=None, help='annotations used to enrich the visualization with additional information')
+PARSER.add_argument('-width', type=int, required=False, default=500, help='Width of the plot')
+PARSER.add_argument('-height', type=list, required=False, default=500, help='Height of the plot')
+PARSER.add_argument('-unit', type=str, required=False, default='px', help='measurement unit for the plot size')
+PARSER.add_argument('-use_auto_extensions', type=int, required=False, default=0, help='whether to use automatic file name extensions when generate grouping visualizations or not')
+PARSER.add_argument('-zaxis_label', type=list, required=False, default=None, help='Labels for the z-axis')
+PARSER.add_argument('-zaxis_label', type=list, required=False, default=None, help='Labels for the z-axis')
+PARSER.add_argument('-zaxis_label', type=list, required=False, default=None, help='Labels for the z-axis')
+PARSER.add_argument('-zaxis_label', type=list, required=False, default=None, help='Labels for the z-axis')
+PARSER.add_argument('-output_image_path', type=str, required=True, default=None, help='complete file path of the visualization output')
 PARSER.add_argument('-sep', type=str, required=False, default=',', help='column separator')
 ARGS = PARSER.parse_args()
 
 
-def feature_importance(data_set_path: str,
-                     analytical_data_types: dict,
-                     target_feature_name: str,
-                     output_bucket_name: str,
-                     output_file_path_data_set: str,
-                     output_file_path_processor_obj: str,
-                     output_file_path_target: str,
-                     output_file_path_predictors: str,
-                     output_file_path_engineered_feature_names: str,
-                     feature_engineering_config: Dict[str, list] = None,
-                     feature_names: List[str] = None,
-                     exclude: List[str] = None,
-                     exclude_original_data: bool = False,
-                     sep: str = ','
-                     ) -> NamedTuple(typename='outputs', fields=[('file_path_data', str),
-                                                                 ('file_path_processor_obj', str),
-                                                                 ('engineered_feature_names', list),
-                                                                 ('predictors', list),
-                                                                 ('target', str)
-                                                                 ]
-                                     ):
+def _generate_kfp_template(file_paths: List[str]) -> Dict[str, List[Dict[str, str]]]:
     """
-    Feature importance of structured (tabular) data
+    Generate Kubeflow pipeline visualization template
+
+    :param file_paths: List[str]
+        Complete file path of the plots
+
+    :return: Dict[str, List[Dict[str, str]]]
+        Configured Kubeflow pipeline metadata template
+    """
+    _metadata: Dict[str, List[Dict[str, str]]] = dict(outputs=[])
+    for file_path in file_paths:
+        _plot_config: Dict[str, str] = dict(type='web-app', storage='s3', source=file_path)
+        _metadata['outputs'].append(_plot_config)
+    #metadata = {
+    #    'outputs' : [{
+    #        'type': 'web-app',
+    #        'storage': 's3',
+    #        'source': 's3://shopware-ml-ops-interim-prod/viz.png',
+    #    }, {
+    #        'type': 'web-app',
+    #        'storage': 'inline',
+    #        'source': '<h1>Hello, World!</h1>',
+    #    }]
+    #}
+    return _metadata
+
+
+def interactive_visualizer(data_set_path: str,
+                           metadata_file_path: OutputPath(),
+                           plot_type: str,
+                           output_image_path: str,
+                           title: str = None,
+                           features: List[str] = None,
+                           time_features: List[str] = None,
+                           graph_features: List[str] = None,
+                           group_by: List[str] = None,
+                           analytical_data_types: Dict[str, List[str]] = None,
+                           melt: bool = False,
+                           brushing: bool = False,
+                           xaxis_label: List[str] = None,
+                           yaxis_label: List[str] = None,
+                           zaxis_label: List[str] = None,
+                           annotations: List[dict] = None,
+                           width: int = 500,
+                           height: int = 500,
+                           unit: str = 'px',
+                           use_auto_extensions: bool = False,
+                           color_scale: List[str] = None,
+                           color_edges: List[str] = None,
+                           color_feature: str = None,
+                           feature_tournament_game_stats: bool = False,
+                           feature_tournament_game_size: bool = False,
+                           feature_importance_shapley_scores: bool = False,
+                           aggregate_feature_imp: Dict[str, dict] = None,
+                           feature_importance_processing_variants: bool = False,
+                           feature_importance_core_features_aggregation: bool = False,
+                           sep: str = ','
+                     ) -> NamedTuple('outputs', [('plot_file_path', str)]):
+    """
+    Interactive visualization
 
     :param data_set_path: str
         Complete file path of the data set
@@ -63,23 +108,8 @@ def feature_importance(data_set_path: str,
     :param analytical_data_types: dict
         Assigned analytical data types to each feature
 
-    :param output_bucket_name: str
-        Name of the output S3 bucket
-
-    :param output_file_path_processor_obj: str
-        Path of the processor objects to save
-
-    :param feature_engineering_config: Dict[str, list]
-            Pre-defined configuration
-
-    :param feature_names: List[str]
-        Name of the features
-
-    :param exclude: List[str]
-        Name of the features to exclude
-
-    :param exclude_original_data: bool
-        Exclude original features
+    :param output_image_path: str
+        Name of the output destination of the image
 
     :param sep: str
         Separator
@@ -88,80 +118,80 @@ def feature_importance(data_set_path: str,
         Path of the engineered data set
     """
     _df: pd.DataFrame = pd.read_csv(filepath_or_buffer=data_set_path, sep=sep)
-    _features: List[str] = _df.columns.tolist() if feature_names is None else feature_names
-    if feature_engineering_config is None:
-        _feature_engineering_config: Dict[str, list] = {}
-        for analytical_data_type in analytical_data_types.keys():
-            _n_features: int = len(analytical_data_types.get(analytical_data_type))
-            if _n_features > 0:
-                for meth in ENGINEERING_METH.get(analytical_data_type):
-                    _min_features: int = 1 if MIN_FEATURES_BY_METH.get(meth) is None else MIN_FEATURES_BY_METH.get(meth)
-                    if _n_features >= _min_features:
-                        _feature_engineering_config.update({meth: []})
-                        for feature in analytical_data_types.get(analytical_data_type):
-                            if feature in _features:
-                                _feature_engineering_config[meth].append(feature)
-    else:
-        _feature_engineering_config: Dict[str, list] = feature_engineering_config
-    _feature_engineer: FeatureEngineer = FeatureEngineer(df=_df)
-    _df_engineered, _processor_objs, _non_numeric_features = _feature_engineer.main(feature_engineering_config=_feature_engineering_config)
-    pd.concat(objs=[_df, _df_engineered], axis=1).to_csv(path_or_buf=os.path.join(output_bucket_name, output_file_path_data_set), sep=sep, index=False)
-    _feature_names_engineered: List[str] = _df_engineered.columns.tolist()
-    _predictors: List[str] = _features
-    _predictors.extend(_feature_names_engineered)
-    if exclude is not None:
-        for feature in exclude:
-            if feature in _predictors:
-                del _predictors[_predictors.index(feature)]
-                Log().log(msg=f'Exclude feature "{feature}"')
-    if exclude_original_data:
-        for raw in _features:
-            if raw in _predictors:
-                del _predictors[_predictors.index(raw)]
-                Log().log(msg=f'Exclude original feature "{raw}"')
-    else:
-        for feature in _features:
-            if feature in _predictors:
-                if feature not in analytical_data_types.get('continuous'):
-                    if feature not in analytical_data_types.get('ordinal'):
-                        del _predictors[_predictors.index(feature)]
-                        Log().log(msg=f'Exclude original (non-numeric) feature "{feature}"')
-    for non_numeric in _non_numeric_features:
-        if non_numeric in _predictors:
-            del _predictors[_predictors.index(non_numeric)]
-            Log().log(msg=f'Exclude original (non-numeric) feature "{non_numeric}"')
-    _predictors = sorted(_predictors)
-    for file_path, obj in [(output_file_path_data_set, output_file_path_data_set),
-                           (output_file_path_target, target_feature_name),
-                           (output_file_path_predictors, _predictors),
-                           (output_file_path_engineered_feature_names, _feature_names_engineered)
-                           ]:
-        with open(file_path) as _file:
-            json.dump(obj, _file)
-    _s3_resource: boto3 = boto3.resource('s3')
-    _s3_model_obj: _s3_resource.Object = _s3_resource.Object(output_bucket_name, output_file_path_processor_obj)
-    _s3_model_obj.put(Body=pickle.dumps(obj=_processor_objs, protocol=pickle.HIGHEST_PROTOCOL))
-    return [output_file_path_data_set,
-            output_file_path_processor_obj,
-            _feature_names_engineered,
-            _predictors,
-            target_feature_name
-            ]
+    _interactive_visualizer: InteractiveVisualizer = InteractiveVisualizer(df=_df,
+                                                                           title=title,
+                                                                           features=features,
+                                                                           time_features=time_features,
+                                                                           graph_features=graph_features,
+                                                                           group_by=group_by,
+                                                                           feature_types=analytical_data_types,
+                                                                           plot_type=plot_type,
+                                                                           subplots=None,
+                                                                           melt=melt,
+                                                                           brushing=brushing,
+                                                                           xaxis_label=xaxis_label,
+                                                                           yaxis_label=yaxis_label,
+                                                                           zaxis_label=zaxis_label,
+                                                                           annotations=annotations,
+                                                                           width=width,
+                                                                           height=height,
+                                                                           unit=unit,
+                                                                           file_path=output_image_path,
+                                                                           use_auto_extensions=use_auto_extensions,
+                                                                           cloud='aws',
+                                                                           render=False,
+                                                                           color_scale=color_scale,
+                                                                           color_edges=color_edges,
+                                                                           color_feature=color_feature,
+                                                                           max_row=50,
+                                                                           max_col=20,
+                                                                           rows_sub=None,
+                                                                           cols_sub=None
+                                                                           )
+    _file_paths: List[str] = _interactive_visualizer.main(special_plots=False,
+                                                          feature_tournament_game_stats=feature_tournament_game_stats,
+                                                          feature_tournament_game_size=feature_tournament_game_size,
+                                                          feature_importance_shapley_scores=feature_importance_shapley_scores,
+                                                          aggregate_feature_imp=aggregate_feature_imp,
+                                                          feature_importance_processing_variants=feature_importance_processing_variants,
+                                                          feature_importance_core_features_aggregation=feature_importance_core_features_aggregation
+                                                          )
+    _kfp_metadata: Dict[str, List[Dict[str, str]]] = _generate_kfp_template(file_paths=_file_paths)
+    with open(metadata_file_path, 'w') as metadata_file:
+        json.dump(_kfp_metadata, metadata_file)
+    return [_file_paths]
 
 
 if __name__ == '__main__':
-    feature_importance(data_set_path=ARGS.data_set_path,
-                     analytical_data_types=ARGS.analytical_data_types,
-                     target_feature_name=ARGS.target_feature_name,
-                     output_bucket_name=ARGS.output_bucket_name,
-                     output_file_path_data_set=ARGS.output_file_path_data_set,
-                     output_file_path_processor_obj=ARGS.output_file_path_processor_obj,
-                     output_file_path_target=ARGS.output_file_path_target,
-                     output_file_path_predictors=ARGS.output_file_path_predictors,
-                     output_file_path_engineered_feature_names=ARGS.output_file_path_engineered_feature_names,
-                     feature_engineering_config=ARGS.feature_engineering_config,
-                     feature_names=ARGS.feature_names,
-                     exclude=ARGS.exclude,
-                     exclude_original_data=ARGS.exclude_original_data,
-                     sep=ARGS.sep
-                     )
+    interactive_visualizer(data_set_path=ARGS.data_set_path,
+                           metadata_file_path='image',
+                           plot_type=ARGS.plot_type,
+                           output_image_path=ARGS.output_image_path,
+                           title=ARGS.title,
+                           features=ARGS.features,
+                           time_features=ARGS.time_features,
+                           graph_features=ARGS.graph_features,
+                           group_by=ARGS.group_by,
+                           analytical_data_types=ARGS.analytical_data_types,
+                           subplots=ARGS.subplots,
+                           melt=ARGS.melt,
+                           brushing=ARGS.brushing,
+                           xaxis_label=ARGS.xaxis_label,
+                           yaxis_label=ARGS.yaxis_label,
+                           zaxis_label=ARGS.zaxis_label,
+                           annotations=ARGS.annotations,
+                           width=ARGS.width,
+                           height=ARGS.height,
+                           unit=ARGS.unit,
+                           use_auto_extensions=ARGS.use_auto_extensions,
+                           color_scale=ARGS.color_scale,
+                           color_edges=ARGS.color_edges,
+                           color_feature=ARGS.color_feature,
+                           feature_tournament_game_stats=ARGS.feature_tournament_game_stats,
+                           feature_tournament_game_size=ARGS.feature_tournament_game_size,
+                           feature_importance_shapley_scores=ARGS.feature_importance_shapley_scores,
+                           aggregate_feature_imp=ARGS.aggregate_feature_imp,
+                           feature_importance_processing_variants=ARGS.feature_importance_processing_variants,
+                           feature_importance_core_features_aggregation=ARGS.feature_importance_core_features_aggregation,
+                           sep=ARGS.sep,
+                           )
