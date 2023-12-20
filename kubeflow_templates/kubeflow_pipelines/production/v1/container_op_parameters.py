@@ -9,6 +9,7 @@ def add_container_op_parameters(container_op: dsl.component,
                                 n_cpu_request: str = None,
                                 n_cpu_limit: str = None,
                                 n_gpu: str = None,
+                                gpu_vendor: str = 'nvidia',
                                 memory_request: str = '1G',
                                 memory_limit: str = None,
                                 ephemeral_storage_request: str = '5G',
@@ -27,6 +28,11 @@ def add_container_op_parameters(container_op: dsl.component,
 
     :param n_gpu: str
         Maximum number of requested GPU's
+
+    :param gpu_vendor: str
+        Name of the GPU vendor
+            -> amd: AMD
+            -> nvidia: NVIDIA
 
     :param container_op: dsl.ContainerOp
         DSL container class
@@ -58,7 +64,7 @@ def add_container_op_parameters(container_op: dsl.component,
     if n_cpu_limit is not None:
         container_op.container.set_cpu_limit(cpu=n_cpu_limit)
     if n_gpu is not None:
-        container_op.container.set_gpu_limit(gpu=n_gpu, vendor='nvidia')
+        container_op.container.set_gpu_limit(gpu=n_gpu, vendor=gpu_vendor)
     container_op.container.set_memory_request(memory=memory_request)
     if memory_limit is not None:
         container_op.container.set_memory_limit(memory=memory_limit)
