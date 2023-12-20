@@ -13,7 +13,8 @@ def add_container_op_parameters(container_op: dsl.component,
                                 memory_limit: str = None,
                                 ephemeral_storage_request: str = '5G',
                                 ephemeral_storage_limit: str = None,
-                                instance_name: str = None
+                                instance_name: str = None,
+                                max_cache_staleness: str = 'P0D'
                                 ):
     """
     Add parameter to container operation
@@ -44,6 +45,9 @@ def add_container_op_parameters(container_op: dsl.component,
 
     :param instance_name: str
         Name of the used AWS instance (value)
+
+    :param max_cache_staleness: str
+        Maximum of staleness days of the component cache
     """
     if instance_name is not None:
         container_op.add_node_selector_constraint(label_name="beta.kubernetes.io/instance-type",
@@ -61,3 +65,4 @@ def add_container_op_parameters(container_op: dsl.component,
     container_op.container.set_ephemeral_storage_request(size=ephemeral_storage_request)
     if ephemeral_storage_limit is not None:
         container_op.container.set_ephemeral_storage_limit(size=ephemeral_storage_limit)
+    container_op.container.execution_options.caching_strategy.max_cache_staleness = max_cache_staleness
