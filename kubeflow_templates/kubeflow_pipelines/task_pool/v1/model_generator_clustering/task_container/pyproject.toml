@@ -8,6 +8,7 @@ authors = ["gianni <g.balistreri@shopware.com>"]
 python = "^3.9"
 s3fs = "^2023.9.2"
 scikit-learn = "^1.3.2"
+pyclustering = "^0.10.1.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
