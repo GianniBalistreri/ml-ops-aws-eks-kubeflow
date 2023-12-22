@@ -11,34 +11,52 @@ import pandas as pd
 
 from custom_logger import Log
 from datetime import datetime
+from pyclustering.cluster.center_initializer import kmeans_plusplus_initializer, random_center_initializer
+from pyclustering.cluster.kmedians import kmedians
+from pyclustering.cluster.kmedoids import kmedoids
+from pyclustering.cluster.xmeans import splitting_type, xmeans
 from sklearn.cluster import AffinityPropagation, AgglomerativeClustering, Birch, DBSCAN, FeatureAgglomeration, KMeans, MeanShift, OPTICS, SpectralClustering
 from sklearn.decomposition import FactorAnalysis, FastICA, PCA, NMF, LatentDirichletAllocation, TruncatedSVD
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor, kneighbors_graph
 from sklearn.manifold import Isomap, LocallyLinearEmbedding, MDS, SpectralEmbedding, TSNE
-from sklearn.metrics import silhouette_score, silhouette_samples
+from sklearn.metrics import pairwise_distances, silhouette_score, silhouette_samples
 from sklearn.mixture import BayesianGaussianMixture, GaussianMixture
-from typing import List
+from typing import Dict, List, Tuple
 
+CLUSTERING_ALGORITHMS: Dict[str, str] = dict(apro='affinity_propagation',
+                                             agglo='agglomerative_clustering',
+                                             birch='birch',
+                                             dbscan='dbscan',
+                                             factor='factor_analysis',
+                                             fagglo='feature_agglomeration',
+                                             ica='independent_component_analysis',
+                                             isomap='isometric_mapping',
+                                             kmeans='kmeans',
+                                             kmedians='kmedians',
+                                             kmedoids='kmedoids',
+                                             lda='latent_dirichlet_allocation',
+                                             lle='local_linear_embedding',
+                                             mds='multi_dimensional_scaling',
+                                             nmf='non_negative_matrix_factorization',
+                                             optics='optics',
+                                             pca='principal_component_analysis',
+                                             spc='spectral_cluster',
+                                             spe='spectral_embedding',
+                                             tsne='t_distributed_stochastic_neighbor_embedding',
+                                             tsvd='truncated_single_value_decomp',
+                                             xmeans='xmeans'
+                                             )
 
-CLUSTERING_ALGORITHMS: List[str] = ['affinity_propagation',
-                                    'agglo_cluster',
-                                    'birch',
-                                    'dbscan',
-                                    'factor',
-                                    'feature_agglo',
-                                    'isomap',
-                                    'kmeans',
-                                    'lda',
-                                    'lle',
-                                    'mds',
-                                    'nmf',
-                                    'optics',
-                                    'pca',
-                                    'spectral_cluster',
-                                    'spectral_embedding',
-                                    'tsne',
-                                    'tsvd'
-                                    ]
+SPECIAL_PARAMS: Dict[str, str] = dict(kmedians='initial_medians',
+                                      kmedoids='initial_index_medoids',
+                                      xmeans='initial_centers',
+                                      )
+
+CLUSTER_TYPES: Dict[str, List[str]] = dict(partition=['kmeans', 'kmedians', 'kmedoids', 'xmeans'],
+                                           hierarchical=['agglo'],
+                                           manigfold=['spc', 'spe', 'isomap', 'lle', 'mds', 'tsne'],
+                                           component=['factor', 'ica', 'pca']
+                                           )
 
 
 class Clustering:
@@ -73,6 +91,25 @@ class Clustering:
                                    verbose=False if self.cluster_params.get('verbose') is None else self.cluster_params.get('verbose')
                                    )
 
+    def affinity_propagation_param(self) -> dict:
+        """
+        Generate Affinity Propagation clustering parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(damping=np.random.uniform(low=0.5 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                              high=1.0 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                              ),
+                    max_iter=np.random.randint(low=5 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                               high=500 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                               ),
+                    convergence=np.random.randint(low=2 if self.kwargs.get('convergence') is None else self.kwargs.get('learning_rate_low'),
+                                                  high=50 if self.kwargs.get('convergence') is None else self.kwargs.get('learning_rate_high')
+                                                  ),
+                    affinity=np.random.choice(a=['euclidean', 'precomputed'])
+                    )
+
     def agglomerative_clustering(self) -> AgglomerativeClustering:
         """
         Config agglomerative clustering
@@ -81,13 +118,27 @@ class Clustering:
             Sklearn object containing the agglomerative clustering configuration
         """
         return AgglomerativeClustering(n_clusters=3 if self.cluster_params.get('n_clusters') is None else self.cluster_params.get('n_clusters'),
-                                       affinity='euclidean' if self.cluster_params.get('affinity') is None else self.cluster_params.get('affinity'),
+                                       metric='euclidean' if self.cluster_params.get('affinity') is None else self.cluster_params.get('affinity'),
                                        compute_full_tree='auto' if self.cluster_params.get('compute_full_tree') is None else self.cluster_params.get('compute_full_tree'),
                                        connectivity=self.cluster_params.get('connectivity'),
                                        distance_threshold=self.cluster_params.get('distance_threshold'),
                                        linkage='ward' if self.cluster_params.get('linkage') is None else self.cluster_params.get('linkage'),
                                        memory=self.cluster_params.get('memory')
                                        )
+
+    def agglomerative_clustering_param(self) -> dict:
+        """
+        Generate Agglomerative clustering parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(n_clusters=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                 high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                 ),
+                    metric=np.random.choice(a=['euclidean', 'l1', 'l2', 'manhattan', 'cosine', 'precomputed']),
+                    linkage=np.random.choice(a=['ward', 'complete', 'average', 'single'])
+                    )
 
     def birch(self) -> Birch:
         """
@@ -103,6 +154,24 @@ class Clustering:
                      copy=True if self.cluster_params.get('copy') is None else self.cluster_params.get('copy'),
                      )
 
+    def birch_param(self) -> dict:
+        """
+        Generate Birch clustering parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(n_clusters=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                 high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                 ),
+                    threshold=np.random.uniform(low=0.1 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                high=1.0 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                ),
+                    branching_factor=np.random.randint(low=5 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                       high=100 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                       )
+                    )
+
     def dbscan(self) -> DBSCAN:
         """
         Config density-based algorithm for discovering clusters in large spatial databases with noise
@@ -116,9 +185,28 @@ class Clustering:
                       metric_params=self.cluster_params.get('metric_params'),
                       algorithm='auto' if self.cluster_params.get('algorithm') is None else self.cluster_params.get('algorithm'),
                       leaf_size=30 if self.cluster_params.get('leaf_size') is None else self.cluster_params.get('leaf_size'),
-                      p=self.cluster_params.get('p'),
-                      n_jobs=self.cpu_cores
+                      p=self.cluster_params.get('p')
                       )
+
+    def dbscan_param(self) -> dict:
+        """
+        Generate density-based algorithm for discovering clustering parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(eps=np.random.uniform(low=0.1 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                          high=1.0 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                          ),
+                    min_samples=np.random.uniform(low=0.1 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                  high=1.0 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                  ),
+                    metric=np.random.choice(a=['euclidean', 'l1', 'l2', 'manhattan', 'cosine', 'precomputed']),
+                    algorithm=np.random.choice(a=['auto', 'ball_tree', 'kd_tree', 'brute']),
+                    leaf_size=np.random.randint(low=5 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                high=50 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                )
+                    )
 
     def factor_analysis(self) -> FactorAnalysis:
         """
@@ -137,6 +225,28 @@ class Clustering:
                               random_state=self.seed
                               )
 
+    def factor_analysis_param(self) -> dict:
+        """
+        Generate factor analysis parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(n_components=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                   high=10 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                   ),
+                    tol=np.random.uniform(low=0.001 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                          high=0.1 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                          ),
+                    max_iter=np.random.randint(low=50 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                               high=5000 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                               ),
+                    svd_method=np.random.choice(a=['lapack', 'randomized']),
+                    iterated_power=np.random.randint(low=2 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                                     high=10 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                                     ),
+                    )
+
     def feature_agglomeration(self) -> FeatureAgglomeration:
         """
         Config feature agglomeration clustering
@@ -154,6 +264,20 @@ class Clustering:
                                     distance_threshold=self.cluster_params.get('distance_threshold')
                                     )
 
+    def feature_agglomeration_param(self) -> dict:
+        """
+        Generate feature agglomeration parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(n_clusters=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                 high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                 ),
+                    metric=np.random.choice(a=['euclidean', 'l1', 'l2', 'manhattan', 'cosine', 'precomputed']),
+                    linkage=np.random.choice(a=['ward', 'complete', 'average', 'single'])
+                    )
+
     def independent_component_analysis(self) -> FastICA:
         """
         Config independent component analysis
@@ -169,8 +293,31 @@ class Clustering:
                        max_iter=200 if self.cluster_params.get('max_iter') is None else self.cluster_params.get('max_iter'),
                        tol=0.0001 if self.cluster_params.get('tol') is None else self.cluster_params.get('tol'),
                        w_init=None if self.cluster_params.get('w_init') is None else self.cluster_params.get('w_init'),
+                       whiten_solver='svd' if self.cluster_params.get('whiten_solver') is None else self.cluster_params.get('whiten_solver'),
                        random_state=self.seed
                        )
+
+    def independent_component_analysis_param(self) -> dict:
+        """
+        Generate independent component analysis parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(n_components=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                   high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                   ),
+                    algorithm=np.random.choice(a=['parallel', 'deflation']),
+                    whiten=np.random.choice(a=[False, True]),
+                    fun=np.random.choice(a=['logcosh', 'exp', 'cube']),
+                    max_iter=np.random.randint(low=50 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                               high=500 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                               ),
+                    tol=np.random.uniform(low=0.00001 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                          high=0.001 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                          ),
+                    whiten_solver=np.random.choice(a=['eigh', 'svd'])
+                    )
 
     def isometric_mapping(self) -> Isomap:
         """
@@ -186,8 +333,34 @@ class Clustering:
                       max_iter=self.cluster_params.get('max_iter'),
                       path_method='auto' if self.cluster_params.get('path_method') is None else self.cluster_params.get('path_method'),
                       neighbors_algorithm='auto' if self.cluster_params.get('neighbors_algorithm') is None else self.cluster_params.get('neighbors_algorithm'),
-                      n_jobs=self.cpu_cores
+                      metric='minkowski' if self.cluster_params.get('metric') is None else self.cluster_params.get('metric'),
+                      p=2 if self.cluster_params.get('p') is None else self.cluster_params.get('p')
                       )
+
+    def isometric_mapping_param(self) -> dict:
+        """
+        Generate isometric mapping analysis parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(n_neighbors=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                  high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                  ),
+                    n_components=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                   high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                   ),
+                    eigen_solver=np.random.choice(a=['auto', 'arpack', 'dense']),
+                    tol=np.random.uniform(low=0.00001 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                          high=0.001 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                          ),
+                    max_iter=np.random.randint(low=50 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                               high=500 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                               ),
+                    path_method=np.random.choice(a=['auto', 'FW', 'D']),
+                    neighbors_algorithm=np.random.choice(a=['eigh', 'svd']),
+                    p=np.random.choice(a=[1, 2, 3])
+                    )
 
     def kmeans(self):
         """
@@ -198,11 +371,90 @@ class Clustering:
         """
         return KMeans(n_clusters=2 if self.cluster_params.get('n_clusters') is None else self.cluster_params.get('n_clusters'),
                       init='random' if self.cluster_params.get('init') is None else self.cluster_params.get('init'),
-                      n_init=10 if self.cluster_params.get('n_init') is None else self.cluster_params.get('n_init'),
+                      n_init='auto' if self.cluster_params.get('n_init') is None else self.cluster_params.get('n_init'),
                       max_iter=300 if self.cluster_params.get('max_iter') is None else self.cluster_params.get('max_iter'),
                       tol=1e-04 if self.cluster_params.get('tol') is None else self.cluster_params.get('tol'),
+                      algorithm='lloyd' if self.cluster_params.get('algorithm') is None else self.cluster_params.get('algorithm'),
                       random_state=self.seed
                       )
+
+    def kmeans_param(self) -> dict:
+        """
+        Generate k-means parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(n_clusters=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                 high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                 ),
+                    init=np.random.choice(a=['k-means++', 'random']),
+                    max_iter=np.random.randint(low=50 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                               high=500 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                               ),
+                    tol=np.random.uniform(low=0.00001 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                          high=0.001 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                          ),
+                    algorithm=np.random.choice(a=['lloyd', 'elkan'])
+                    )
+
+    def kmedians(self):
+        """
+        Config k-medians clustering
+
+        :return kmedians
+            pyclustering object containing the k-means clustering configuration
+        """
+        return kmedians(data=None if self.cluster_params.get('data') is None else self.cluster_params.get('data'),
+                        initial_medians=None if self.cluster_params.get('initial_medians') is None else self.cluster_params.get('initial_medians'),
+                        tolerance=0.001 if self.cluster_params.get('tolerance') is None else self.cluster_params.get('tolerance'),
+                        ccore=True if self.cluster_params.get('ccore') is None else self.cluster_params.get('ccore')
+                        )
+
+    def kmedians_param(self) -> dict:
+        """
+        Generate k-medians parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(n_clusters=np.random.randint(low=2 if self.kwargs.get('n_clusters_min') is None else self.kwargs.get('n_clusters_min'),
+                                                 high=20 if self.kwargs.get('n_clusters_max') is None else self.kwargs.get('n_clusters_max')
+                                                 ),
+                    initializer=np.random.choice(a=['k-means++', 'random'] if self.kwargs.get('initializer') is None else self.kwargs.get('initializer')),
+                    tolerance=np.random.uniform(low=0.0001 if self.kwargs.get('tolerance_min') is None else self.kwargs.get('tolerance_min'),
+                                                high=0.01 if self.kwargs.get('tolerance_max') is None else self.kwargs.get('tolerance_max')
+                                                )
+                    )
+
+    def kmedoids(self):
+        """
+        Config k-medoids clustering
+
+        :return kmedoids
+            pyclustering object containing the k-means clustering configuration
+        """
+        return kmedoids(data=None if self.cluster_params.get('data') is None else self.cluster_params.get('data'),
+                        initial_index_medoids=None if self.cluster_params.get('initial_index_medoids') is None else self.cluster_params.get('initial_index_medoids'),
+                        tolerance=0.0001 if self.cluster_params.get('tolerance') is None else self.cluster_params.get('tolerance'),
+                        ccore=True if self.cluster_params.get('ccore') is None else self.cluster_params.get('ccore')
+                        )
+
+    def kmedoids_param(self) -> dict:
+        """
+        Generate k-medoids parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(n_clusters=np.random.randint(low=2 if self.kwargs.get('n_clusters_min') is None else self.kwargs.get('n_clusters_min'),
+                                                 high=20 if self.kwargs.get('n_clusters_max') is None else self.kwargs.get('n_clusters_max')
+                                                 ),
+                    initializer=np.random.choice(a=['k-means++', 'random'] if self.kwargs.get('initializer') is None else self.kwargs.get('initializer')),
+                    tolerance=np.random.uniform(low=0.00001 if self.kwargs.get('tolerance_min') is None else self.kwargs.get('tolerance_min'),
+                                                high=0.001 if self.kwargs.get('tolerance_max') is None else self.kwargs.get('tolerance_max')
+                                                )
+                    )
 
     def latent_dirichlet_allocation(self) -> LatentDirichletAllocation:
         """
@@ -224,10 +476,44 @@ class Clustering:
                                          perp_tol=0.1 if self.cluster_params.get('perp_tol') is None else self.cluster_params.get('perp_tol'),
                                          mean_change_tol=0.001 if self.cluster_params.get('mean_change_tol') is None else self.cluster_params.get('mean_change_tol'),
                                          max_doc_update_iter=100 if self.cluster_params.get('max_doc_update_iter') is None else self.cluster_params.get('max_doc_update_iter'),
-                                         n_jobs=self.cpu_cores,
                                          verbose=0 if self.cluster_params.get('verbose') is None else self.cluster_params.get('verbose'),
                                          random_state=self.seed
                                          )
+
+    def latent_dirichlet_allocation_param(self) -> dict:
+        """
+        Generate latent dirichlet allocation parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(n_components=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                   high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                   ),
+                    learning_method=np.random.choice(a=['batch', 'online']),
+                    learning_decay=np.random.uniform(low=0.1 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                                     high=0.9 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                                     ),
+                    learning_offset=np.random.uniform(low=1.0 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                                      high=20.0 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                                      ),
+                    max_iter=np.random.randint(low=2 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                               high=50 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                               ),
+                    batch_size=np.random.choice(a=[8, 16, 32, 64, 128, 256, 512]),
+                    total_samples=np.random.randint(low=1e3 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                                    high=1e8 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                                    ),
+                    perp_tol=np.random.uniform(low=0.001 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                               high=0.5 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                               ),
+                    mean_change_tol=np.random.uniform(low=0.0001 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                      high=0.1 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                      ),
+                    max_doc_update_iter=np.random.randint(low=50 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                                          high=500 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                                          )
+                    )
 
     def locally_linear_embedding(self) -> LocallyLinearEmbedding:
         """
@@ -246,9 +532,41 @@ class Clustering:
                                       hessian_tol=0.0001 if self.cluster_params.get('hessian_tol') is None else self.cluster_params.get('hessian_tol'),
                                       modified_tol=1e-12 if self.cluster_params.get('modified_tol') is None else self.cluster_params.get('modified_tol'),
                                       neighbors_algorithm='auto' if self.cluster_params.get('neighbors_algorithm') is None else self.cluster_params.get('neighbors_algorithm'),
-                                      random_state=self.seed,
-                                      n_jobs=self.cpu_cores
+                                      random_state=self.seed
                                       )
+
+    def locally_linear_embedding_param(self) -> dict:
+        """
+        Generate locally linear embedding parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(n_neighbors=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                  high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                  ),
+                    n_components=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                   high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                   ),
+                    reg=np.random.uniform(low=0.0001 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                          high=0.1 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                          ),
+                    eigen_solver=np.random.choice(a=['auto', 'arpack', 'dense']),
+                    tol=np.random.uniform(low=1e-8 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                          high=1e-3 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                          ),
+                    max_iter=np.random.randint(low=50 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                               high=500 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                               ),
+                    method=np.random.choice(a=['standard', 'hessian', 'modified', 'ltsa']),
+                    hessian_tol=np.random.uniform(low=1e-8 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                  high=1e-2 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                  ),
+                    modified_tol=np.random.uniform(low=1e-16 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                   high=1e-8 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                   ),
+                    neighbors_algorithm=np.random.choice(a=['auto', 'brute', 'kd_tree', 'ball_tree']),
+                    )
 
     def multi_dimensional_scaling(self) -> MDS:
         """
@@ -263,10 +581,32 @@ class Clustering:
                    max_iter=300 if self.cluster_params.get('max_iter') is None else self.cluster_params.get('max_iter'),
                    verbose=0 if self.cluster_params.get('verbose') is None else self.cluster_params.get('verbose'),
                    eps=0.001 if self.cluster_params.get('eps') is None else self.cluster_params.get('eps'),
-                   n_jobs=self.cpu_cores,
+                   dissimilarity='euclidean' if self.cluster_params.get('dissimilarity') is None else self.cluster_params.get('dissimilarity'),
                    random_state=self.seed,
-                   dissimilarity='euclidean' if self.cluster_params.get('dissimilarity') is None else self.cluster_params.get('dissimilarity')
                    )
+
+    def multi_dimensional_scaling_param(self) -> dict:
+        """
+        Generate multi dimensional scaling parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(n_components=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                   high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                   ),
+                    metric=np.random.choice(a=[False, True]),
+                    n_init=np.random.randint(low=2 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                             high=10 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                             ),
+                    max_iter=np.random.randint(low=50 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                               high=500 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                               ),
+                    eps=np.random.uniform(low=0.0001 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                          high=0.01 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                          ),
+                    dissimilarity=np.random.choice(a=['euclidean', 'precomputed'])
+                    )
 
     def non_negative_matrix_factorization(self) -> NMF:
         """
@@ -281,12 +621,36 @@ class Clustering:
                    beta_loss='frobenius' if self.cluster_params.get('beta_loss') is None else self.cluster_params.get('beta_loss'),
                    tol=0.0001 if self.cluster_params.get('tol') is None else self.cluster_params.get('tol'),
                    max_iter=200 if self.cluster_params.get('max_iter') is None else self.cluster_params.get('max_iter'),
-                   random_state=self.seed,
-                   alpha=0 if self.cluster_params.get('alpha') is None else self.cluster_params.get('alpha'),
                    l1_ratio=0 if self.cluster_params.get('l1_ratio') is None else self.cluster_params.get('l1_ratio'),
                    verbose=0 if self.cluster_params.get('verbose') is None else self.cluster_params.get('verbose'),
                    shuffle=False if self.cluster_params.get('shuffle') is None else self.cluster_params.get('shuffle'),
+                   random_state=self.seed,
                    )
+
+    def non_negative_matrix_factorization_param(self) -> dict:
+        """
+        Generate non-negative matrix factorization parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(n_components=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                   high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                   ),
+                    init=np.random.choice(a=['random', 'nndsvd', 'nndsvda', 'nndsvdar', 'custom']),
+                    solver=np.random.choice(a=['cd', 'mu']),
+                    beta_loss=np.random.choice(a=['frobenius', 'kullback-leibler', 'itakura-saito']),
+                    tol=np.random.uniform(low=1e-8 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                          high=1e-2 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                          ),
+                    max_iter=np.random.randint(low=50 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                               high=500 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                               ),
+                    l1_ratio=np.random.uniform(low=0 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                               high=1 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                               ),
+                    shuffle=np.random.choice(a=[False, True])
+                    )
 
     def optics(self) -> OPTICS:
         """
@@ -306,9 +670,37 @@ class Clustering:
                       predecessor_correction=True if self.cluster_params.get('predecessor_correction') is None else self.cluster_params.get('predecessor_correction'),
                       min_cluster_size=self.cluster_params.get('min_cluster_size'),
                       algorithm='auto' if self.cluster_params.get('algorithm') is None else self.cluster_params.get('algorithm'),
-                      leaf_size=30 if self.cluster_params.get('leaf_size') is None else self.cluster_params.get('leaf_size'),
-                      n_jobs=self.cpu_cores
+                      leaf_size=30 if self.cluster_params.get('leaf_size') is None else self.cluster_params.get('leaf_size')
                       )
+
+    def optics_param(self) -> dict:
+        """
+        Generate ordering points to identify clustering structure parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(min_samples=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                  high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                  ),
+                    metric=np.random.choice(a=['braycurtis', 'canberra', 'chebyshev', 'correlation', 'dice', 'hamming', 'jacard', 'kulsinski', 'mahalanobis', 'minkowski', 'rogerstanimoto', 'russellrao', 'seuclidean', 'sokalmichener', 'sokalsneath', 'sqeuclidean', 'yule']),
+                    p=np.random.choice(a=[1, 2, 3]),
+                    cluster_method=np.random.choice(a=['xi', 'dbscan']),
+                    eps=np.random.uniform(low=0.1 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                          high=1.0 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                          ),
+                    xi=np.random.uniform(low=0.0 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                         high=1.0 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                         ),
+                    predecessor_correction=np.random.choice(a=[False, True]),
+                    min_cluster_size=np.random.uniform(low=0.0 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                       high=1.0 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                       ),
+                    algorithm=np.random.choice(a=['auto', 'ball_tree', 'kd_tree', 'brute']),
+                    leaf_size=np.random.randint(low=10,
+                                                high=60
+                                                )
+                    )
 
     def principal_component_analysis(self) -> PCA:
         """
@@ -323,8 +715,32 @@ class Clustering:
                    svd_solver='auto' if self.cluster_params.get('svd_solver') is None else self.cluster_params.get('svd_solver'),
                    tol=0.0 if self.cluster_params.get('tol') is None else self.cluster_params.get('tol'),
                    iterated_power='auto' if self.cluster_params.get('iterated_power') is None else self.cluster_params.get('iterated_power'),
+                   n_oversamples=10 if self.cluster_params.get('n_oversamples') is None else self.cluster_params.get('n_oversamples'),
                    random_state=self.seed
                    )
+
+    def principal_component_analysis_param(self) -> dict:
+        """
+        Generate principal component analysis parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(n_components=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                   high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                   ),
+                    whiten=np.random.choice(a=[False, True]),
+                    svd_solver=np.random.choice(a=['auto', 'full', 'arpack', 'randomized']),
+                    tol=np.random.uniform(low=0 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                          high=np.inf if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                          ),
+                    iterated_power=np.random.uniform(low=0 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                     high=np.inf if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                     ),
+                    n_oversamples=np.random.randint(low=5 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                    high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                    )
+                    )
 
     def spectral_clustering(self) -> SpectralClustering:
         """
@@ -335,7 +751,6 @@ class Clustering:
         """
         return SpectralClustering(n_clusters=8 if self.cluster_params.get('n_clusters') is None else self.cluster_params.get('n_clusters'),
                                   eigen_solver=self.cluster_params.get('eigen_solver'),
-                                  random_state=self.seed,
                                   n_init=10 if self.cluster_params.get('n_init') is None else self.cluster_params.get('n_init'),
                                   gamma=1.0 if self.cluster_params.get('gamma') is None else self.cluster_params.get('gamma'),
                                   affinity='rbf' if self.cluster_params.get('affinity') is None else self.cluster_params.get('affinity'),
@@ -345,8 +760,35 @@ class Clustering:
                                   degree=3 if self.cluster_params.get('degree') is None else self.cluster_params.get('degree'),
                                   coef0=1 if self.cluster_params.get('coef0') is None else self.cluster_params.get('coef0'),
                                   kernel_params=self.cluster_params.get('kernel_params'),
-                                  n_jobs=self.cpu_cores
+                                  random_state=self.seed,
                                   )
+
+    def spectral_clustering_param(self) -> dict:
+        """
+        Generate spectral clustering parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(n_clusters=np.random.randint(low=4 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                 high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                 ),
+                    eigen_solver=np.random.choice(a=['arpack', 'lobpcg', 'amg']),
+                    n_init=np.random.randint(low=2 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                             high=10 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                             ),
+                    gamma=np.random.uniform(low=0.1 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                            high=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                            ),
+                    affinity=np.random.choice(a=['nearest_neighbors', 'rbf', 'precomputed', 'precomputed_nearest_neighbors']),
+                    n_neighbors=np.random.randint(low=4 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                  high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                  ),
+                    assign_labels=np.random.choice(a=['kmeans', 'discretize', 'cluster_qr']),
+                    degree=np.random.randint(low=2 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                             high=4 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                             ),
+                    )
 
     def spectral_embedding(self) -> SpectralEmbedding:
         """
@@ -358,11 +800,30 @@ class Clustering:
         return SpectralEmbedding(n_components=2 if self.cluster_params.get('n_components') is None else self.cluster_params.get('n_components'),
                                  affinity='nearest_neighbors' if self.cluster_params.get('affinity') is None else self.cluster_params.get('affinity'),
                                  gamma=self.cluster_params.get('gamma'),
-                                 random_state=self.seed,
                                  eigen_solver=self.cluster_params.get('eigen_solver'),
                                  n_neighbors=self.cluster_params.get('n_neighbors'),
-                                 n_jobs=self.cpu_cores
+                                 random_state=self.seed
                                  )
+
+    def spectral_embedding_param(self) -> dict:
+        """
+        Generate spectral embedding parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(n_components=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                   high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                   ),
+                    affinity=np.random.choice(a=['nearest_neighbors', 'rbf', 'precomputed', 'precomputed_nearest_neighbors']),
+                    gamma=np.random.uniform(low=0.1 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                            high=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                            ),
+                    eigen_solver=np.random.choice(a=['arpack', 'lobpcg', 'amg']),
+                    n_neighbors=np.random.randint(low=4 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                  high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                  )
+                    )
 
     def t_distributed_stochastic_neighbor_embedding(self) -> TSNE:
         """
@@ -381,9 +842,44 @@ class Clustering:
                     metric='euclidean' if self.cluster_params.get('metric') is None else self.cluster_params.get('metric'),
                     init='random' if self.cluster_params.get('init') is None else self.cluster_params.get('init'),
                     verbose=0 if self.cluster_params.get('verbose') is None else self.cluster_params.get('verbose'),
-                    random_state=self.seed,
                     method='barnes_hut' if self.cluster_params.get('method') is None else self.cluster_params.get('method'),
-                    angle=0.5 if self.cluster_params.get('angle') is None else self.cluster_params.get('angle')
+                    angle=0.5 if self.cluster_params.get('angle') is None else self.cluster_params.get('angle'),
+                    random_state=self.seed,
+                    )
+
+    def t_distributed_stochastic_neighbor_embedding_param(self) -> dict:
+        """
+        Generate t-distributed stochastic neighbor embedding parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(n_components=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                   high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                   ),
+                    perplexity=np.random.randint(low=5 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                                 high=50 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                                 ),
+                    early_exaggeration=np.random.randint(low=5 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                                         high=30 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                                         ),
+                    learning_rate=np.random.uniform(low=10.0 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                                    high=1000.0 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                                    ),
+                    n_iter=np.random.randint(low=250 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                             high=2000 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                             ),
+                    n_iter_without_progress=np.random.randint(low=50 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                                              high=1000 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                                              ),
+                    min_grad_norm=np.random.uniform(low=1e-9 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                                    high=1e-3 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                                    ),
+                    init=np.random.choice(a=['random', 'pca']),
+                    method=np.random.choice(a=['barnes_hut', 'exact']),
+                    angle=np.random.uniform(low=0.2 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                            high=0.8 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                            ),
                     )
 
     def truncated_single_value_decomp(self) -> TruncatedSVD:
@@ -396,9 +892,60 @@ class Clustering:
         return TruncatedSVD(n_components=2 if self.cluster_params.get('n_components') is None else self.cluster_params.get('n_components'),
                             algorithm='randomized' if self.cluster_params.get('algorithm') is None else self.cluster_params.get('algorithm'),
                             n_iter=5 if self.cluster_params.get('n_iter') is None else self.cluster_params.get('n_iter'),
-                            random_state=self.seed,
-                            tol=0.0 if self.cluster_params.get('tol') is None else self.cluster_params.get('tol')
+                            tol=0.0 if self.cluster_params.get('tol') is None else self.cluster_params.get('tol'),
+                            random_state=self.seed
                             )
+
+    def truncated_single_value_decomp_param(self) -> dict:
+        """
+        Generate latent semantic analysis using truncated single value decomposition parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(n_components=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                                   high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                                   ),
+                    algorithm=np.random.choice(a=['arpack', 'randomized']),
+                    n_iter=np.random.randint(low=2 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
+                                             high=20 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                                             ),
+                    tol=np.random.uniform(low=0 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
+                                          high=0.2 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                                          )
+                    )
+
+    def xmeans(self):
+        """
+        Config x-means clustering
+
+        :return xmeans
+            pyclustering object containing the k-means clustering configuration
+        """
+        return xmeans(data=None if self.cluster_params.get('data') is None else self.cluster_params.get('data'),
+                      initial_centers=None if self.cluster_params.get('initial_centers') is None else self.cluster_params.get('initial_centers'),
+                      kmax=20 if self.cluster_params.get('initial_centers') is None else self.cluster_params.get('initial_centers'),
+                      tolerance=0.001 if self.cluster_params.get('tolerance') is None else self.cluster_params.get('tolerance'),
+                      criterion=splitting_type.BAYESIAN_INFORMATION_CRITERION if self.cluster_params.get('criterion') is None else self.cluster_params.get('criterion'),
+                      ccore=True if self.cluster_params.get('ccore') is None else self.cluster_params.get('ccore')
+                      )
+
+    def xmeans_param(self) -> dict:
+        """
+        Generate x-means parameter configuration randomly
+
+        :return: dict
+            Parameter config
+        """
+        return dict(n_clusters=np.random.randint(low=2 if self.kwargs.get('n_clusters_min') is None else self.kwargs.get('n_clusters_min'),
+                                                 high=20 if self.kwargs.get('n_clusters_max') is None else self.kwargs.get('n_clusters_max')
+                                                 ),
+                    initializer=np.random.choice(a=['k-means++', 'random'] if self.kwargs.get('initializer') is None else self.kwargs.get('initializer')),
+                    tolerance=np.random.uniform(low=0.00001 if self.kwargs.get('tolerance_min') is None else self.kwargs.get('tolerance_min'),
+                                                high=0.001 if self.kwargs.get('tolerance_max') is None else self.kwargs.get('tolerance_max')
+                                                ),
+                    criterion=np.random.choice(a=[splitting_type.MINIMUM_NOISELESS_DESCRIPTION_LENGTH])
+                    )
 
 
 class ModelGeneratorCluster(Clustering):
@@ -409,6 +956,7 @@ class ModelGeneratorCluster(Clustering):
                  model_name: str = None,
                  cluster_params: dict = None,
                  models: List[str] = None,
+                 model_id: int = 0,
                  seed: int = 1234,
                  **kwargs
                  ):
@@ -422,11 +970,14 @@ class ModelGeneratorCluster(Clustering):
         :param models: List[str]
             Names of the possible models to sample from
 
+        :param model_id: int
+            Model identifier
+
         :param seed: int
             Seed
         """
         super().__init__(cluster_params=cluster_params, seed=seed, **kwargs)
-        self.id: int = 0
+        self.id: int = model_id
         self.fitness: dict = {}
         self.fitness_score: float = 0.0
         self.models: List[str] = models
@@ -450,6 +1001,32 @@ class ModelGeneratorCluster(Clustering):
         self.features: List[str] = []
         self.train_time = None
         self.creation_time: str = None
+        self.cluster_type: str = None
+        self.max_distance_of_partitioned_clusters: float = None
+
+    def _distance_in_partitioning_clustering(self,
+                                             x: np.ndarray,
+                                             centroid: int,
+                                             distance_metric: str = 'euclidean'
+                                             ) -> float:
+        """
+        Calculate normalized distance metric for partitioning cluster algorithms
+
+        :param x: np.ndaaray
+            Data set
+
+        :param centroid: int
+            Centroid value
+
+        :param distance_metric: str
+            Name of the distance measurement to use
+                -> euclidean: Euclidean pairwise distance
+
+        :return: float
+            Percentage of distance value divided by maximum distance value
+        """
+        _distance: float = pairwise_distances(X=x, Y=[centroid], metric=distance_metric)
+        return (_distance / self.max_distance_of_partitioned_clusters) * 100
 
     def generate_model(self):
         """
@@ -478,6 +1055,10 @@ class ModelGeneratorCluster(Clustering):
                 self.model_param = copy.deepcopy(self.cluster_params)
         self.model_param_mutation = 'new_model'
         self.model = copy.deepcopy(getattr(Clustering(cluster_params=self.cluster_params), _model)())
+        for cluster_type in CLUSTER_TYPES.keys():
+            if _model in CLUSTER_TYPES[cluster_type]:
+                self.cluster_type = cluster_type
+                break
         Log().log(msg=f'Generate clustering model: {self.model}')
 
     def generate_params(self, param_rate: float = 0.1, force_param: dict = None):
@@ -540,60 +1121,62 @@ class ModelGeneratorCluster(Clustering):
                     Log().log(msg=f'Get standard hyperparameter for clustering model: {model}')
         return _model_param
 
-    def predict(self, x: np.ndarray, probability: bool = False) -> np.array:
+    def predict(self, x: np.ndarray) -> Tuple[np.array, float]:
         """
         Get prediction from trained (unsupervised) clustering model
 
         :param x: np.ndarray
             Test data set
 
-        :param probability: bool
-            Calculate probability or cluster score
-
-        :return np.array: Prediction
+        :return Tuple[np.array, float]:
+            Predicted cluster classes, normalized distance metric
         """
-        if probability:
-            if hasattr(self.model, 'predict_proba'):
-                return self.model.predict_proba(x).flatten()
-            else:
-                raise UnsupervisedMLException(f'Model ({self.model_name}) has no function called "predict_proba"')
+        if hasattr(self.model, 'predict'):
+            _pred: np.ndarray = self.model.predict(x).flatten()
+            return _pred, self._distance_in_partitioning_clustering(x=x,
+                                                                    centroid=1,
+                                                                    distance_metric='euclidean'
+                                                                    )
         else:
-            if hasattr(self.model, 'predict'):
-                return self.model.predict(x).flatten()
-            else:
-                raise UnsupervisedMLException(f'Model ({self.model_name}) has no function called "predict"')
+            raise UnsupervisedMLException(f'Model ({self.model_name}) has no function called "predict"')
 
-    def train(self, x: np.ndarray, validation: dict = None):
+    def train(self, x: np.ndarray):
         """
         Train or fit supervised machine learning model
 
         :param x: np.ndarray
             Train data set
-
-        :param validation: dict
         """
         Log().log(msg=f'Train classifier: Model={self.model_name}, Cases={x.shape[0]}, Predictors={x.shape[1]}, Hyperparameter={self.model_param}')
         _t0: datetime = datetime.now()
         if hasattr(self.model, 'fit'):
-            if 'eval_set' in self.model.fit.__code__.co_varnames and validation is not None:
-                if hasattr(self.model, 'fit_transform'):
-                    self.model.fit_transform(x, y)
-                else:
-                    self.model.fit(x,
-                                   y,
-                                   eval_set=[(validation.get('x_val'), validation.get('y_val'))],
-                                   early_stopping_rounds=np.random.randint(low=1, high=15) if self.model_param.get('early_stopping') else None,
-                                   verbose=False
-                                   )
+            if hasattr(self.model, 'fit_transform'):
+                self.model.fit_transform(x)
             else:
-                if hasattr(self.model, 'fit_transform'):
-                    self.model.fit_transform(x, y)
-                else:
-                    self.model.fit(x, y)
+                self.model.fit(x)
+        elif hasattr(self.model, 'process'):
+            if self.cluster_params['initializer'] == 'kmeans++':
+                _initial_cluster_center: np.ndarray = kmeans_plusplus_initializer(data=x,
+                                                                                  amount_centers=self.model_param['n_clusters'],
+                                                                                  amount_candidates=None
+                                                                                  ).initialize()
+            elif self.cluster_params['initializer'] == 'random':
+                _initial_cluster_center: np.ndarray = random_center_initializer(data=x,
+                                                                                amount_centers=self.model_param['n_clusters'],
+                                                                                ).initialize()
+            else:
+                raise UnsupervisedMLException(f'Cluster intitializer ({self.cluster_params["initializer"]}) not supported')
+            self.cluster_params = copy.deepcopy(self.model_param)
+            self.cluster_params.update({SPECIAL_PARAMS.get(self.model_name): _initial_cluster_center})
+            self.model = copy.deepcopy(getattr(Clustering(cluster_params=self.cluster_params), self.model_name)())
+            self.model.process()
+            self.cluster_params = None
         else:
             raise UnsupervisedMLException('Training (fitting) method not supported by given model object')
         self.train_time = (datetime.now() - _t0).seconds
         self.creation_time = str(datetime.now())
+        if self.cluster_type == 'partition':
+            self.max_distance_of_partitioned_clusters = pairwise_distances(X=x, metric='euclidean').max()
         Log().log(msg=f'Clustering model trained after {self.train_time} seconds')
 
 
