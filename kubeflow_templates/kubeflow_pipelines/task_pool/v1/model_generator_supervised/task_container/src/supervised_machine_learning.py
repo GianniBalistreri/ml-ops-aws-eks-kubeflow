@@ -265,18 +265,10 @@ class Classification:
     """
     Class for handling classification algorithms
     """
-    def __init__(self,
-                 clf_params: dict = None,
-                 cpu_cores: int = 0,
-                 seed: int = 1234,
-                 **kwargs
-                 ):
+    def __init__(self, clf_params: dict = None, seed: int = 1234, **kwargs):
         """
         :param clf_params: dict
             Pre-configured classification model parameter
-
-        :param cpu_cores: int
-            Number of CPU core to use
 
         :param seed: int
             Seed
@@ -286,13 +278,6 @@ class Classification:
         """
         self.clf_params: dict = {} if clf_params is None else clf_params
         self.seed: int = 1234 if seed <= 0 else seed
-        if cpu_cores <= 0:
-            self.cpu_cores: int = os.cpu_count() - 1 if os.cpu_count() > 1 else os.cpu_count()
-        else:
-            if cpu_cores <= os.cpu_count():
-                self.cpu_cores: int = cpu_cores
-            else:
-                self.cpu_cores: int = os.cpu_count() - 1 if os.cpu_count() > 1 else os.cpu_count()
         self.kwargs: dict = kwargs
 
     def ada_boosting(self) -> AdaBoostClassifier:
@@ -508,7 +493,7 @@ class Classification:
                              verbosity=0 if self.clf_params.get('verbosity') is None else self.clf_params.get('verbosity'),
                              objective='binary:logistic' if self.clf_params.get('objective') is None else self.clf_params.get('objective'),
                              booster='gbtree' if self.clf_params.get('booster') is None else self.clf_params.get('booster'),
-                             n_jobs=self.cpu_cores,
+                             n_jobs=os.cpu_count(),
                              gamma=0 if self.clf_params.get('gamma') is None else self.clf_params.get('gamma'),
                              min_child_weight=1 if self.clf_params.get('min_child_weight') is None else self.clf_params.get('min_child_weight'),
                              max_delta_step=0 if self.clf_params.get('max_delta_step') is None else self.clf_params.get('max_delta_step'),
@@ -649,7 +634,7 @@ class Classification:
                                     p=2 if self.clf_params.get('p') is None else self.clf_params.get('p'),
                                     metric='minkowski' if self.clf_params.get('metric') is None else self.clf_params.get('metric'),
                                     metric_params=self.clf_params.get('metric_params'),
-                                    n_jobs=self.cpu_cores
+                                    n_jobs=os.cpu_count()
                                     )
 
     def k_nearest_neighbor_param(self) -> dict:
@@ -721,7 +706,7 @@ class Classification:
                                   verbose=0 if self.clf_params.get('verbose') is None else self.clf_params.get('verbose'),
                                   warm_start=False if self.clf_params.get('warm_start') is None else self.clf_params.get('warm_start'),
                                   l1_ratio=np.random.uniform(low=0.0001, high=1.0),
-                                  n_jobs=self.cpu_cores
+                                  n_jobs=os.cpu_count()
                                   )
 
     def logistic_regression_param(self) -> dict:
@@ -782,10 +767,9 @@ class Classification:
                                       max_features='auto' if self.clf_params.get('max_features') is None else self.clf_params.get('max_features'),
                                       max_leaf_nodes=None if self.clf_params.get('max_leaf_nodes') is None else self.clf_params.get('max_leaf_nodes'),
                                       min_impurity_decrease=0 if self.clf_params.get('min_impurity_decrease') is None else self.clf_params.get('min_impurity_decrease'),
-                                      min_impurity_split=None if self.clf_params.get('min_impurity_split') is None else self.clf_params.get('min_impurity_split'),
                                       bootstrap=True if self.clf_params.get('bootstrap') is None else self.clf_params.get('bootstrap'),
                                       oob_score=False if self.clf_params.get('oob_score') is None else self.clf_params.get('oob_score'),
-                                      n_jobs=self.cpu_cores if self.clf_params.get('n_jobs') is None else self.clf_params.get('n_jobs'),
+                                      n_jobs=os.cpu_count(),
                                       random_state=self.seed,
                                       verbose=0 if self.clf_params.get('verbose') is None else self.clf_params.get('verbose'),
                                       warm_start=False if self.clf_params.get('warm_start') is None else self.clf_params.get('warm_start'),
@@ -949,18 +933,10 @@ class Regression:
     """
     Class for handling regression algorithms
     """
-    def __init__(self,
-                 reg_params: dict = None,
-                 cpu_cores: int = 0,
-                 seed: int = 1234,
-                 **kwargs
-                 ):
+    def __init__(self, reg_params: dict = None, seed: int = 1234, **kwargs):
         """
         :param reg_params: dict
             Pre-configured regression model parameter
-
-        :param cpu_cores: int
-            Number of CPU core to use
 
         :param seed: int
             Seed
@@ -970,13 +946,6 @@ class Regression:
         """
         self.reg_params: dict = {} if reg_params is None else reg_params
         self.seed: int = 1234 if seed <= 0 else seed
-        if cpu_cores <= 0:
-            self.cpu_cores: int = os.cpu_count() - 1 if os.cpu_count() > 1 else os.cpu_count()
-        else:
-            if cpu_cores <= os.cpu_count():
-                self.cpu_cores: int = cpu_cores
-            else:
-                self.cpu_cores: int = os.cpu_count() - 1 if os.cpu_count() > 1 else os.cpu_count()
         self.kwargs: dict = kwargs
 
     def ada_boosting(self) -> AdaBoostRegressor:
@@ -1169,7 +1138,6 @@ class Regression:
         return ElasticNet(alpha=1.0 if self.reg_params.get('alpha') is None else self.reg_params.get('alpha'),
                           l1_ratio=0.5 if self.reg_params.get('l1_ratio') is None else self.reg_params.get('l1_ratio'),
                           fit_intercept=True if self.reg_params.get('fit_intercept') is None else self.reg_params.get('fit_intercept'),
-                          normalize=True if self.reg_params.get('normalize') is None else self.reg_params.get('normalize'),
                           precompute=False if self.reg_params.get('precompute') is None else self.reg_params.get('precompute'),
                           max_iter=1000 if self.reg_params.get('max_iter') is None else self.reg_params.get('max_iter'),
                           copy_X=True if self.reg_params.get('copy_X') is None else self.reg_params.get('copy_X'),
@@ -1215,7 +1183,7 @@ class Regression:
                             verbosity=0 if self.reg_params.get('verbosity') is None else self.reg_params.get('verbosity'),
                             objective='reg:squarederror' if self.reg_params.get('objective') is None else self.reg_params.get('objective'),
                             booster='gbtree' if self.reg_params.get('booster') is None else self.reg_params.get('booster'),
-                            n_jobs=self.cpu_cores,
+                            n_jobs=os.cpu_count(),
                             gamma=0 if self.reg_params.get('gamma') is None else self.reg_params.get('gamma'),
                             min_child_weight=1 if self.reg_params.get('min_child_weight') is None else self.reg_params.get('min_child_weight'),
                             max_delta_step=0 if self.reg_params.get('max_delta_step') is None else self.reg_params.get('max_delta_step'),
@@ -1329,7 +1297,6 @@ class Regression:
                                          min_weight_fraction_leaf=0 if self.reg_params.get('min_weight_fraction_leaf') is None else self.reg_params.get('min_weight_fraction_leaf'),
                                          max_depth=3 if self.reg_params.get('max_depth') is None else self.reg_params.get('max_depth'),
                                          min_impurity_decrease=0 if self.reg_params.get('min_impurity_decrease') is None else self.reg_params.get('min_impurity_decrease'),
-                                         min_impurity_split=self.reg_params.get('min_impurity_split'),
                                          init=self.reg_params.get('init'),
                                          random_state=self.seed,
                                          max_features=self.reg_params.get('max_features'),
@@ -1398,7 +1365,7 @@ class Regression:
                                    p=2 if self.reg_params.get('p') is None else self.reg_params.get('p'),
                                    metric='minkowski' if self.reg_params.get('metric') is None else self.reg_params.get('metric'),
                                    metric_params=None if self.reg_params.get('metric_params') is None else self.reg_params.get('metric_params'),
-                                   n_jobs=self.cpu_cores
+                                   n_jobs=os.cpu_count()
                                    )
 
     def k_nearest_neighbor_param(self) -> dict:
@@ -1429,7 +1396,6 @@ class Regression:
         """
         return Lasso(alpha=1.0 if self.reg_params.get('alpha') is None else self.reg_params.get('alpha'),
                      fit_intercept=True if self.reg_params.get('fit_intercept') is None else self.reg_params.get('fit_intercept'),
-                     normalize=False if self.reg_params.get('normalize') is None else self.reg_params.get('normalize'),
                      precompute=False if self.reg_params.get('precompute') is None else self.reg_params.get('precompute'),
                      copy_X=True if self.reg_params.get('copy_X') is None else self.reg_params.get('copy_X'),
                      max_iter=1000 if self.reg_params.get('max_iter') is None else self.reg_params.get('max_iter'),
@@ -1475,10 +1441,9 @@ class Regression:
                                      max_features='auto' if self.reg_params.get('max_features') is None else self.reg_params.get('max_features'),
                                      max_leaf_nodes=None if self.reg_params.get('max_leaf_nodes') is None else self.reg_params.get('max_leaf_nodes'),
                                      min_impurity_decrease=0 if self.reg_params.get('min_impurity_decrease') is None else self.reg_params.get('min_impurity_decrease'),
-                                     min_impurity_split=None if self.reg_params.get('min_impurity_split') is None else self.reg_params.get('min_impurity_split'),
                                      bootstrap=True if self.reg_params.get('bootstrap') is None else self.reg_params.get('bootstrap'),
                                      oob_score=False if self.reg_params.get('oob_score') is None else self.reg_params.get('oob_score'),
-                                     n_jobs=self.cpu_cores if self.reg_params.get('n_jobs') is None else self.reg_params.get('n_jobs'),
+                                     n_jobs=os.cpu_count(),
                                      random_state=self.seed,
                                      verbose=0 if self.reg_params.get('verbose') is None else self.reg_params.get('verbose'),
                                      warm_start=False if self.reg_params.get('warm_start') is None else self.reg_params.get('warm_start'),
@@ -1641,7 +1606,7 @@ class ModelGeneratorClf(Classification):
                  clf_params: dict = None,
                  models: List[str] = None,
                  labels: List[str] = None,
-                 cpu_cores: int = 0,
+                 model_id: int = 0,
                  seed: int = 1234,
                  **kwargs
                  ):
@@ -1658,8 +1623,8 @@ class ModelGeneratorClf(Classification):
         :param labels: List[str]
             Class labels
 
-        :param cpu_cores: int
-            Number of CPU core to use
+        :param model_id: int
+            Model identifier
 
         :param seed: int
             Seed
@@ -1667,8 +1632,8 @@ class ModelGeneratorClf(Classification):
         :param kwargs: dict
             Key-word arguments
         """
-        super().__init__(clf_params=clf_params, cpu_cores=cpu_cores, seed=seed, **kwargs)
-        self.id: int = 0
+        super().__init__(clf_params=clf_params, seed=seed, **kwargs)
+        self.id: int = model_id
         self.fitness: dict = {}
         self.fitness_score: float = 0.0
         self.models: List[str] = models
@@ -1679,10 +1644,10 @@ class ModelGeneratorClf(Classification):
                 for model in self.models:
                     if model not in CLF_ALGORITHMS.keys():
                         self.random: bool = False
-                        raise SupervisedMLException('Model ({}) is not supported. Supported classification models are: {}'.format(model, list(CLF_ALGORITHMS.keys())))
+                        raise SupervisedMLException(f'Model ({model}) is not supported. Supported classification models are: {list(CLF_ALGORITHMS.keys())}')
         else:
             if self.model_name not in CLF_ALGORITHMS.keys():
-                raise SupervisedMLException('Model ({}) is not supported. Supported classification models are: {}'.format(self.model_name, list(CLF_ALGORITHMS.keys())))
+                raise SupervisedMLException(f'Model ({self.model_name}) is not supported. Supported classification models are: {list(CLF_ALGORITHMS.keys())}')
             else:
                 self.random: bool = False
         self.model = None
@@ -1709,7 +1674,7 @@ class ModelGeneratorClf(Classification):
         else:
             _model = copy.deepcopy(CLF_ALGORITHMS.get(self.model_name))
         if len(self.clf_params.keys()) == 0:
-            self.model_param = getattr(Classification(**self.kwargs), '{}_param'.format(_model))()
+            self.model_param = getattr(Classification(**self.kwargs), f'{_model}_param')()
             self.clf_params = copy.deepcopy(self.model_param)
             _idx: int = 0 if len(self.model_param_mutated.keys()) == 0 else len(self.model_param_mutated.keys()) + 1
             self.model_param_mutated.update({str(_idx): {copy.deepcopy(self.model_name): {}}})
@@ -1717,7 +1682,7 @@ class ModelGeneratorClf(Classification):
                 self.model_param_mutated[str(_idx)][copy.deepcopy(self.model_name)].update({param: copy.deepcopy(self.model_param.get(param))})
         else:
             if len(self.model_param_mutation) > 0:
-                self.model_param = getattr(Classification(**self.kwargs), '{}_param'.format(_model))()
+                self.model_param = getattr(Classification(**self.kwargs), f'{_model}_param')()
                 self.clf_params = copy.deepcopy(self.model_param)
             else:
                 self.model_param = copy.deepcopy(self.clf_params)
@@ -1742,19 +1707,37 @@ class ModelGeneratorClf(Classification):
                 _rate: float = param_rate
             else:
                 _rate: float = 0.1
-        _params: dict = getattr(Classification(**self.kwargs), '{}_param'.format(CLF_ALGORITHMS.get(self.model_name)))()
+        _params: dict = getattr(Classification(**self.kwargs), f'{CLF_ALGORITHMS.get(self.model_name)}_param')()
         _force_param: dict = {} if force_param is None else force_param
         _param_choices: List[str] = [p for p in _params.keys() if p not in _force_param.keys()]
         _gen_n_params: int = round(len(_params.keys()) * _rate)
         if _gen_n_params == 0:
             _gen_n_params = 1
+        elif _gen_n_params > len(_param_choices):
+            _gen_n_params = len(_param_choices)
         self.model_param_mutated.update({len(self.model_param_mutated.keys()) + 1: {copy.deepcopy(self.model_name): {}}})
         _new_model_params: dict = copy.deepcopy(self.model_param)
+        _already_mutated_params: List[str] = []
         for param in _force_param.keys():
             _new_model_params.update({param: _force_param.get(param)})
         for _ in range(0, _gen_n_params, 1):
             _param: str = np.random.choice(a=_param_choices)
-            _new_model_params.update({_param: copy.deepcopy(_params.get(_param))})
+            if _param in _already_mutated_params:
+                _counter: int = 0
+                while _param not in _already_mutated_params or _counter > 100:
+                    _param: str = np.random.choice(a=_param_choices)
+                    _counter += 1
+            _already_mutated_params.append(_param)
+            if _params.get(_param) == _new_model_params.get(_param):
+                _counter: int = 0
+                _next_attempt: dict = getattr(Classification(**self.kwargs), f'{CLF_ALGORITHMS.get(self.model_name)}_param')()
+                while _next_attempt.get(_param) == _new_model_params.get(_param) or _counter > 100:
+                    _next_attempt: dict = getattr(Classification(**self.kwargs), f'{CLF_ALGORITHMS.get(self.model_name)}_param')()
+                    _counter += 1
+                _new_model_params.update({_param: copy.deepcopy(_next_attempt.get(_param))})
+            else:
+                _new_model_params.update({_param: copy.deepcopy(_params.get(_param))})
+            Log().log(msg=f'Change hyperparameter: {_param} from {self.model_param.get(_param)} to {_new_model_params.get(_param)} of model {self.model_name}')
             self.model_param_mutated[list(self.model_param_mutated.keys())[-1]][copy.deepcopy(self.model_name)].update({_param: _params.get(_param)})
         self.model_param_mutation = 'params'
         self.model_param = copy.deepcopy(_new_model_params)
@@ -1776,7 +1759,7 @@ class ModelGeneratorClf(Classification):
             for model in self.models:
                 if model in CLF_ALGORITHMS.keys():
                     _model = getattr(Classification(), CLF_ALGORITHMS.get(model))()
-                    _param: dict = getattr(Classification(), '{}_param'.format(CLF_ALGORITHMS.get(model)))()
+                    _param: dict = getattr(Classification(), f'{CLF_ALGORITHMS.get(model)}_param')()
                     _model_random_param: dict = _model.__dict__.items()
                     for param in _model_random_param:
                         if param[0] in _param.keys():
@@ -1801,12 +1784,12 @@ class ModelGeneratorClf(Classification):
             if hasattr(self.model, 'predict_proba'):
                 return self.model.predict_proba(x).flatten()
             else:
-                raise SupervisedMLException('Model ({}) has no function called "predict_proba"'.format(self.model_name))
+                raise SupervisedMLException(f'Model ({self.model_name}) has no function called "predict_proba"')
         else:
             if hasattr(self.model, 'predict'):
                 return self.model.predict(x).flatten()
             else:
-                raise SupervisedMLException('Model ({}) has no function called "predict"'.format(self.model_name))
+                raise SupervisedMLException(f'Model ({self.model_name}) has no function called "predict"')
 
     def train(self, x: np.ndarray, y: np.array, validation: dict = None):
         """
@@ -1885,7 +1868,7 @@ class ModelGeneratorReg(Regression):
         self.model_name: str = model_name
         if self.model_name is not None:
             if self.model_name not in REG_ALGORITHMS.keys():
-                raise SupervisedMLException('Model ({}) is not supported. Supported regression models are: {}'.format(self.model_name, list(REG_ALGORITHMS.keys())))
+                raise SupervisedMLException(f'Model ({self.model_name}) is not supported. Supported regression models are: {list(REG_ALGORITHMS.keys())}')
             else:
                 self.random: bool = False
         else:
@@ -1910,7 +1893,7 @@ class ModelGeneratorReg(Regression):
         else:
             _model = copy.deepcopy(REG_ALGORITHMS.get(self.model_name))
         if len(self.reg_params.keys()) == 0:
-            self.model_param = getattr(Regression(**self.kwargs), '{}_param'.format(_model))()
+            self.model_param = getattr(Regression(**self.kwargs), f'{_model}_param')()
             self.reg_params = copy.deepcopy(self.model_param)
             _idx: int = 0 if len(self.model_param_mutated.keys()) == 0 else len(self.model_param_mutated.keys()) + 1
             self.model_param_mutated.update({str(_idx): {copy.deepcopy(self.model_name): {}}})
@@ -1919,7 +1902,7 @@ class ModelGeneratorReg(Regression):
                     {param: copy.deepcopy(self.model_param.get(param))})
         else:
             if len(self.model_param_mutation) > 0:
-                self.model_param = getattr(Regression(**self.kwargs), '{}_param'.format(_model))()
+                self.model_param = getattr(Regression(**self.kwargs), f'{_model}_param')()
                 self.reg_params = copy.deepcopy(self.model_param)
             else:
                 self.model_param = copy.deepcopy(self.reg_params)
@@ -1944,20 +1927,38 @@ class ModelGeneratorReg(Regression):
                 _rate: float = param_rate
             else:
                 _rate: float = 0.1
-        _params: dict = getattr(Regression(**self.kwargs), '{}_param'.format(REG_ALGORITHMS.get(self.model_name)))()
+        _params: dict = getattr(Regression(**self.kwargs), f'{REG_ALGORITHMS.get(self.model_name)}_param')()
         _force_param: dict = {} if force_param is None else force_param
         _param_choices: List[str] = [p for p in _params.keys() if p not in _force_param.keys()]
         _gen_n_params: int = round(len(_params.keys()) * _rate)
         if _gen_n_params == 0:
             _gen_n_params = 1
+        elif _gen_n_params > len(_param_choices):
+            _gen_n_params = len(_param_choices)
         self.model_param_mutated.update(
             {len(self.model_param_mutated.keys()) + 1: {copy.deepcopy(self.model_name): {}}})
         _new_model_params: dict = copy.deepcopy(self.model_param)
+        _already_mutated_params: List[str] = []
         for param in _force_param.keys():
             _new_model_params.update({param: _force_param.get(param)})
         for _ in range(0, _gen_n_params, 1):
             _param: str = np.random.choice(a=_param_choices)
-            _new_model_params.update({_param: copy.deepcopy(_params.get(_param))})
+            if _param in _already_mutated_params:
+                _counter: int = 0
+                while _param not in _already_mutated_params or _counter > 100:
+                    _param: str = np.random.choice(a=_param_choices)
+                    _counter += 1
+            _already_mutated_params.append(_param)
+            if _params.get(_param) == _new_model_params.get(_param):
+                _counter: int = 0
+                _next_attempt: dict = getattr(Regression(**self.kwargs), f'{REG_ALGORITHMS.get(self.model_name)}_param')()
+                while _next_attempt.get(_param) == _new_model_params.get(_param) or _counter > 100:
+                    _next_attempt: dict = getattr(Regression(**self.kwargs), f'{REG_ALGORITHMS.get(self.model_name)}_param')()
+                    _counter += 1
+                _new_model_params.update({_param: copy.deepcopy(_next_attempt.get(_param))})
+            else:
+                _new_model_params.update({_param: copy.deepcopy(_params.get(_param))})
+            Log().log(msg=f'Change hyperparameter: {_param} from {self.model_param.get(_param)} to {_new_model_params.get(_param)} of model {self.model_name}')
             self.model_param_mutated[list(self.model_param_mutated.keys())[-1]][copy.deepcopy(self.model_name)].update(
                 {_param: _params.get(_param)})
         self.model_param_mutation = 'params'
@@ -1980,7 +1981,7 @@ class ModelGeneratorReg(Regression):
             for model in self.models:
                 if model in REG_ALGORITHMS.keys():
                     _model = getattr(Regression(**self.kwargs), REG_ALGORITHMS.get(model))()
-                    _param: dict = getattr(Regression(**self.kwargs), '{}_param'.format(REG_ALGORITHMS.get(model)))()
+                    _param: dict = getattr(Regression(**self.kwargs), f'{REG_ALGORITHMS.get(model)}_param')()
                     _model_random_param: dict = _model.__dict__.items()
                     for param in _model_random_param:
                         if param[0] in _param.keys():
@@ -2001,7 +2002,7 @@ class ModelGeneratorReg(Regression):
         if hasattr(self.model, 'predict'):
             return self.model.predict(x)
         else:
-            raise SupervisedMLException('Model ({}) has no function called "predict"'.format(self.model_name))
+            raise SupervisedMLException(f'Model ({self.model_name}) has no function called "predict"')
 
     def train(self, x: np.ndarray, y: np.array, validation: dict = None):
         """

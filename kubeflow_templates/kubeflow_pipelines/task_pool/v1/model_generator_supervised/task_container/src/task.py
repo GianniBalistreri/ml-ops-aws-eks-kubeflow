@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from aws import save_file_to_s3
+from custom_logger import Log
 from file_handler import file_handler
 from supervised_machine_learning import ModelGeneratorClf, ModelGeneratorReg
 from typing import Any, List, NamedTuple
@@ -25,10 +26,13 @@ PARSER.add_argument('-val_data_set_path', type=str, required=False, default=None
 PARSER.add_argument('-model_id', type=int, required=False, default=None, help='pre-defined model id')
 PARSER.add_argument('-model_param', type=Any, required=False, default=None, help='pre-defined model hyperparameter')
 PARSER.add_argument('-param_rate', type=float, required=False, default=0.0, help='')
+PARSER.add_argument('-force_param', type=Any, required=False, default=None, help='immutable model hyperparameter')
 PARSER.add_argument('-warm_start', type=int, required=False, default=1, help='')
+PARSER.add_argument('-max_retries', type=int, required=False, default=100, help='maximum number of retries if model hyperparameter configuration raises an error')
 PARSER.add_argument('-train_model', type=int, required=True, default=1, help='whether to train machine learning model or not')
 PARSER.add_argument('-sep', type=str, required=False, default=',', help='file separator')
 PARSER.add_argument('-prediction_variable_name', type=str, required=False, default='prediction', help='name of the prediction variable used for evaluation')
+PARSER.add_argument('-kwargs', type=Any, required=False, default=None, help='pre-defined key-value arguments for process handling')
 PARSER.add_argument('-output_path_model', type=str, required=True, default=None, help='file path of the model output')
 PARSER.add_argument('-output_path_metadata', type=str, required=True, default=None, help='file path of the metadata output')
 PARSER.add_argument('-output_path_evaluation_train_data', type=str, required=True, default=None, help='complete file path of the evaluation training data output')
@@ -59,16 +63,20 @@ def generate_model(ml_type: str,
                    model_id: int = None,
                    model_param: dict = None,
                    param_rate: float = 0.0,
+                   force_param: dict = None,
                    warm_start: bool = True,
+                   max_retries: int = 100,
                    train_model: bool = True,
                    sep: str = ',',
                    prediction_variable_name: str = 'prediction',
                    val_data_set_path: str = None,
                    output_path_evaluation_val_data: str = None,
                    output_path_model_customized: str = None,
+                   **kwargs
                    ) -> NamedTuple('outputs', [('model_artifact', str),
                                                ('metadata', dict),
-                                               ('evaluation_data', dict)
+                                               ('evaluation_data', dict),
+                                               ('training_status', str)
                                                ]):
     """
     Generate supervised machine learning model
@@ -115,8 +123,14 @@ def generate_model(ml_type: str,
     :param param_rate: float
         Rate for changing given hyperparameter set
 
+    :param force_param: dict
+        Immutable model hyperparameter set
+
     :param warm_start: bool
         Whether to use standard hyperparameter set or not
+
+    :param max_retries: int
+        Maximum number of retries if model hyperparameter configuration raises an error
 
     :param train_model: bool
         Whether to train model or not
@@ -136,6 +150,9 @@ def generate_model(ml_type: str,
     :param output_path_model_customized: str
         Complete file path of the trained model artifact
 
+    :param kwargs: dict
+        Key-word arguments for handling low and high boundaries for randomly drawing model hyperparameter configuration
+
     :return: NamedTuple
         Path of the sampled data sets and metadata about each data set
     """
@@ -149,15 +166,23 @@ def generate_model(ml_type: str,
     _model_param: dict = model_param
     if ml_type == 'reg':
         if warm_start:
-            _model_param = ModelGeneratorReg(model_name=model_name).get_model_parameter()
-        _model_generator: ModelGeneratorReg = ModelGeneratorReg(model_name=model_name, reg_params=_model_param)
+            _model_param = ModelGeneratorReg(model_name=model_name, model_id=model_id, **kwargs).get_model_parameter()
+        _model_generator: ModelGeneratorReg = ModelGeneratorReg(model_name=model_name,
+                                                                reg_params=_model_param,
+                                                                model_id=model_id,
+                                                                **kwargs
+                                                                )
     else:
         if warm_start:
-            _model_param = ModelGeneratorClf(model_name=model_name).get_model_parameter()
-        _model_generator: ModelGeneratorClf = ModelGeneratorClf(model_name=model_name, clf_params=_model_param)
+            _model_param = ModelGeneratorClf(model_name=model_name, model_id=model_id, **kwargs).get_model_parameter()
+        _model_generator: ModelGeneratorClf = ModelGeneratorClf(model_name=model_name,
+                                                                clf_params=_model_param,
+                                                                model_id=model_id,
+                                                                **kwargs
+                                                                )
     _model_generator.generate_model()
-    if param_rate > 0 and not warm_start:
-        _model_generator.generate_params(param_rate=param_rate, force_param=None)
+    if 0 < param_rate < 1 and not warm_start:
+        _model_generator.generate_params(param_rate=param_rate, force_param=force_param)
     _metadata: dict = dict(id=model_id,
                            param=_model_generator.model_param,
                            param_changed=_model_generator.model_param_mutated,
@@ -171,7 +196,23 @@ def generate_model(ml_type: str,
         _features: List[str] = _train_df.columns.tolist()
         if target_feature in _features:
             del _features[_features.index(target_feature)]
-        _model_generator.train(x=_train_df[_features], y=_train_df[target_feature])
+        _retries: int = 0
+        while _retries <= max_retries:
+            try:
+                _model_generator.train(x=_train_df[_features], y=_train_df[target_feature])
+                _training_status: str = 'successful'
+            except Exception as e:
+                _retries += 1
+                if _retries > round(max_retries * 0.75):
+                    _model_generator.generate_model()
+                else:
+                    if 0 < param_rate < 1:
+                        _model_generator.generate_params(param_rate=param_rate, force_param=force_param)
+                    else:
+                        _model_generator.generate_model()
+                if _retries > max_retries:
+                    _training_status: str = 'failure'
+                Log().log(msg=f'Retry {_retries}: {e}')
         _metadata.update({'train_time_in_sec': _model_generator.train_time,
                           'creation_time': _model_generator.creation_time
                           })
@@ -203,7 +244,8 @@ def generate_model(ml_type: str,
         file_handler(file_path=file_path, obj=obj)
     return [_model_generator.model,
             _metadata,
-            _evaluation_data
+            _evaluation_data,
+            _training_status
             ]
 
 
@@ -222,10 +264,12 @@ if __name__ == '__main__':
                    model_param=ARGS.model_param,
                    param_rate=ARGS.param_rate,
                    warm_start=bool(ARGS.warm_start),
+                   max_retries=ARGS.max_retries,
                    train_model=bool(ARGS.train_model),
                    sep=ARGS.sep,
                    prediction_variable_name=ARGS.prediction_variable_name,
                    val_data_set_path=ARGS.val_data_set_path,
                    output_path_evaluation_val_data=ARGS.output_path_evaluation_val_data,
-                   output_path_model_customized=ARGS.output_path_model_customized
+                   output_path_model_customized=ARGS.output_path_model_customized,
+                   **ARGS.kwargs
                    )

@@ -98,16 +98,16 @@ class Clustering:
         :return: dict
             Parameter config
         """
-        return dict(damping=np.random.uniform(low=0.5 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
-                                              high=1.0 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+        return dict(damping=np.random.uniform(low=0.5 if self.kwargs.get('damping_low') is None else self.kwargs.get('damping_low'),
+                                              high=1.0 if self.kwargs.get('damping_high') is None else self.kwargs.get('damping_high')
                                               ),
-                    max_iter=np.random.randint(low=5 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter'),
-                                               high=500 if self.kwargs.get('max_iter') is None else self.kwargs.get('max_iter')
+                    max_iter=np.random.randint(low=5 if self.kwargs.get('max_iter_low') is None else self.kwargs.get('max_iter_low'),
+                                               high=500 if self.kwargs.get('max_iter_high') is None else self.kwargs.get('max_iter_high')
                                                ),
-                    convergence=np.random.randint(low=2 if self.kwargs.get('convergence') is None else self.kwargs.get('learning_rate_low'),
-                                                  high=50 if self.kwargs.get('convergence') is None else self.kwargs.get('learning_rate_high')
+                    convergence=np.random.randint(low=2 if self.kwargs.get('convergence_low') is None else self.kwargs.get('convergence_low'),
+                                                  high=50 if self.kwargs.get('convergence_high') is None else self.kwargs.get('convergence_high')
                                                   ),
-                    affinity=np.random.choice(a=['euclidean', 'precomputed'])
+                    affinity=np.random.choice(a=['euclidean', 'precomputed'] if self.kwargs.get('affinity') is None else self.kwargs.get('affinity'))
                     )
 
     def agglomerative_clustering(self) -> AgglomerativeClustering:
@@ -133,11 +133,11 @@ class Clustering:
         :return: dict
             Parameter config
         """
-        return dict(n_clusters=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
-                                                 high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+        return dict(n_clusters=np.random.randint(low=2 if self.kwargs.get('n_clusters_low') is None else self.kwargs.get('n_clusters_low'),
+                                                 high=20 if self.kwargs.get('n_clusters_high') is None else self.kwargs.get('n_clusters_high')
                                                  ),
-                    metric=np.random.choice(a=['euclidean', 'l1', 'l2', 'manhattan', 'cosine', 'precomputed']),
-                    linkage=np.random.choice(a=['ward', 'complete', 'average', 'single'])
+                    metric=np.random.choice(a=['euclidean', 'l1', 'l2', 'manhattan', 'cosine', 'precomputed'] if self.kwargs.get('metric') is None else self.kwargs.get('metric')),
+                    linkage=np.random.choice(a=['ward', 'complete', 'average', 'single'] if self.kwargs.get('linkage') is None else self.kwargs.get('linkage'))
                     )
 
     def birch(self) -> Birch:
@@ -161,14 +161,14 @@ class Clustering:
         :return: dict
             Parameter config
         """
-        return dict(n_clusters=np.random.randint(low=2 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
-                                                 high=20 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+        return dict(n_clusters=np.random.randint(low=2 if self.kwargs.get('n_clusters_low') is None else self.kwargs.get('n_clusters_low'),
+                                                 high=20 if self.kwargs.get('n_clusters_high') is None else self.kwargs.get('n_clusters_high')
                                                  ),
-                    threshold=np.random.uniform(low=0.1 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
-                                                high=1.0 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                    threshold=np.random.uniform(low=0.1 if self.kwargs.get('threshold_low') is None else self.kwargs.get('threshold_low'),
+                                                high=1.0 if self.kwargs.get('threshold_high') is None else self.kwargs.get('threshold_high')
                                                 ),
-                    branching_factor=np.random.randint(low=5 if self.kwargs.get('damping') is None else self.kwargs.get('damping'),
-                                                       high=100 if self.kwargs.get('damping') is None else self.kwargs.get('damping')
+                    branching_factor=np.random.randint(low=5 if self.kwargs.get('branching_factor_low') is None else self.kwargs.get('branching_factor_low'),
+                                                       high=100 if self.kwargs.get('branching_factor_high') is None else self.kwargs.get('branching_factor_high')
                                                        )
                     )
 
@@ -986,12 +986,12 @@ class ModelGeneratorCluster(Clustering):
             self.random: bool = True
             if self.models is not None:
                 for model in self.models:
-                    if model not in CLUSTERING_ALGORITHMS:
+                    if model not in CLUSTERING_ALGORITHMS.keys():
                         self.random: bool = False
-                        raise UnsupervisedMLException(f'Model ({model}) is not supported. Supported classification models are: {CLUSTERING_ALGORITHMS}')
+                        raise UnsupervisedMLException(f'Model ({model}) is not supported. Supported classification models are: {list(CLUSTERING_ALGORITHMS.keys())}')
         else:
-            if self.model_name not in CLUSTERING_ALGORITHMS:
-                raise UnsupervisedMLException(f'Model ({self.model_name}) is not supported. Supported classification models are: {CLUSTERING_ALGORITHMS}')
+            if self.model_name not in CLUSTERING_ALGORITHMS.keys():
+                raise UnsupervisedMLException(f'Model ({self.model_name}) is not supported. Supported classification models are: {list(CLUSTERING_ALGORITHMS.keys())}')
             else:
                 self.random: bool = False
         self.model = None
@@ -1034,14 +1034,14 @@ class ModelGeneratorCluster(Clustering):
         """
         if self.random:
             if self.models is None:
-                self.model_name = copy.deepcopy(np.random.choice(a=CLUSTERING_ALGORITHMS))
+                self.model_name = copy.deepcopy(np.random.choice(a=CLUSTERING_ALGORITHMS.keys()))
             else:
                 self.model_name = copy.deepcopy(np.random.choice(a=self.models))
-            _model = copy.deepcopy(self.model_name)
+            _model = copy.deepcopy(CLUSTERING_ALGORITHMS.get(self.model_name))
         else:
-            _model = copy.deepcopy(self.model_name)
+            _model = copy.deepcopy(CLUSTERING_ALGORITHMS.get(self.model_name))
         if len(self.cluster_params.keys()) == 0:
-            self.model_param = getattr(Clustering(**self.kwargs), '{}_param'.format(_model))()
+            self.model_param = getattr(Clustering(**self.kwargs), f'{_model}_param')()
             self.cluster_params = copy.deepcopy(self.model_param)
             _idx: int = 0 if len(self.model_param_mutated.keys()) == 0 else len(self.model_param_mutated.keys()) + 1
             self.model_param_mutated.update({str(_idx): {copy.deepcopy(self.model_name): {}}})
@@ -1049,7 +1049,7 @@ class ModelGeneratorCluster(Clustering):
                 self.model_param_mutated[str(_idx)][copy.deepcopy(self.model_name)].update({param: copy.deepcopy(self.model_param.get(param))})
         else:
             if len(self.model_param_mutation) > 0:
-                self.model_param = getattr(Clustering(**self.kwargs), '{}_param'.format(_model))()
+                self.model_param = getattr(Clustering(**self.kwargs), f'{_model}_param')()
                 self.cluster_params = copy.deepcopy(self.model_param)
             else:
                 self.model_param = copy.deepcopy(self.cluster_params)
@@ -1059,7 +1059,9 @@ class ModelGeneratorCluster(Clustering):
             if _model in CLUSTER_TYPES[cluster_type]:
                 self.cluster_type = cluster_type
                 break
-        Log().log(msg=f'Generate clustering model: {self.model}')
+        if self.cluster_type is None:
+            self.cluster_type = 'unknown'
+        Log().log(msg=f'Generate clustering model: {self.model} (Cluster Type: {self.cluster_type})')
 
     def generate_params(self, param_rate: float = 0.1, force_param: dict = None):
         """
@@ -1078,19 +1080,37 @@ class ModelGeneratorCluster(Clustering):
                 _rate: float = param_rate
             else:
                 _rate: float = 0.1
-        _params: dict = getattr(Clustering(**self.kwargs), f'{self.model_name}_param')()
+        _params: dict = getattr(Clustering(**self.kwargs), f'{CLUSTERING_ALGORITHMS.get(self.model_name)}_param')()
         _force_param: dict = {} if force_param is None else force_param
         _param_choices: List[str] = [p for p in _params.keys() if p not in _force_param.keys()]
         _gen_n_params: int = round(len(_params.keys()) * _rate)
         if _gen_n_params == 0:
             _gen_n_params = 1
+        elif _gen_n_params > len(_param_choices):
+            _gen_n_params = len(_param_choices)
         self.model_param_mutated.update({len(self.model_param_mutated.keys()) + 1: {copy.deepcopy(self.model_name): {}}})
         _new_model_params: dict = copy.deepcopy(self.model_param)
+        _already_mutated_params: List[str] = []
         for param in _force_param.keys():
             _new_model_params.update({param: _force_param.get(param)})
         for _ in range(0, _gen_n_params, 1):
             _param: str = np.random.choice(a=_param_choices)
-            _new_model_params.update({_param: copy.deepcopy(_params.get(_param))})
+            if _param in _already_mutated_params:
+                _counter: int = 0
+                while _param not in _already_mutated_params or _counter > 100:
+                    _param: str = np.random.choice(a=_param_choices)
+                    _counter += 1
+            _already_mutated_params.append(_param)
+            if _params.get(_param) == _new_model_params.get(_param):
+                _counter: int = 0
+                _next_attempt: dict = getattr(Clustering(**self.kwargs), f'{CLUSTERING_ALGORITHMS.get(self.model_name)}_param')()
+                while _next_attempt.get(_param) == _new_model_params.get(_param) or _counter > 100:
+                    _next_attempt: dict = getattr(Clustering(**self.kwargs), f'{CLUSTERING_ALGORITHMS.get(self.model_name)}_param')()
+                    _counter += 1
+                _new_model_params.update({_param: copy.deepcopy(_next_attempt.get(_param))})
+            else:
+                _new_model_params.update({_param: copy.deepcopy(_params.get(_param))})
+            Log().log(msg=f'Change hyperparameter: {_param} from {self.model_param.get(_param)} to {_new_model_params.get(_param)} of model {self.model_name}')
             self.model_param_mutated[list(self.model_param_mutated.keys())[-1]][copy.deepcopy(self.model_name)].update({_param: _params.get(_param)})
         self.model_param_mutation = 'params'
         self.model_param = copy.deepcopy(_new_model_params)
@@ -1110,7 +1130,7 @@ class ModelGeneratorCluster(Clustering):
             return _model_param
         else:
             for model in self.models:
-                if model in CLUSTERING_ALGORITHMS:
+                if model in CLUSTERING_ALGORITHMS.keys():
                     _model = getattr(Clustering(), model)()
                     _param: dict = getattr(Clustering(), f'{model}_param')()
                     _model_random_param: dict = _model.__dict__.items()
