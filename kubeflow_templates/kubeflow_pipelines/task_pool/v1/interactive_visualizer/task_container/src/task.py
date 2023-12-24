@@ -94,14 +94,8 @@ def interactive_visualizer(data_set_path: str,
                            color_edges: List[str] = None,
                            color_feature: str = None,
                            subplots_file_path: str = None,
-                           feature_tournament_game_stats: bool = False,
-                           feature_tournament_game_size: bool = False,
-                           feature_importance_shapley_scores: bool = False,
-                           aggregate_feature_imp: Dict[str, dict] = None,
-                           feature_importance_processing_variants: bool = False,
-                           feature_importance_core_features_aggregation: bool = False,
                            sep: str = ','
-                     ) -> NamedTuple('outputs', [('plot_file_path', str)]):
+                           ) -> NamedTuple('outputs', [('plot_file_path', str)]):
     """
     Interactive visualization
 
@@ -159,15 +153,7 @@ def interactive_visualizer(data_set_path: str,
                                                                            rows_sub=None,
                                                                            cols_sub=None
                                                                            )
-    _special_plots: int = int(feature_tournament_game_stats) + int(feature_tournament_game_size) + int(feature_importance_shapley_scores) + int(feature_importance_processing_variants) + int(feature_importance_core_features_aggregation)
-    _file_paths: List[str] = _interactive_visualizer.main(special_plots=bool(_special_plots),
-                                                          feature_tournament_game_stats=feature_tournament_game_stats,
-                                                          feature_tournament_game_size=feature_tournament_game_size,
-                                                          feature_importance_shapley_scores=feature_importance_shapley_scores,
-                                                          aggregate_feature_imp=aggregate_feature_imp,
-                                                          feature_importance_processing_variants=feature_importance_processing_variants,
-                                                          feature_importance_core_features_aggregation=feature_importance_core_features_aggregation
-                                                          )
+    _file_paths: List[str] = _interactive_visualizer.main()
     _kfp_metadata: Dict[str, List[Dict[str, str]]] = _generate_kfp_template(file_paths=_file_paths)
     with open(metadata_file_path, 'w') as metadata_file:
         json.dump(_kfp_metadata, metadata_file)
@@ -185,7 +171,6 @@ if __name__ == '__main__':
                            graph_features=ARGS.graph_features,
                            group_by=ARGS.group_by,
                            analytical_data_types=ARGS.analytical_data_types,
-                           subplots_file_path=ARGS.subplots_file_path,
                            melt=ARGS.melt,
                            brushing=ARGS.brushing,
                            xaxis_label=ARGS.xaxis_label,
@@ -199,11 +184,6 @@ if __name__ == '__main__':
                            color_scale=ARGS.color_scale,
                            color_edges=ARGS.color_edges,
                            color_feature=ARGS.color_feature,
-                           feature_tournament_game_stats=ARGS.feature_tournament_game_stats,
-                           feature_tournament_game_size=ARGS.feature_tournament_game_size,
-                           feature_importance_shapley_scores=ARGS.feature_importance_shapley_scores,
-                           aggregate_feature_imp=ARGS.aggregate_feature_imp,
-                           feature_importance_processing_variants=ARGS.feature_importance_processing_variants,
-                           feature_importance_core_features_aggregation=ARGS.feature_importance_core_features_aggregation,
+                           subplots_file_path=ARGS.subplots_file_path,
                            sep=ARGS.sep,
                            )

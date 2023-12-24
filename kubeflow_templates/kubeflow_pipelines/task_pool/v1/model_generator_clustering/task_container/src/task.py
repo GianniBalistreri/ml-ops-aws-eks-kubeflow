@@ -185,22 +185,22 @@ def generate_model(model_name: str,
             _pred_train, _ = _model_generator.predict(x=_train_df[_features])
             _train_df[prediction_variable_name] = _pred_train.tolist()
             _train_df.to_csv(path_or_buf=output_path_evaluation_train_data, sep=sep, header=True, index=False)
+            Log().log(msg=f'Save data set for evaluation: {output_path_evaluation_train_data}')
             _cluster_visualization: ClusterVisualization = ClusterVisualization(model_generator=_model_generator,
                                                                                 df=_train_df,
                                                                                 features=_features,
-                                                                                find_optimum=True,
+                                                                                find_optimum=False,
                                                                                 silhouette_analysis=True,
-                                                                                n_cluster_components=None,
-                                                                                n_neighbors=None,
-                                                                                n_iter=None,
-                                                                                metric=None,
-                                                                                affinity=None,
-                                                                                connectivity=None,
-                                                                                linkage=None
+                                                                                n_cluster_components=_model_generator.model_param.get('n_clusters'),
+                                                                                n_neighbors=_model_generator.model_param.get('n_neighbors'),
+                                                                                n_iter=_model_generator.model_param.get('n_iter'),
+                                                                                metric=_model_generator.model_param.get('metric'),
+                                                                                affinity=_model_generator.model_param.get('affinity'),
+                                                                                connectivity=_model_generator.model_param.get('connectivity'),
+                                                                                linkage=_model_generator.model_param.get('linkage'),
                                                                                 )
-            _cluster_visualization.main(cluster_algorithms=[_model_generator.model_name],
-                                        clean_missing_data=False
-                                        )
+            _cluster_visualization.main(cluster_algorithm=_model_generator.model_name, clean_missing_data=False)
+            Log().log(msg=f'Generate cluster visualization for model {_model_generator.model_name}')
             if s3_output_path_visualization_data is not None:
                 save_file_to_s3(file_path=s3_output_path_visualization_data, obj=_cluster_visualization.cluster_plot)
                 Log().log(msg=f'Save visualization data: {s3_output_path_visualization_data}')

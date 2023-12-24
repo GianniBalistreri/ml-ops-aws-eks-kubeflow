@@ -230,9 +230,12 @@ def generate_model(ml_type: str,
         _test_df[prediction_variable_name] = _pred_test.tolist()
         _val_df[prediction_variable_name] = _pred_val.tolist()
         _train_df.to_csv(path_or_buf=output_path_evaluation_train_data, sep=sep, header=True, index=False)
+        Log().log(msg=f'Save training data set for evaluation: {output_path_evaluation_train_data}')
         _test_df.to_csv(path_or_buf=output_path_evaluation_test_data, sep=sep, header=True, index=False)
+        Log().log(msg=f'Save test data set for evaluation: {output_path_evaluation_test_data}')
         if output_path_evaluation_val_data is not None:
             _val_df.to_csv(path_or_buf=output_path_evaluation_val_data, sep=sep, header=True, index=False)
+            Log().log(msg=f'Save validation data set for evaluation: {output_path_evaluation_val_data}')
         _evaluation_data: dict = dict(train=output_path_evaluation_train_data,
                                       test=output_path_evaluation_test_data,
                                       val_data_set_path=output_path_evaluation_val_data
@@ -240,11 +243,13 @@ def generate_model(ml_type: str,
         file_handler(file_path=output_path_model, obj=_model_generator.model)
         if s3_output_path_model is not None:
             save_file_to_s3(file_path=s3_output_path_model, obj=_model_generator.model)
+            Log().log(msg=f'Save trained model artifact: {s3_output_path_model}')
     else:
         _evaluation_data: dict = None
         file_handler(file_path=output_path_model, obj=_model_generator)
         if s3_output_path_model is not None:
             save_file_to_s3(file_path=s3_output_path_model, obj=_model_generator)
+            Log().log(msg=f'Save model generator artifact: {s3_output_path_model}')
     for file_path, obj in [(output_path_metadata, _metadata),
                            (output_path_evaluation_data, _evaluation_data),
                            (output_path_training_status, _training_status)

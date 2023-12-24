@@ -1,14 +1,12 @@
 """
 
-Generate interactive visualization using a plot.ly (offline API) wrapper called easyexplore
+Generate interactive visualization using a plot.ly (offline API) wrapper
 
 """
 
-import os
 import pandas as pd
 
-from custom_logger import Log
-from easyexplore.data_visualizer import DataVisualizer
+from data_visualizer import DataVisualizer
 from typing import Dict, List
 
 
@@ -171,153 +169,43 @@ class InteractiveVisualizer:
         self.rows_sub: int = rows_sub
         self.cols_sub: int = cols_sub
 
-    def main(self,
-             special_plots: bool = False,
-             feature_tournament_game_stats: bool = False,
-             feature_tournament_game_size: bool = False,
-             feature_importance_shapley_scores: bool = False,
-             aggregate_feature_imp: Dict[str, dict] = None,
-             feature_importance_processing_variants: bool = False,
-             feature_importance_core_features_aggregation: bool = False
-             ) -> List[str]:
+    def main(self) -> List[str]:
         """
         Generate interactive visualization
 
-        :param special_plots: bool
-            Whether to generate special plots or not
-                -> e.g. Feature Tournament
-
-        :param feature_tournament_game_stats:
-        :param feature_tournament_game_size:
-        :param feature_importance_shapley_scores:
-        :param aggregate_feature_imp: Dict[str, dict]
-            Name of the aggregation method and the feature names to aggregate
-                -> core: Aggregate feature importance score by each core (original) feature
-                -> level: Aggregate feature importance score by the processing level of each feature
-
-        :param feature_importance_processing_variants:
-        :param feature_importance_core_features_aggregation:
+        :return List[str]
+            File paths of the generated and persisted interactive visualizations
         """
-        _file_paths: List[str] = []
-        if special_plots:
-            if feature_tournament_game_stats:
-                DataVisualizer(df=self.df,
-                               title='Feature Tournament Game Stats (Shapley Scores)',
-                               features=self.df.columns.tolist(),
-                               melt=True,
-                               plot_type='violin',
-                               file_path=os.path.join(str(self.path), 'feature_tournament_game_stats.html')
-                               ).run()
-            if feature_tournament_game_size:
-                DataVisualizer(df=self.df,
-                               title='Feature Tournament Stats (Game Size)',
-                               features=self.df.columns.tolist(),
-                               plot_type='heat',
-                               file_path=os.path.join(str(self.path), 'feature_tournament_game_size.html')
-                               ).run()
-            if feature_importance_shapley_scores:
-                _imp_plot: dict = {'Feature Importance (Shapley Scores)': dict(df=self.df,
-                                                                               plot_type='bar',
-                                                                               render=True if self.path is None else False,
-                                                                               file_path=os.path.join(str(self.path), 'feature_importance_shapley.html'),
-                                                                               kwargs=dict(layout={},
-                                                                                           y=self.df['score'].values,
-                                                                                           x=self.df.index.values.tolist(),
-                                                                                           marker=dict(color=self.df['score'],
-                                                                                                       colorscale='rdylgn',
-                                                                                                       autocolorscale=True
-                                                                                                       )
-                                                                                           )
-                                                                               )
-                                   }
-                DataVisualizer(subplots=_imp_plot,
-                               height=self.height,
-                               width=self.width
-                               ).run()
-            if feature_importance_processing_variants:
-                if aggregate_feature_imp is None:
-                    raise InteractiveVisualizerException('No feature aggregation config found')
-                for core_feature in aggregate_feature_imp.keys():
-                    _variant_scores = {'Feature Importance (Preprocessing Variants {})'.format(core_feature): dict(
-                        data=_processed_feature_matrix,
-                        plot_type='bar',
-                        melt=True,
-                        render=True if self.path is None else False,
-                        file_path=os.path.join(str(self.path), 'feature_importance_processing_variants.html'),
-                        kwargs=dict(layout={},
-                                    y=_processed_feature_matrix['score'].values,
-                                    x=_processed_feature_matrix.index.values,
-                                    marker=dict(color=_processed_feature_matrix['score'],
-                                                colorscale='rdylgn',
-                                                autocolorscale=True
-                                                )
-                                    )
-                    )
-                    }
-                    DataVisualizer(subplots=_variant_scores,
-                                   height=self.height,
-                                   width=self.width
-                                   ).run()
-            if feature_importance_core_features_aggregation:
-                if aggregate_feature_imp is None:
-                    raise InteractiveVisualizerException('No feature aggregation config found')
-                for core_feature in aggregate_feature_imp.keys():
-                    _core_feature_scores_plot: dict = {'Feature Importance (Core Feature Aggregation)': dict(data=_core_imp_matrix,
-                                                                                                             plot_type=plot_type,
-                                                                                                             melt=False,
-                                                                                                             render=True if self.path is None else False,
-                                                                                                             file_path='{}feature_importance_core_aggregation.html'.format(
-                                                                                                                 self.path) if self.path is not None else None,
-                                                                                                             kwargs=dict(layout={},
-                                                                                                                         y=_core_imp_matrix[
-                                                                                                                             'abs_score'].values,
-                                                                                                                         x=_core_imp_matrix[
-                                                                                                                             'abs_score'].index.values,
-                                                                                                                         marker=dict(
-                                                                                                                             color=
-                                                                                                                             _core_imp_matrix[
-                                                                                                                                 'abs_score'],
-                                                                                                                             colorscale='rdylgn',
-                                                                                                                             autocolorscale=True
-                                                                                                                         )
-                                                                                                                         )
-                                                                                                             )
-                                                       }
-                    DataVisualizer(subplots=_core_feature_scores_plot,
-                                   height=self.height,
-                                   width=self.width
-                                   ).run()
-        else:
-            DataVisualizer(df=self.df,
-                           title=self.title,
-                           features=self.features,
-                           time_features=self.time_features,
-                           graph_features=self.graph_features,
-                           group_by=self.group_by,
-                           feature_types=self.feature_types,
-                           plot_type=self.plot_type,
-                           subplots=self.subplots,
-                           melt=self.melt,
-                           brushing=self.brushing,
-                           xaxis_label=self.xaxis_label,
-                           yaxis_label=self.yaxis_label,
-                           zaxis_label=self.zaxis_label,
-                           annotations=self.annotations,
-                           width=self.width,
-                           height=self.height,
-                           unit=self.unit,
-                           interactive=True,
-                           file_path=self.file_path,
-                           use_auto_extensions=self.use_auto_extensions,
-                           cloud=self.cloud,
-                           render=self.render,
-                           color_scale=self.color_scale,
-                           color_edges=self.color_edges,
-                           color_feature=self.color_feature,
-                           max_row=self.max_row,
-                           max_col=self.max_col,
-                           rows_sub=self.rows_sub,
-                           cols_sub=self.cols_sub
-                           ).run()
-
-        return _file_paths
+        _data_visualizer: DataVisualizer = DataVisualizer(df=self.df,
+                                                          title=self.title,
+                                                          features=self.features,
+                                                          time_features=self.time_features,
+                                                          graph_features=self.graph_features,
+                                                          group_by=self.group_by,
+                                                          feature_types=self.feature_types,
+                                                          plot_type=self.plot_type,
+                                                          subplots=self.subplots,
+                                                          melt=self.melt,
+                                                          brushing=self.brushing,
+                                                          xaxis_label=self.xaxis_label,
+                                                          yaxis_label=self.yaxis_label,
+                                                          zaxis_label=self.zaxis_label,
+                                                          annotations=self.annotations,
+                                                          width=self.width,
+                                                          height=self.height,
+                                                          unit=self.unit,
+                                                          interactive=True,
+                                                          file_path=self.file_path,
+                                                          use_auto_extensions=self.use_auto_extensions,
+                                                          cloud=self.cloud,
+                                                          render=self.render,
+                                                          color_scale=self.color_scale,
+                                                          color_edges=self.color_edges,
+                                                          color_feature=self.color_feature,
+                                                          max_row=self.max_row,
+                                                          max_col=self.max_col,
+                                                          rows_sub=self.rows_sub,
+                                                          cols_sub=self.cols_sub
+                                                          )
+        _data_visualizer.run()
+        return _data_visualizer.file_paths
