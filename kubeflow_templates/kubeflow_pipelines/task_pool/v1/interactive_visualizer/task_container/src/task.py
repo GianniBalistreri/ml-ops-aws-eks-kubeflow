@@ -8,12 +8,13 @@ import argparse
 import json
 import pandas as pd
 
-from interactive_visualizer import InteractiveVisualizer
+from aws import load_file_from_s3
+from interactive_visualizer import InteractiveVisualizer, InteractiveVisualizerException
 from kfp.components import OutputPath
 from typing import Any, Dict, NamedTuple, List
 
 PARSER = argparse.ArgumentParser(description="interactive visualizer")
-PARSER.add_argument('-data_set_path', type=str, required=True, default=None, help='file path of the data set')
+PARSER.add_argument('-data_set_path', type=str, required=False, default=None, help='file path of the data set')
 PARSER.add_argument('-plot_type', type=str, required=True, default=None, help='abbreviated name of the plot type to use')
 PARSER.add_argument('-title', type=str, required=False, default='', help='title of the visualization')
 PARSER.add_argument('-feature_names', type=str, required=False, default=None, help='feature names to visualize')
@@ -35,6 +36,7 @@ PARSER.add_argument('-zaxis_label', type=list, required=False, default=None, hel
 PARSER.add_argument('-zaxis_label', type=list, required=False, default=None, help='Labels for the z-axis')
 PARSER.add_argument('-zaxis_label', type=list, required=False, default=None, help='Labels for the z-axis')
 PARSER.add_argument('-zaxis_label', type=list, required=False, default=None, help='Labels for the z-axis')
+PARSER.add_argument('-subplots_file_path', type=str, required=False, default=None, help='complete file path of the subplots configuration')
 PARSER.add_argument('-output_image_path', type=str, required=True, default=None, help='complete file path of the visualization output')
 PARSER.add_argument('-sep', type=str, required=False, default=',', help='column separator')
 ARGS = PARSER.parse_args()
@@ -91,6 +93,7 @@ def interactive_visualizer(data_set_path: str,
                            color_scale: List[str] = None,
                            color_edges: List[str] = None,
                            color_feature: str = None,
+                           subplots_file_path: str = None,
                            feature_tournament_game_stats: bool = False,
                            feature_tournament_game_size: bool = False,
                            feature_importance_shapley_scores: bool = False,
@@ -117,7 +120,15 @@ def interactive_visualizer(data_set_path: str,
     :return: NamedTuple
         Path of the engineered data set
     """
-    _df: pd.DataFrame = pd.read_csv(filepath_or_buffer=data_set_path, sep=sep)
+    if data_set_path is None:
+        _df: pd.DataFrame = None
+        if subplots_file_path is None:
+            raise InteractiveVisualizerException('Neither path of the data set nor path of the subplots found')
+        else:
+            _subplots: dict = load_file_from_s3(file_path=subplots_file_path)
+    else:
+        _subplots: dict = None
+        _df: pd.DataFrame = pd.read_csv(filepath_or_buffer=data_set_path, sep=sep)
     _interactive_visualizer: InteractiveVisualizer = InteractiveVisualizer(df=_df,
                                                                            title=title,
                                                                            features=features,
@@ -126,7 +137,7 @@ def interactive_visualizer(data_set_path: str,
                                                                            group_by=group_by,
                                                                            feature_types=analytical_data_types,
                                                                            plot_type=plot_type,
-                                                                           subplots=None,
+                                                                           subplots=_subplots,
                                                                            melt=melt,
                                                                            brushing=brushing,
                                                                            xaxis_label=xaxis_label,
@@ -148,7 +159,8 @@ def interactive_visualizer(data_set_path: str,
                                                                            rows_sub=None,
                                                                            cols_sub=None
                                                                            )
-    _file_paths: List[str] = _interactive_visualizer.main(special_plots=False,
+    _special_plots: int = int(feature_tournament_game_stats) + int(feature_tournament_game_size) + int(feature_importance_shapley_scores) + int(feature_importance_processing_variants) + int(feature_importance_core_features_aggregation)
+    _file_paths: List[str] = _interactive_visualizer.main(special_plots=bool(_special_plots),
                                                           feature_tournament_game_stats=feature_tournament_game_stats,
                                                           feature_tournament_game_size=feature_tournament_game_size,
                                                           feature_importance_shapley_scores=feature_importance_shapley_scores,
@@ -173,7 +185,7 @@ if __name__ == '__main__':
                            graph_features=ARGS.graph_features,
                            group_by=ARGS.group_by,
                            analytical_data_types=ARGS.analytical_data_types,
-                           subplots=ARGS.subplots,
+                           subplots_file_path=ARGS.subplots_file_path,
                            melt=ARGS.melt,
                            brushing=ARGS.brushing,
                            xaxis_label=ARGS.xaxis_label,
