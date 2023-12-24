@@ -40,6 +40,7 @@ class FeatureSelector:
                  penalty_factor: float = 0.1,
                  max_iter: int = 50,
                  max_players: int = -1,
+                 redundant_threshold: float = 0.01,
                  ):
         """
         :param target_feature: str
@@ -83,6 +84,9 @@ class FeatureSelector:
 
         :param max_players: int
             Maximum number of features used for training machine learning model
+
+        :param redundant_threshold: float
+            Threshold for defining metric reduction to define redundant features
         """
         self.target_feature: str = target_feature
         self.features: List[str] = features
@@ -108,10 +112,79 @@ class FeatureSelector:
         self.penalty_factor: float = penalty_factor
         self.max_iter: int = max_iter
         self.max_players: int = max_players if max_players > 1 else len(self.features)
+        self.redundant_threshold: float = redundant_threshold
         self.pairs: List[np.array] = []
         self.tournament: bool = False
         self.shapley_additive_explanation: dict = dict(sum={}, game={}, tournament={})
         self.imp_score: Dict[str, float] = {}
+        self.plot: dict = {}
+
+    def _feature_addition(self, imp_features: List[str]) -> dict:
+        """
+        Apply feature addition algorithm to select most important features
+
+        :param imp_features: List[str]
+            Name of features sorted by importance score
+
+        :return: dict
+
+        """
+        Log().log(msg='Apply feature addition algorithm for feature selection based on calculated feature importance score')
+        _model_generator: object = copy.deepcopy(self.model)
+        _model_generator.train(x=self.train_df[imp_features[0]].values, y=self.train_df[self.target_feature].values)
+        _pred = _model_generator.predict(x=self.test_df[imp_features[0]].values)
+        _model_generator.eval(obs=self.test_df[self.target_feature].values, pred=_pred)
+        _model_test_score: float = _model_generator.fitness['test'].get(self.ml_metric)
+        if self.ml_type == 'reg':
+            _threshold: float = _model_test_score - (_model_test_score * self.redundant_threshold)
+        else:
+            _threshold: float = _model_test_score + (_model_test_score * self.redundant_threshold)
+        _result: dict = dict(redundant=[],
+                             important=[imp_features[0]],
+                             gain={},
+                             model_metric=[],
+                             base_metric=_model_test_score,
+                             threshold=_threshold
+                             )
+        for i in range(1, len(imp_features) - 1, 1):
+            _model_generator.train(x=self.train_df[imp_features[0:i + 1]].values, y=self.train_df[self.target_feature].values)
+            _pred = _model_generator.predict(x=self.test_df[imp_features[0:i + 1]].values)
+            _model_generator.eval(obs=self.test_df[self.target_feature].values, pred=_pred)
+            _new_model_test_score: float = _model_generator.fitness['test'].get(self.ml_metric)
+            if self.ml_type == 'reg':
+                if _threshold <= _new_model_test_score:
+                    _result['threshold'] = _threshold
+                    _result['important'].extend(imp_features[0:i + 1])
+                    _result['redundant'].extend(imp_features[i + 1:len(imp_features)])
+                    break
+                else:
+                    _threshold: float = _new_model_test_score - (_new_model_test_score * self.redundant_threshold)
+                    _result['model_metric'].append(_model_test_score)
+                    _result['gain'].update({imp_features[i]: _model_test_score - _new_model_test_score})
+            else:
+                if _threshold >= _new_model_test_score:
+                    _result['threshold'] = _threshold
+                    _result['important'].extend(imp_features[0:i + 1])
+                    _result['redundant'].extend(imp_features[i + 1:len(imp_features)])
+                    break
+                else:
+                    _threshold: float = _new_model_test_score + (_new_model_test_score * self.redundant_threshold)
+                    _result['model_metric'].append(_model_test_score)
+                    _result['gain'].update({imp_features[i]: _new_model_test_score - _model_test_score})
+        return _result
+
+    def _filter_based(self, imp_features: List[str]) -> dict:
+        """
+        Apply filter-based algorithm to select most important features
+
+        :param imp_features: List[str]
+            Name of features sorted by importance score
+
+        :return: dict
+
+        """
+        Log().log(msg='Apply filter-based algorithm for feature selection based on calculated feature importance score')
+        return dict(redundant=imp_features[25:len(imp_features)], important=imp_features[0:25], reduction={}, model_metric=[], base_metric=None)
 
     def _game(self, iteration: int):
         """
@@ -178,13 +251,13 @@ class FeatureSelector:
         """
         Play unreal tournament to extract the fittest or most important players based on the concept of shapley values
         """
-        Log(write=False, level='info').log(msg='Start penalty with {} players...'.format(self.n_features))
+        Log().log(msg=f'Start penalty with {self.n_features} players...')
         _game_scores: List[float] = []
         _permutation_space: int = self.init_pairs
         _pair_size_factor: float = self.max_iter * self.pair_size_factor
         for i in range(0, self.max_iter + self.init_games, 1):
             if i == self.init_games:
-                Log(write=False, level='info').log(msg='Start feature tournament with {} players ...'.format(self.n_features))
+                Log().log(msg=f'Start feature tournament with {self.n_features} players ...')
                 self.tournament = True
             elif i > self.init_games:
                 _pair_size: int = _permutation_space + int(_pair_size_factor)
@@ -212,11 +285,11 @@ class FeatureSelector:
                 if _sorted_shapley_matrix.shape[0] == 0:
                     raise FeatureSelectorException('No feature scored higher than 0 during penalty phase')
                 _n_features: int = _sorted_shapley_matrix.shape[0]
-                Log(write=False, level='info').log(msg='Excluded {} features with score 0'.format(_all_features - _n_features))
+                Log().log(msg=f'Excluded {_all_features - _n_features} features with score 0')
                 _exclude_features: int = int(_n_features * self.penalty_factor)
                 self.features = _sorted_shapley_matrix.index.values.tolist()[0:(_n_features - _exclude_features)]
                 self.n_features = len(self.features)
-                Log(write=False, level='info').log(msg='Excluded {} lowest scored features from tournament'.format(_exclude_features))
+                Log().log(msg=f'Excluded {_exclude_features} lowest scored features from tournament')
             if i + 1 == self.max_iter + self.init_games:
                 _shapley_values: dict = {}
                 for sv in self.shapley_additive_explanation['game'].keys():
@@ -226,19 +299,79 @@ class FeatureSelector:
                 if i + 1 == self.max_iter:
                     break
 
+    def _recursive_feature_elimination(self, imp_features: List[str]) -> dict:
+        """
+        Apply recursive feature elimination (RFE) algorithm to select most important features
+
+        :param imp_features: List[str]
+            Name of features sorted by importance score
+
+        :return: dict
+
+        """
+        Log().log(msg='Apply recursive feature elimination algorithm (RFE) for feature selection based on calculated feature importance score')
+        _model_generator: object = copy.deepcopy(self.model)
+        _model_generator.train(x=self.train_df[imp_features].values, y=self.train_df[self.target_feature].values)
+        _pred = _model_generator.predict(x=self.test_df[imp_features].values)
+        _model_generator.eval(obs=self.test_df[self.target_feature].values, pred=_pred)
+        _model_test_score: float = _model_generator.fitness['test'].get(self.ml_metric)
+        if self.ml_type == 'reg':
+            _threshold: float = _model_test_score * (1 + self.redundant_threshold)
+        else:
+            _threshold: float = _model_test_score * (1 - self.redundant_threshold)
+        _features: List[str] = copy.deepcopy(imp_features)
+        _result: dict = dict(redundant=[],
+                             important=[],
+                             reduction={},
+                             model_metric=[],
+                             base_metric=_model_test_score,
+                             threshold=_threshold
+                             )
+        for i in range(len(imp_features) - 1, 0, -1):
+            del _features[i]
+            if len(_features) == 1:
+                _result['important'] = _features
+                break
+            _model_generator.train(x=self.train_df[_features].values, y=self.train_df[self.target_feature].values)
+            _pred = _model_generator.predict(x=self.test_df[_features].values)
+            _model_generator.eval(obs=self.test_df[self.target_feature].values, pred=_pred)
+            _new_model_test_score: float = _model_generator.fitness['test'].get(self.ml_metric)
+            if self.ml_type == 'reg':
+                if _threshold <= _new_model_test_score:
+                    _features.append(imp_features[i])
+                    _result['important'] = _features
+                    break
+                else:
+                    _result['redundant'].append(imp_features[i])
+                    _result['model_metric'].append(_model_test_score)
+                    _result['reduction'].update({imp_features[i]: _model_test_score - _new_model_test_score})
+            else:
+                if _threshold >= _new_model_test_score:
+                    _features.append(imp_features[i])
+                    _result['important'] = _features
+                    break
+                else:
+                    _result['redundant'].append(imp_features[i])
+                    _result['model_metric'].append(_model_test_score)
+                    _result['reduction'].update({imp_features[i]: _model_test_score - _new_model_test_score})
+        return _result
+
     def main(self,
+             feature_selection_algorithm: str = 'feature_addition',
              imp_threshold: float = 0.01,
-             redundant_threshold: float = 0.01,
              aggregate_feature_imp: Dict[str, dict] = None
              ) -> dict:
         """
         Select most important features based on shapley values
 
+        :param feature_selection_algorithm: str
+            Name of the feature selection algorithm to apply
+                -> feature_addition: Feature Addition
+                -> filter_based: Filter-based
+                -> recursive_feature_elimination: Recursive Feature Elimination (RFE)
+
         :param imp_threshold: float
             Threshold of importance score to exclude features during initial games of the feature tournament
-
-        :param redundant_threshold: float
-            Threshold for defining metric reduction to define redundant features
 
         :param aggregate_feature_imp: Dict[str, dict]
             Name of the aggregation method and the feature names to aggregate
@@ -252,7 +385,6 @@ class FeatureSelector:
         _imp_plot: dict = {}
         _core_features: List[str] = []
         _processed_features: List[str] = []
-        _visualization_data: dict = {}
         _imp_threshold: float = imp_threshold if (imp_threshold >= 0) and (imp_threshold <= 1) else 0.7
         _df: pd.DataFrame = pd.DataFrame(data=self.shapley_additive_explanation.get('total'), index=['score']).transpose()
         _df = _df.sort_values(by='score', axis=0, ascending=False, inplace=False)
@@ -271,10 +403,41 @@ class FeatureSelector:
                 else:
                     _rank.append(r + 1)
         _df['rank'] = _rank
+        self.plot.update({'Feature Importance (Shapley Scores)': dict(df=_df,
+                                                                      plot_type='bar',
+                                                                      render=False,
+                                                                      file_path=os.path.join(str(self.path), 'feature_importance_shapley.html'),
+                                                                      kwargs=dict(layout={},
+                                                                                  y=_df['score'].values,
+                                                                                  x=_df.index.values.tolist(),
+                                                                                  marker=dict(color=_df['score'],
+                                                                                              colorscale='rdylgn',
+                                                                                              autocolorscale=True
+                                                                                              )
+                                                                                  )
+                                                                      )
+                          })
         _game_df: pd.DataFrame = pd.DataFrame(data=self.shapley_additive_explanation.get('game'))
         # _game_df['game'] = _game_df.index.values
+        self.plot.update({'Feature Tournament Game Stats (Shapley Scores)': dict(df=_game_df,
+                                                                                 features=_game_df.columns.tolist(),
+                                                                                 plot_type='violin',
+                                                                                 melt=True,
+                                                                                 render=False,
+                                                                                 file_path=os.path.join(str(self.path), 'feature_tournament_game_stats.html'),
+                                                                                 kwargs=dict(layout={})
+                                                                                 )
+                          })
         _tournament_df: pd.DataFrame = pd.DataFrame(data=self.shapley_additive_explanation.get('tournament'))
         # _tournament_df['game'] = _tournament_df.index.values
+        self.plot.update({'Feature Tournament Stats (Game Size)': dict(df=_tournament_df,
+                                                                       features=_tournament_df.columns.tolist(),
+                                                                       plot_type='heat',
+                                                                       render=False,
+                                                                       file_path=os.path.join(str(self.path), 'feature_tournament_game_size.html'),
+                                                                       kwargs=dict(layout={})
+                                                                       )
+                          })
         if aggregate_feature_imp is not None:
             _aggre_score: dict = {}
             for core_feature in aggregate_feature_imp.keys():
@@ -292,7 +455,21 @@ class FeatureSelector:
                 _processed_feature_matrix: pd.DataFrame = pd.DataFrame(data=_feature_scores, index=['score']).transpose()
                 _processed_feature_matrix.sort_values(by='score', axis=0, ascending=False, inplace=True)
                 _processed_features.append(_processed_feature_matrix.index.values.tolist()[0])
-                # TODO: prepare dict and save it for next viz step
+                self.plot.update({f'Feature Importance (Preprocessing Variants {core_feature})': dict(data=_processed_feature_matrix,
+                                                                                                      plot_type='bar',
+                                                                                                      melt=True,
+                                                                                                      render=False,
+                                                                                                      file_path=os.path.join(str(self.path), 'feature_importance_processing_variants.html'),
+                                                                                                      kwargs=dict(layout={},
+                                                                                                                  y=_processed_feature_matrix['score'].values,
+                                                                                                                  x=_processed_feature_matrix.index.values,
+                                                                                                                  marker=dict(color=_processed_feature_matrix['score'],
+                                                                                                                              colorscale='rdylgn',
+                                                                                                                              autocolorscale=True
+                                                                                                                              )
+                                                                                                                  )
+                                                                                                      )
+                                  })
             _core_imp_matrix: pd.DataFrame = pd.DataFrame(data=_aggre_score, index=['abs_score']).transpose()
             _core_imp_matrix['rel_score'] = _core_imp_matrix['abs_score'] / sum(_core_imp_matrix['abs_score'])
             _core_imp_matrix.sort_values(by='abs_score', axis=0, ascending=False, inplace=True)
@@ -300,56 +477,40 @@ class FeatureSelector:
             for core in _raw_core_features:
                 _core_features.extend(aggregate_feature_imp[core])
                 _core_features = list(set(_core_features))
-            # TODO: prepare dict and save it for next viz step
-        _model_generator: object = copy.deepcopy(self.model)
-        _model_generator.train(x=self.train_df[self.features].values, y=self.train_df[self.target_feature].values)
-        _pred = _model_generator.predict(x=self.test_df[self.features].values)
-        _model_generator.eval(obs=self.test_df[self.target_feature].values, pred=_pred)
-        _model_test_score: float = _model_generator.fitness['test'].get(self.ml_metric)
-        if self.ml_type == 'reg':
-            _threshold: float = _model_test_score * (1 + redundant_threshold)
+            self.plot.update({'Feature Importance (Core Feature Aggregation)': dict(data=_core_imp_matrix,
+                                                                                    plot_type='bar',
+                                                                                    melt=False,
+                                                                                    render=False,
+                                                                                    file_path=os.path.join(str(self.path), 'feature_importance_core_aggregation.html'),
+                                                                                    kwargs=dict(layout={},
+                                                                                                y=_core_imp_matrix['abs_score'].values,
+                                                                                                x=_core_imp_matrix['abs_score'].index.values,
+                                                                                                marker=dict(color=_core_imp_matrix['abs_score'],
+                                                                                                            colorscale='rdylgn',
+                                                                                                            autocolorscale=True
+                                                                                                            )
+                                                                                                )
+                                                                                    )
+                              })
+        if feature_selection_algorithm == 'feature_addition':
+            _feature_selection_result: dict = self._feature_addition(imp_features=_imp_features)
+        elif feature_selection_algorithm == 'filter_based':
+            _feature_selection_result: dict = self._filter_based(imp_features=_imp_features)
+        elif feature_selection_algorithm == 'recursive_feature_elimination':
+            _feature_selection_result: dict = self._recursive_feature_elimination(imp_features=_imp_features)
         else:
-            _threshold: float = _model_test_score * (1 - redundant_threshold)
-        _features: List[str] = copy.deepcopy(_imp_features)
-        _result: dict = dict(redundant=[], important=[], reduction={}, model_metric=[])
-        for i in range(len(_imp_features) - 1, 0, -1):
-            del _features[i]
-            if len(_features) == 1:
-                _result['important'] = _features
-                break
-            _model_generator.train(x=self.train_df[_features].values, y=self.train_df[self.target_feature].values)
-            _pred = _model_generator.predict(x=self.test_df[_features].values)
-            _model_generator.eval(obs=self.test_df[self.target_feature].values, pred=_pred)
-            _new_model_test_score: float = _model_generator.fitness['test'].get(self.ml_metric)
-            if self.ml_type == 'reg':
-                if _threshold <= _new_model_test_score:
-                    _features.append(_imp_features[i])
-                    _result['important'] = _features
-                    break
-                else:
-                    _result['redundant'].append(_imp_features[i])
-                    _result['model_metric'].append(_model_test_score)
-                    _result['reduction'].update({_imp_features[i]: _model_test_score - _new_model_test_score})
-            else:
-                if _threshold >= _new_model_test_score:
-                    _features.append(_imp_features[i])
-                    _result['important'] = _features
-                    break
-                else:
-                    _result['redundant'].append(_imp_features[i])
-                    _result['model_metric'].append(_model_test_score)
-                    _result['reduction'].update({_imp_features[i]: _model_test_score - _new_model_test_score})
-        Log().log(msg=f'Number of redundant features: {len(_result["redundant"])}\nNumber of important features: {len(_result["important"])}')
+            raise FeatureSelectorException(f'Feature selection algorithm ({feature_selection_algorithm}) not supported')
+        Log().log(msg=f'Number of redundant features: {len(_feature_selection_result["redundant"])}\nNumber of important features: {len(_feature_selection_result["important"])}')
         return dict(imp_features=_imp_features,
                     imp_score=self.imp_score,
                     imp_threshold=imp_threshold,
                     imp_core_features=_core_features,
                     imp_processed_features=_processed_features,
-                    redundant=_result['redundant'],
-                    important=_result['important'],
-                    reduction=_result['reduction'],
-                    model_metric=_result['model_metric'],
-                    base_metric=_model_test_score,
-                    threshold=_threshold,
-                    viz=_visualization_data
+                    redundant=_feature_selection_result.get('redundant'),
+                    important=_feature_selection_result.get('important'),
+                    reduction=_feature_selection_result.get('reduction'),
+                    gain=_feature_selection_result.get('gain'),
+                    model_metric=_feature_selection_result.get('model_metric'),
+                    base_metric=_feature_selection_result.get('base_metric'),
+                    threshold=_feature_selection_result.get('threshold')
                     )

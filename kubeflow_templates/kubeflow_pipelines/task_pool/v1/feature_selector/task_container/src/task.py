@@ -12,7 +12,7 @@ import pandas as pd
 import pickle
 
 from custom_logger import Log
-from feature_selector import ENGINEERING_METH, MIN_FEATURES_BY_METH, FeatureEngineer
+from feature_selector import FeatureSelector
 from typing import Any, Dict, NamedTuple, List
 
 PARSER = argparse.ArgumentParser(description="feature importance")
