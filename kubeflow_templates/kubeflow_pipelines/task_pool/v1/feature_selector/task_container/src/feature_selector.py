@@ -11,7 +11,7 @@ import pandas as pd
 import random
 
 from custom_logger import Log
-from evaluate_machine_learning import sml_fitness_score
+from evaluate_machine_learning import sml_fitness_score, EvalClf, EvalReg
 from typing import Dict, List
 
 
@@ -138,8 +138,7 @@ class FeatureSelector:
         _model_generator: object = copy.deepcopy(self.model_generator)
         _model_generator.train(x=self.train_df[imp_features[0]].values, y=self.train_df[self.target_feature].values)
         _pred = _model_generator.predict(x=self.test_df[imp_features[0]].values)
-        _model_generator.eval(obs=self.test_df[self.target_feature].values, pred=_pred)
-        _model_test_score: float = _model_generator.fitness['test'].get(self.ml_metric)
+        _model_test_score: float = self._fitness_metric(x=self.test_df[self.target_feature].values, y=_pred)
         if self.ml_type == 'reg':
             _threshold: float = _model_test_score - (_model_test_score * self.redundant_threshold)
         else:
@@ -154,8 +153,7 @@ class FeatureSelector:
         for i in range(1, len(imp_features) - 1, 1):
             _model_generator.train(x=self.train_df[imp_features[0:i + 1]].values, y=self.train_df[self.target_feature].values)
             _pred = _model_generator.predict(x=self.test_df[imp_features[0:i + 1]].values)
-            _model_generator.eval(obs=self.test_df[self.target_feature].values, pred=_pred)
-            _new_model_test_score: float = _model_generator.fitness['test'].get(self.ml_metric)
+            _new_model_test_score: float = self._fitness_metric(x=self.test_df[self.target_feature].values, y=_pred)
             if self.ml_type == 'reg':
                 if _threshold <= _new_model_test_score:
                     _result['threshold'] = _threshold
@@ -194,6 +192,27 @@ class FeatureSelector:
         Log().log(msg='Apply filter-based algorithm for feature selection based on calculated feature importance score')
         return dict(redundant=imp_features[_top_n_imp_features:len(imp_features)], important=imp_features[0:_top_n_imp_features])
 
+    def _fitness_metric(self, x: np.ndarray, y: np.ndarray) -> float:
+        """
+        Calculate fitness metric
+
+        :param x:
+        :param y:
+        :return: float
+            Metric value
+        """
+        if self.ml_metric == 'rmse_norm':
+            _eval: EvalReg = EvalReg(obs=x, pred=y)
+            return _eval.rmse_norm()
+        elif self.ml_type == 'roc_auc':
+            _eval: EvalClf = EvalClf(obs=x, pred=y)
+            return _eval.roc_auc()
+        elif self.ml_type == 'cohen_kappa':
+            _eval: EvalClf = EvalClf(obs=x, pred=y)
+            return _eval.cohen_kappa()
+        else:
+            raise FeatureSelectorException(f'Metric ({self.ml_metric}) mot supported')
+
     def _game(self, iteration: int):
         """
         Play tournament game
@@ -205,18 +224,22 @@ class FeatureSelector:
             _game: object = copy.deepcopy(self.model_generator)
             _game.train(x=self.train_df[pair].values, y=self.train_df[self.target_feature].values)
             if self.ml_type == 'reg':
-                _pred = _game.predict(x=self.test_df[pair].values)
-                _game.eval(obs=self.test_df[self.target_feature].values, pred=_pred, train_error=False)
-                _game_score: float = sml_fitness_score(ml_metric=tuple([0, _game.fitness['test'].get(self.ml_metric)]),
-                                                       train_test_metric=tuple([_game.fitness['train'].get(self.ml_metric), _game.fitness['test'].get(self.ml_metric)]),
+                _train_pred = _game.predict(x=self.train_df[pair].values)
+                _test_pred = _game.predict(x=self.test_df[pair].values)
+                _model_train_score: float = self._fitness_metric(x=self.train_df[self.target_feature].values, y=_train_pred)
+                _model_test_score: float = self._fitness_metric(x=self.test_df[self.target_feature].values, y=_test_pred)
+                _game_score: float = sml_fitness_score(ml_metric=tuple([0, _model_test_score]),
+                                                       train_test_metric=tuple([_model_train_score, _model_test_score]),
                                                        train_time_in_seconds=_game.train_time,
                                                        capping_to_zero=True
                                                        )
             else:
-                _pred = _game.predict(x=self.test_df[pair].values, probability=False)
-                _game.eval(obs=self.test_df[self.target_feature].values, pred=_pred, train_error=False)
-                _game_score: float = sml_fitness_score(ml_metric=tuple([1, _game.fitness['test'].get(self.ml_metric)]),
-                                                       train_test_metric=tuple([_game.fitness['train'].get(self.ml_metric), _game.fitness['test'].get(self.ml_metric)]),
+                _train_pred = _game.predict(x=self.train_df[pair].values, probability=False)
+                _test_pred = _game.predict(x=self.test_df[pair].values, probability=False)
+                _model_train_score: float = self._fitness_metric(x=self.train_df[self.target_feature].values, y=_train_pred)
+                _model_test_score: float = self._fitness_metric(x=self.test_df[self.target_feature].values, y=_test_pred)
+                _game_score: float = sml_fitness_score(ml_metric=tuple([1, _model_test_score]),
+                                                       train_test_metric=tuple([_model_train_score, _model_test_score]),
                                                        train_time_in_seconds=_game.train_time,
                                                        capping_to_zero=True
                                                        )
@@ -321,8 +344,7 @@ class FeatureSelector:
         _model_generator: object = copy.deepcopy(self.model_generator)
         _model_generator.train(x=self.train_df[imp_features].values, y=self.train_df[self.target_feature].values)
         _pred = _model_generator.predict(x=self.test_df[imp_features].values)
-        _model_generator.eval(obs=self.test_df[self.target_feature].values, pred=_pred)
-        _model_test_score: float = _model_generator.fitness['test'].get(self.ml_metric)
+        _model_test_score: float = self._fitness_metric(x=self.test_df[self.target_feature].values, y=_pred)
         if self.ml_type == 'reg':
             _threshold: float = _model_test_score * (1 + self.redundant_threshold)
         else:
@@ -342,8 +364,7 @@ class FeatureSelector:
                 break
             _model_generator.train(x=self.train_df[_features].values, y=self.train_df[self.target_feature].values)
             _pred = _model_generator.predict(x=self.test_df[_features].values)
-            _model_generator.eval(obs=self.test_df[self.target_feature].values, pred=_pred)
-            _new_model_test_score: float = _model_generator.fitness['test'].get(self.ml_metric)
+            _new_model_test_score: float = self._fitness_metric(x=self.test_df[self.target_feature].values, y=_pred)
             if self.ml_type == 'reg':
                 if _threshold <= _new_model_test_score:
                     _features.append(imp_features[i])
