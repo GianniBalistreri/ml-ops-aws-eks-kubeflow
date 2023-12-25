@@ -7,15 +7,14 @@ Task: ... (Function to run in container)
 import argparse
 import pandas as pd
 
+from custom_logger import Log
 from imputation import Imputation
-from kfp.v2.dsl import OutputPath
 from typing import Any, NamedTuple, List, Union
 
 
 PARSER = argparse.ArgumentParser(description="impute missing values")
 PARSER.add_argument('-data_set_path', type=str, required=True, default=None, help='complete file path of the data set')
-PARSER.add_argument('-feature_names', type=Any, required=True, default=None, help='names of the features to impute')
-PARSER.add_argument('-prediction_feature_name', type=str, required=True, default=None, help='name of the prediction variable')
+PARSER.add_argument('-features', type=list, required=True, default=None, help='names of the features to impute')
 PARSER.add_argument('-imp_meth', type=str, required=False, default='multiple', help='imputation method')
 PARSER.add_argument('-multiple_meth', type=str, required=False, default='random', help='multiple imputation method')
 PARSER.add_argument('-single_meth', type=str, required=False, default='constant', help='single imputation method')
@@ -25,13 +24,13 @@ PARSER.add_argument('-convergence_threshold', type=float, required=False, defaul
 PARSER.add_argument('-mice_config', type=Any, required=False, default=None, help='config for using mice algorithm (multiple imputation)')
 PARSER.add_argument('-imp_config', type=Any, required=False, default=None, help='config for imputation for each feature')
 PARSER.add_argument('-sep', type=str, required=False, default=',', help='column separator')
-PARSER.add_argument('-output_bucket_name', type=str, required=False, default=None, help='output S3 bucket name')
+PARSER.add_argument('-s3_output_path_imputed_data_set', type=str, required=True, default=None, help='S3 file path of the imputed data set output')
 ARGS = PARSER.parse_args()
 
 
 def imputation(data_set_path: str,
-               feature_names: List[str],
-               output_file_path: str,
+               features: List[str],
+               s3_output_path_imputed_data_set: str,
                imp_meth: str = 'multiple',
                multiple_meth: str = 'random',
                single_meth: str = 'constant',
@@ -40,7 +39,7 @@ def imputation(data_set_path: str,
                convergence_threshold: float = 0.99,
                mice_config: dict = None,
                imp_config: dict = None,
-               sep: str = ',',
+               sep: str = ','
                ) -> NamedTuple('outputs', [('imputed_data_set_path', str)]):
     """
     Impute missing values
@@ -48,11 +47,11 @@ def imputation(data_set_path: str,
     :param data_set_path: str
         Complete file path of the data set
 
-    :param feature_names: List[str]
+    :param features: List[str]
         Name of the features
 
-    :param output_file_path: str
-        Complete path of the imputed data set
+    :param s3_output_path_imputed_data_set: str
+        Complete file path of the imputed data set
 
     :param imp_meth: str
             Name of the imputation method
@@ -98,7 +97,7 @@ def imputation(data_set_path: str,
     _df: pd.DataFrame = pd.read_csv(filepath_or_buffer=data_set_path, sep=sep)
     _imputation: Imputation = Imputation(df=_df)
     if imp_config is None:
-        _df_imp: pd.DataFrame = _imputation.main(feature_names=feature_names,
+        _df_imp: pd.DataFrame = _imputation.main(feature_names=features,
                                                  imp_meth=imp_meth,
                                                  multiple_meth=multiple_meth,
                                                  single_meth=single_meth,
@@ -121,5 +120,22 @@ def imputation(data_set_path: str,
                                                                 )
                                       ]
                                 )
-    _df_imp.to_csv(path_or_buf=output_file_path, sep=sep, index=False)
-    return [output_file_path]
+    _df_imp.to_csv(path_or_buf=s3_output_path_imputed_data_set, sep=sep, index=False)
+    Log().log(msg=f'Save imputed data set: {s3_output_path_imputed_data_set}')
+    return [s3_output_path_imputed_data_set]
+
+
+if __name__ == '__main__':
+    imputation(data_set_path=ARGS.data_set_path,
+               features=ARGS.features,
+               s3_output_path_imputed_data_set=ARGS.s3_output_path_imputed_data_set,
+               imp_meth=ARGS.imp_meth,
+               multiple_meth=ARGS.multiple_meth,
+               single_meth=ARGS.single_meth,
+               constant_value=ARGS.constant_value,
+               m=ARGS.m,
+               convergence_threshold=ARGS.convergence_threshold,
+               mice_config=ARGS.mice_config,
+               imp_config=ARGS.imp_config,
+               sep=ARGS.sep
+               )
