@@ -31,7 +31,7 @@ class FeatureSelector:
                  features: List[str],
                  train_df: pd.DataFrame,
                  test_df: pd.DataFrame,
-                 model: object,
+                 model_generator: object,
                  ml_type: str,
                  init_pairs: int = 3,
                  init_games: int = 5,
@@ -41,6 +41,7 @@ class FeatureSelector:
                  max_iter: int = 50,
                  max_players: int = -1,
                  redundant_threshold: float = 0.01,
+                 top_n_imp_features_proportion: float = 0.1
                  ):
         """
         :param target_feature: str
@@ -55,8 +56,8 @@ class FeatureSelector:
         :param test_df: pd.DataFrame
             Testing data set
 
-        :param model: object
-            Instanced model object of a decision tree
+        :param model_generator: object
+            Model generator object that generated a decision tree model
 
         :param ml_type: str
             Abbreviated name of the machine learning type
@@ -87,6 +88,9 @@ class FeatureSelector:
 
         :param redundant_threshold: float
             Threshold for defining metric reduction to define redundant features
+
+        :param top_n_imp_features_proportion: float
+            Proportion of filtered top n important features
         """
         self.target_feature: str = target_feature
         self.features: List[str] = features
@@ -94,7 +98,7 @@ class FeatureSelector:
         self.train_df: pd.DataFrame = train_df
         self.test_df: pd.DataFrame = test_df
         self.n_cases: int = self.train_df.shape[0]
-        self.model: object = model
+        self.model_generator: object = model_generator
         self.ml_type: str = ml_type
         if self.ml_type not in ['clf_binary', 'clf_multi', 'reg']:
             raise FeatureSelectorException(f'ML type ({self.ml_type}) not supported')
@@ -113,6 +117,7 @@ class FeatureSelector:
         self.max_iter: int = max_iter
         self.max_players: int = max_players if max_players > 1 else len(self.features)
         self.redundant_threshold: float = redundant_threshold
+        self.top_n_imp_features_proportion: float = top_n_imp_features_proportion
         self.pairs: List[np.array] = []
         self.tournament: bool = False
         self.shapley_additive_explanation: dict = dict(sum={}, game={}, tournament={})
@@ -130,7 +135,7 @@ class FeatureSelector:
 
         """
         Log().log(msg='Apply feature addition algorithm for feature selection based on calculated feature importance score')
-        _model_generator: object = copy.deepcopy(self.model)
+        _model_generator: object = copy.deepcopy(self.model_generator)
         _model_generator.train(x=self.train_df[imp_features[0]].values, y=self.train_df[self.target_feature].values)
         _pred = _model_generator.predict(x=self.test_df[imp_features[0]].values)
         _model_generator.eval(obs=self.test_df[self.target_feature].values, pred=_pred)
@@ -183,8 +188,11 @@ class FeatureSelector:
         :return: dict
 
         """
+        _top_n_imp_features: int = round(len(imp_features) * self.top_n_imp_features_proportion)
+        if _top_n_imp_features < 2:
+            _top_n_imp_features = 2
         Log().log(msg='Apply filter-based algorithm for feature selection based on calculated feature importance score')
-        return dict(redundant=imp_features[25:len(imp_features)], important=imp_features[0:25], reduction={}, model_metric=[], base_metric=None)
+        return dict(redundant=imp_features[_top_n_imp_features:len(imp_features)], important=imp_features[0:_top_n_imp_features])
 
     def _game(self, iteration: int):
         """
@@ -194,7 +202,7 @@ class FeatureSelector:
             Number of current iteration
         """
         for pair in self.pairs:
-            _game: object = copy.deepcopy(self.model)
+            _game: object = copy.deepcopy(self.model_generator)
             _game.train(x=self.train_df[pair].values, y=self.train_df[self.target_feature].values)
             if self.ml_type == 'reg':
                 _pred = _game.predict(x=self.test_df[pair].values)
@@ -310,7 +318,7 @@ class FeatureSelector:
 
         """
         Log().log(msg='Apply recursive feature elimination algorithm (RFE) for feature selection based on calculated feature importance score')
-        _model_generator: object = copy.deepcopy(self.model)
+        _model_generator: object = copy.deepcopy(self.model_generator)
         _model_generator.train(x=self.train_df[imp_features].values, y=self.train_df[self.target_feature].values)
         _pred = _model_generator.predict(x=self.test_df[imp_features].values)
         _model_generator.eval(obs=self.test_df[self.target_feature].values, pred=_pred)
