@@ -5,6 +5,8 @@ Task: ... (Function to run in container)
 """
 
 import argparse
+import numpy as np
+import os
 import pandas as pd
 
 from aws import save_file_to_s3
@@ -142,6 +144,110 @@ def _generate_kfp_visualization_template(file_paths: List[str],
             raise ModelEvaluationException(f'Kubeflow pipeline visualization ({metric_type}) not supported')
         _metadata['outputs'].append(_plot_config)
     return _metadata
+
+
+def generate_standard_visualizations(obs: np.ndarray,
+                                     pred: np.ndarray,
+                                     ml_type: str,
+                                     file_path: str,
+                                     target_labels: List[str] = None
+                                     ) -> dict:
+    """
+    Generate standard visualization based on the machine learning type
+    :param obs:
+    :param pred:
+    :param ml_type:
+    :param file_path:
+    :param target_labels: List[str]
+    :return:
+    """
+    _plot: dict = {}
+    _best_model_results: pd.DataFrame = pd.DataFrame(data=dict(obs=obs, pred=pred))
+    if ml_type == 'reg':
+        _best_model_results['abs_diff'] = _best_model_results['obs'] - _best_model_results['pred']
+        _best_model_results['rel_diff'] = _best_model_results['obs'] / _best_model_results['pred']
+    elif ml_type == 'clf_multi':
+        _best_model_results['abs_diff'] = _best_model_results['obs'] - _best_model_results['pred']
+    _best_model_results = _best_model_results.round(decimals=4)
+    if ml_type == 'reg':
+        _plot.update({'Prediction Evaluation of final inherited ML Model:': dict(df=_best_model_results,
+                                                                                 features=['obs', 'abs_diff', 'rel_diff', 'pred'],
+                                                                                 color_feature='pred',
+                                                                                 plot_type='parcoords',
+                                                                                 file_path=os.path.join(file_path, 'ga_prediction_evaluation_coords.html'),
+                                                                                 ),
+                      'Prediction vs. Observation of final inherited ML Model:': dict(df=_best_model_results,
+                                                                                      features=['obs', 'pred'],
+                                                                                      plot_type='joint',
+                                                                                      file_path=os.path.join(file_path, 'ga_prediction_scatter_contour.html'),
+                                                                                      )
+                      })
+    else:
+        _confusion_matrix: pd.DataFrame = pd.DataFrame(data=EvalClf(obs=obs, pred=pred).confusion(),
+                                                       index=target_labels,
+                                                       columns=target_labels
+                                                       )
+        _cf_row_sum = pd.DataFrame()
+        _cf_row_sum[' '] = _confusion_matrix.sum()
+        _confusion_matrix = pd.concat([_confusion_matrix, _cf_row_sum.transpose()], axis=0)
+        _cf_col_sum = pd.DataFrame()
+        _cf_col_sum[' '] = _confusion_matrix.transpose().sum()
+        _confusion_matrix = pd.concat([_confusion_matrix, _cf_col_sum], axis=1)
+        _plot.update({'Confusion Matrix:': dict(df=_confusion_matrix,
+                                                features=_confusion_matrix.columns.to_list(),
+                                                plot_type='table',
+                                                file_path=os.path.join(file_path, 'ga_prediction_confusion_table.html'),
+                                                ),
+                      'Confusion Matrix Heatmap:': dict(df=_best_model_results,
+                                                        features=_best_model_results.columns.to_list(),
+                                                        plot_type='heat',
+                                                        file_path=os.path.join(file_path, 'ga_prediction_confusion_heatmap.html'),
+                                                        )
+                      })
+        _confusion_matrix_normalized: pd.DataFrame = pd.DataFrame(data=EvalClf(obs=obs, pred=pred).confusion(normalize='pred'),
+                                                                  index=target_labels,
+                                                                  columns=target_labels
+                                                                  )
+        _plot.update({'Confusion Matrix Normalized Heatmap:': dict(df=_confusion_matrix_normalized,
+                                                                   features=_confusion_matrix_normalized.columns.to_list(),
+                                                                   plot_type='heat',
+                                                                   file_path=os.path.join(file_path, 'ga_prediction_confusion_normal_heatmap.html'),
+                                                                   )
+                      })
+        _plot.update({'Classification Report:': dict(df=_best_model_results,
+                                                     features=_best_model_results.columns.to_list(),
+                                                     plot_type='table',
+                                                     file_path=os.path.join(file_path, 'ga_prediction_clf_report_table.html'),
+                                                     )
+                      })
+        if ml_type == 'clf_multi':
+            _plot.update({'Prediction Evaluation of final inherited ML Model:': dict(df=_best_model_results,
+                                                                                     features=['obs', 'abs_diff', 'pred'],
+                                                                                     color_feature='pred',
+                                                                                     plot_type='parcoords',
+                                                                                     brushing=True,
+                                                                                     file_path=os.path.join(file_path, 'ga_prediction_evaluation_category.html'),
+                                                                                     )
+                          })
+        else:
+            _roc_curve = pd.DataFrame()
+            _roc_curve_values: dict = EvalClf(obs=_best_model_results['obs'],
+                                              pred=_best_model_results['pred']
+                                              ).roc_curve()
+            _roc_curve['roc_curve'] = _roc_curve_values['true_positive_rate'][1]
+            _roc_curve['baseline'] = _roc_curve_values['false_positive_rate'][1]
+            _plot.update({'ROC-AUC Curve:': dict(df=_roc_curve,
+                                                 features=['roc_curve', 'baseline'],
+                                                 time_features=['baseline'],
+                                                 plot_type='line',
+                                                 melt=True,
+                                                 use_auto_extensions=False,
+                                                 # xaxis_label=['False Positive Rate'],
+                                                 # yaxis_label=['True Positive Rate'],
+                                                 file_path=os.path.join(file_path, 'ga_prediction_roc_auc_curve.html'),
+                                                 )
+                          })
+    return _plot
 
 
 def evaluate_machine_learning(ml_type: str,
