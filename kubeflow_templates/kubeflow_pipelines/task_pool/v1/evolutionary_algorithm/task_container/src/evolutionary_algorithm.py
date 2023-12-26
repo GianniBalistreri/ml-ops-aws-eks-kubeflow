@@ -6,8 +6,9 @@ Evolutionary algorithm
 
 import copy
 import numpy as np
-import random
+import os
 import pandas as pd
+import random
 
 from custom_logger import Log
 from datetime import datetime
@@ -35,8 +36,9 @@ class EvolutionaryAlgorithm:
         """
         self.metadata: dict = metadata
         self.parent_child_pairs: List[tuple] = []
+        self.plot: dict = {}
         if self.metadata is not None:
-            if len(self.metadata['end_time']) > 0 and len(self.metadata['start_time']) == len(self.metadata['end_time']):
+            if 0 < len(self.metadata['start_time']) == len(self.metadata['end_time']):
                 _current_time: datetime = datetime.now()
                 if self.metadata['current_iteration'] > 0 and _current_time > self.metadata['end_time'][-1]:
                     self.metadata['start_time'].append(_current_time)
@@ -355,46 +357,57 @@ class EvolutionaryAlgorithm:
         :param environment_reaction: dict
         """
         self.metadata['iteration_history']['time'].append((datetime.now() - self.metadata['start_time'][-1]).seconds)
-        if self.metadata['current_iteration_algorithm'][-1] == 'ga':
-            _fittest_individual_previous_iteration: List[int] = self.metadata['parents_idx']
+        if self.metadata['iteration_history']['population'].get(f'iter_{self.metadata["current_iteration"]}') is None:
+            self.metadata['iteration_history']['population'].update({f'iter_{self.metadata["current_iteration"]}': dict(id=[],
+                                                                                                                        model=[],
+                                                                                                                        parent=[],
+                                                                                                                        fitness=[]
+                                                                                                                        )
+                                                                     })
+        if self.metadata['current_iteration'] == 0:
+            _fittest_individual_previous_iteration: List[int] = []
         else:
-            _fittest_individual_previous_iteration: List[int] = [self.metadata['best_global_idx'][-1], self.metadata['best_local_idx'][-1]]
-        for i in range(0, self.metadata['pop_size'], 1):
-            if i in _fittest_individual_previous_iteration:
-                pass
+            if self.metadata['current_iteration_algorithm'][-1] == 'ga':
+                _fittest_individual_previous_iteration: List[int] = self.metadata['parents_idx']
             else:
+                _fittest_individual_previous_iteration: List[int] = [self.metadata['best_global_idx'][-1], self.metadata['best_local_idx'][-1]]
+        for i in range(0, self.metadata['pop_size'], 1):
+            if i not in _fittest_individual_previous_iteration:
                 # current iteration metadata:
-                self.metadata['current_iteration_meta_data']['id'].append(environment_reaction[str(i)]['id'])
-                self.metadata['current_iteration_meta_data']['model_name'].append(environment_reaction[str(i)]['model_name'])
-                self.metadata['current_iteration_meta_data']['param'].append(environment_reaction[str(i)]['param'])
-                self.metadata['current_iteration_meta_data']['param_changed'].append(environment_reaction[str(i)]['param_changed'])
-                self.metadata['current_iteration_meta_data']['fitness_metric'].append(environment_reaction[str(i)]['fitness_metric'])
-                self.metadata['current_iteration_meta_data']['fitness_score'].append(environment_reaction[str(i)]['fitness_score'])
+                if self.metadata["current_iteration"] == 0:
+                    self.metadata['current_iteration_meta_data']['id'].append(environment_reaction[str(i)]['id'])
+                    self.metadata['current_iteration_meta_data']['model_name'].append(environment_reaction[str(i)]['model_name'])
+                    self.metadata['current_iteration_meta_data']['param'].append(environment_reaction[str(i)]['param'])
+                    self.metadata['current_iteration_meta_data']['param_changed'].append(environment_reaction[str(i)]['param_changed'])
+                    self.metadata['current_iteration_meta_data']['fitness_metric'].append(environment_reaction[str(i)]['fitness_metric'])
+                    self.metadata['current_iteration_meta_data']['fitness_score'].append(environment_reaction[str(i)]['fitness_score'])
+                else:
+                    self.metadata['current_iteration_meta_data']['id'][i] = copy.deepcopy(environment_reaction[str(i)]['id'])
+                    self.metadata['current_iteration_meta_data']['model_name'][i] = copy.deepcopy(environment_reaction[str(i)]['model_name'])
+                    self.metadata['current_iteration_meta_data']['param'][i] = copy.deepcopy(environment_reaction[str(i)]['param'])
+                    self.metadata['current_iteration_meta_data']['param_changed'][i] = copy.deepcopy(environment_reaction[str(i)]['param_changed'])
+                    self.metadata['current_iteration_meta_data']['fitness_metric'][i] = copy.deepcopy(environment_reaction[str(i)]['fitness_metric'])
+                    self.metadata['current_iteration_meta_data']['fitness_score'][i] = copy.deepcopy(environment_reaction[str(i)]['fitness_score'])
                 Log().log(f'Fitness score {environment_reaction[str(i)]["fitness_score"]} of individual {i}')
                 Log().log(f'Fitness metric {environment_reaction[str(i)]["fitness_metric"]} of individual {i}')
                 # evolution history:
                 self.metadata['evolution_history']['id'].append(environment_reaction[str(i)]['id'])
-                self.metadata['evolution_history']['iteration'].append(_metadata['current_iteration'])
+                self.metadata['evolution_history']['iteration'].append(self.metadata['current_iteration'])
                 self.metadata['evolution_history']['model_name'].append(environment_reaction[str(i)]['model_name'])
                 self.metadata['evolution_history']['parent'].append(environment_reaction[str(i)]['parent'])
                 self.metadata['evolution_history']['change_type'].append(environment_reaction[str(i)]['change_type'])
                 self.metadata['evolution_history']['fitness_score'].append(environment_reaction[str(i)]['fitness_score'])
                 self.metadata['evolution_history']['ml_metric'].append(environment_reaction[str(i)]['fitness_metric'])
-                self.metadata['evolution_history']['train_test_diff'].append(environment_reaction[str(i)]['fitness_score'])
-                self.metadata['evolution_history']['train_time_in_seconds'].append(environment_reaction[str(i)]['fitness_score'])
-                self.metadata['evolution_history']['original_ml_train_metric'].append(environment_reaction[str(i)]['fitness_score'])
-                self.metadata['evolution_history']['original_ml_test_metric'].append(environment_reaction[str(i)]['fitness_score'])
-                self.evolution_history.get('id').append(copy.deepcopy(self.population[idx].id))
-                self.evolution_history.get('generation').append(copy.deepcopy(self.current_generation_meta_data['generation']))
-                self.evolution_history.get('model_name').append(copy.deepcopy(self.population[idx].model_name))
-                self.evolution_history.get('change_type').append(copy.deepcopy(self.population[idx].model_param_mutation))
-                self.generation_history['population']['gen_{}'.format(self.current_generation_meta_data['generation'])]['id'].append(copy.deepcopy(self.population[idx].id))
-                self.generation_history['population']['gen_{}'.format(self.current_generation_meta_data['generation'])]['model'].append(copy.deepcopy(self.population[idx].model_name))
+                self.metadata['evolution_history']['train_test_diff'].append(environment_reaction[str(i)]['train_test_diff'])
+                self.metadata['evolution_history']['train_time_in_seconds'].append(environment_reaction[str(i)]['train_time_in_seconds'])
+                self.metadata['evolution_history']['original_ml_train_metric'].append(environment_reaction[str(i)]['original_ml_train_metric'])
+                self.metadata['evolution_history']['original_ml_test_metric'].append(environment_reaction[str(i)]['original_ml_test_metric'])
         # evolution gradient:
-        self.metadata['evolution_gradient']['min'].append(copy.deepcopy(min(self.metadata['current_generation_meta_data'].get('fitness_score'))))
-        self.metadata['evolution_gradient']['median'].append(copy.deepcopy(np.median(self.metadata['current_generation_meta_data'].get('fitness_score'))))
-        self.metadata['evolution_gradient']['mean'].append(copy.deepcopy(np.mean(self.metadata['current_generation_meta_data'].get('fitness_score'))))
-        self.metadata['evolution_gradient']['max'].append(copy.deepcopy(max(self.metadata['current_generation_meta_data'].get('fitness_score'))))
+        _current_iteration_fitness_scores: List[float] = self.metadata['current_iteration_meta_data']['fitness_score']
+        self.metadata['evolution_gradient']['min'].append(copy.deepcopy(min(_current_iteration_fitness_scores)))
+        self.metadata['evolution_gradient']['median'].append(copy.deepcopy(np.median(_current_iteration_fitness_scores)))
+        self.metadata['evolution_gradient']['mean'].append(copy.deepcopy(np.mean(_current_iteration_fitness_scores)))
+        self.metadata['evolution_gradient']['max'].append(copy.deepcopy(max(_current_iteration_fitness_scores)))
         Log().log(msg=f'Fitness: Max    -> {self.metadata["evolution_gradient"].get("max")[-1]}')
         Log().log(msg=f'Fitness: Median -> {self.metadata["evolution_gradient"].get("median")[-1]}')
         Log().log(msg=f'Fitness: Mean   -> {self.metadata["evolution_gradient"].get("mean")[-1]}')
@@ -491,11 +504,7 @@ class EvolutionaryAlgorithm:
                                                               param=[],
                                                               param_change=[]
                                                               ),
-                             iteration_history=dict(population=dict(id=[],
-                                                                    model=[],
-                                                                    parent=[],
-                                                                    fitness=[]
-                                                                    ),
+                             iteration_history=dict(population={},
                                                     inheritance={},
                                                     time=[]
                                                     ),
@@ -520,6 +529,170 @@ class EvolutionaryAlgorithm:
                              start_time=[datetime.now()],
                              end_time=[]
                              )
+
+    def generate_visualization_config(self,
+                                      path: str,
+                                      results_table: bool = True,
+                                      model_distribution: bool = False,
+                                      model_evolution: bool = True,
+                                      param_distribution: bool = False,
+                                      train_time_distribution: bool = True,
+                                      breeding_map: bool = False,
+                                      breeding_graph: bool = False,
+                                      fitness_distribution: bool = True,
+                                      fitness_evolution: bool = True,
+                                      fitness_dimensions: bool = True,
+                                      per_iteration: bool = True,
+                                      ) -> None:
+        """
+        Generate visualization configuration
+
+        :param results_table: bool
+            Evolution results table
+                -> Table Chart
+
+        :param model_evolution: bool
+            Evolution of individuals
+                -> Scatter Chart
+
+        :param model_distribution: bool
+            Distribution of used model types
+                -> Bar Chart / Pie Chart
+
+        :param param_distribution: bool
+            Distribution of used model parameter combination
+                -> Tree Map / Sunburst
+
+        :param train_time_distribution: bool
+            Distribution of training time
+                -> Violin
+
+        :param breeding_map: bool
+            Breeding evolution as
+                -> Heat Map
+
+        :param breeding_graph: bool
+            Breeding evolution as
+                -> Network Graph
+
+        :param fitness_distribution: bool
+            Distribution of fitness metric
+                -> Ridge Line Chart
+
+        :param fitness_evolution: bool
+            Evolution of fitness metric
+                -> Line Chart
+
+        :param fitness_dimensions: bool
+            Calculated loss value for each dimension in fitness metric
+                -> Radar Chart
+                -> Tree Map
+
+        :param per_iteration: bool
+            Visualize results of each generation in detail or visualize just evolutionary results
+        """
+        _charts: dict = {}
+        _evolution_history_data: pd.DataFrame = pd.DataFrame(data=self.evolution_history)
+        _m: List[str] = ['fitness_score', 'ml_metric', 'train_test_diff']
+        _evolution_history_data[_m] = _evolution_history_data[_m].round(decimals=2)
+        _evolution_gradient_data: pd.DataFrame = pd.DataFrame(data=self.evolution_gradient)
+        _evolution_gradient_data['generation'] = [i for i in range(0, len(self.evolution_gradient.get('max')), 1)]
+        if results_table:
+            self.plot.update({'Results of Genetic Algorithm:': dict(df=_evolution_history_data,
+                                                                    features=_evolution_history_data.columns.to_list(),
+                                                                    plot_type='table',
+                                                                    file_path=os.path.join(self.output_file_path, 'ga_metadata_table.html'),
+                                                                    )
+                              })
+        if model_evolution:
+            self.plot.update({'Evolution of used ML Models:': dict(df=_evolution_history_data,
+                                                                   features=['fitness_score', 'iteration'],
+                                                                   color_feature='model',
+                                                                   plot_type='scatter',
+                                                                   melt=True,
+                                                                   file_path=os.path.join(self.output_file_path, 'ga_model_evolution.html'),
+                                                                   )
+                              })
+        if model_distribution:
+            if self.metadata.get('models') is None or len(self.metadata.get('models')) > 1:
+                self.plot.update({'Distribution of used ML Models:': dict(df=_evolution_history_data,
+                                                                          features=['model'],
+                                                                          group_by=['iteration'] if per_iteration else None,
+                                                                          plot_type='pie',
+                                                                          file_path=os.path.join(self.output_file_path, 'ga_model_distribution.html'),
+                                                                          )
+                                  })
+        if param_distribution:
+            self.plot.update({'Distribution of ML Model parameters:': dict(data=_evolution_history_data,
+                                                                           features=['model_param'],
+                                                                           group_by=['generation'] if per_iteration else None,
+                                                                           plot_type='tree',
+                                                                           file_path=os.path.join(self.output_file_path, 'ga_parameter_treemap.html')
+                                                                         )
+                            })
+        if train_time_distribution:
+            self.plot.update({'Distribution of elapsed Training Time:': dict(df=_evolution_history_data,
+                                                                             features=['train_time_in_seconds'],
+                                                                             group_by=['model'],
+                                                                             melt=True,
+                                                                             plot_type='violin',
+                                                                             use_auto_extensions=False,
+                                                                             file_path=os.path.join(self.output_file_path, 'ga_training_time_distribution.html')
+                                                                             )
+                              })
+        if breeding_map:
+            _breeding_map: pd.DataFrame = pd.DataFrame(data=dict(gen_0=self.generation_history['population']['gen_0'].get('fitness')), index=[0])
+            for i in self.generation_history['population'].keys():
+                if i != 'iter_0':
+                    _breeding_map[i] = self.generation_history['population'][i].get('fitness')
+            self.plot.update({'Breeding Heat Map:': dict(df=_breeding_map,
+                                                         features=_breeding_map.columns.to_list(),
+                                                         plot_type='heat',
+                                                         file_path=os.path.join(self.output_file_path, 'ga_breeding_heatmap.html')
+                                                         )
+                              })
+        if breeding_graph:
+            self.plot.update({'Breeding Network Graph:': dict(df=_evolution_history_data,
+                                                              features=['generation', 'fitness_score'],
+                                                              graph_features=dict(node='id', edge='parent'),
+                                                              color_feature='model',
+                                                              plot_type='network',
+                                                              file_path=os.path.join(self.output_file_path, 'ga_breeding_graph.html')
+                                                              )
+                              })
+        if fitness_distribution:
+            self.plot.update({'Distribution of Fitness Metric:': dict(df=_evolution_history_data,
+                                                                      features=['fitness_score'],
+                                                                      time_features=['generation'],
+                                                                      plot_type='ridgeline',
+                                                                      file_path=os.path.join(self.output_file_path, 'ga_fitness_score_distribution_per_generation.html')
+                                                                      )
+                              })
+        if fitness_dimensions:
+            self.plot.update({'Evolution Meta Data:': dict(df=_evolution_history_data,
+                                                           features=['train_time_in_seconds',
+                                                                     'ml_metric',
+                                                                     'train_test_diff',
+                                                                     'fitness_score',
+                                                                     'parent',
+                                                                     'id',
+                                                                     'generation',
+                                                                     'model'
+                                                                     ],
+                                                           color_feature='model',
+                                                           plot_type='parcoords',
+                                                           file_path=os.path.join(self.output_file_path, 'ga_metadata_evolution_coords.html')
+                                                           )
+                              })
+        if fitness_evolution:
+            self.plot.update({'Fitness Evolution:': dict(df=_evolution_gradient_data,
+                                                         features=['min', 'median', 'mean', 'max'],
+                                                         time_features=['generation'],
+                                                         melt=True,
+                                                         plot_type='line',
+                                                         file_path=os.path.join(self.output_file_path, 'ga_evolution_fitness_score.html')
+                                                         )
+                              })
 
     def main(self) -> List[dict]:
         """

@@ -5,15 +5,18 @@ Task: ... (Function to run in container)
 """
 
 import argparse
+import copy
+import os
 
 from aws import file_exists, load_file_from_s3, save_file_to_s3
+from custom_logger import Log
 from evolutionary_algorithm import EvolutionaryAlgorithm
 from file_handler import file_handler
 from typing import Any, List, NamedTuple
 
 
 PARSER = argparse.ArgumentParser(description="evolutionary algorithm")
-PARSER.add_argument('-metadata_file_path', type=str, required=True, default=None, help='file path of the evolutionary algorithm metadata')
+PARSER.add_argument('-s3_metadata_file_path', type=str, required=True, default=None, help='S3 file path of the evolutionary algorithm metadata')
 PARSER.add_argument('-target', type=str, required=True, default=None, help='name of the target feature')
 PARSER.add_argument('-features', type=list, required=True, default=None, help='name of the features')
 PARSER.add_argument('-models', type=list, required=True, default=None, help='name of the machine learning models')
@@ -36,7 +39,6 @@ PARSER.add_argument('-re_populate', type=int, required=False, default=1, help='w
 PARSER.add_argument('-re_populate_threshold', type=float, required=False, default=3.0, help='fitness score threshold for re-population')
 PARSER.add_argument('-max_trials', type=int, required=False, default=2, help='number of trials for re-population before continuing evolution process')
 PARSER.add_argument('-environment_reaction', type=Any, required=False, default=None, help='action of the generator and the according reactions of the environment')
-PARSER.add_argument('-output_file_path_metadata', type=str, required=True, default=None, help='file path of valid features')
 PARSER.add_argument('-output_file_path_evolve', type=str, required=False, default=None, help='file path of the proportion of valid features')
 PARSER.add_argument('-output_file_path_stopping_reason', type=str, required=False, default=None, help='complete customized file path of the data health check output')
 PARSER.add_argument('-output_file_path_generator_instructions', type=str, required=False, default=None, help='complete customized file path of the missing data output')
@@ -44,16 +46,17 @@ PARSER.add_argument('-output_file_path_current_iteration_meta_data', type=str, r
 PARSER.add_argument('-output_file_path_iteration_history', type=str, required=False, default=None, help='file path of duplicated features')
 PARSER.add_argument('-output_file_path_evolution_history', type=str, required=False, default=None, help='file path of valid features')
 PARSER.add_argument('-output_file_path_evolution_gradient', type=str, required=False, default=None, help='file path of the proportion of valid features')
+PARSER.add_argument('-s3_output_file_path_modeling', type=str, required=True, default=None, help='S3 file path of the modeling steps output')
+PARSER.add_argument('-s3_output_file_path_visualization', type=str, required=True, default=None, help='S3 file path of the visualization output')
 ARGS = PARSER.parse_args()
 
 
-def evolutionary_algorithm(metadata_file_path: str,
+def evolutionary_algorithm(s3_metadata_file_path: str,
                            target: str,
                            features: List[str],
                            models: List[str],
                            train_data_file_path: str,
                            test_data_file_path: str,
-                           output_file_path_metadata: str,
                            output_file_path_evolve: str,
                            output_file_path_stopping_reason: str,
                            output_file_path_generator_instructions: str,
@@ -61,6 +64,8 @@ def evolutionary_algorithm(metadata_file_path: str,
                            output_file_path_iteration_history: str,
                            output_file_path_evolution_history: str,
                            output_file_path_evolution_gradient: str,
+                           s3_output_file_path_modeling: str,
+                           s3_output_file_path_visualization: str,
                            val_data_file_path: str = None,
                            algorithm: str = 'ga',
                            max_iterations: int = 10,
@@ -78,8 +83,7 @@ def evolutionary_algorithm(metadata_file_path: str,
                            re_populate_threshold: float = 3.0,
                            max_trials: int = 2,
                            environment_reaction: dict = None
-                           ) -> NamedTuple('outputs', [('metadata', dict),
-                                                       ('evolve', str),
+                           ) -> NamedTuple('outputs', [('evolve', str),
                                                        ('stopping_reason', str),
                                                        ('generator_instructions', dict),
                                                        ('current_generation_meta_data', dict),
@@ -91,13 +95,12 @@ def evolutionary_algorithm(metadata_file_path: str,
     """
     Optimize machine learning models
 
-    :param metadata_file_path:
+    :param s3_metadata_file_path:
     :param target:
     :param features:
     :param models:
     :param train_data_file_path:
     :param test_data_file_path:
-    :param output_file_path_metadata:
     :param output_file_path_evolve:
     :param output_file_path_stopping_reason:
     :param output_file_path_generator_instructions:
@@ -105,6 +108,12 @@ def evolutionary_algorithm(metadata_file_path: str,
     :param output_file_path_iteration_history:
     :param output_file_path_evolution_history:
     :param output_file_path_evolution_gradient:
+    :param s3_output_file_path_modeling: str
+        Path of the output files of the following modeling steps
+
+    :param s3_output_file_path_visualization: str
+        Path of the output files of the following visualization step
+
     :param val_data_file_path:
     :param algorithm:
     :param max_iterations:
@@ -125,8 +134,8 @@ def evolutionary_algorithm(metadata_file_path: str,
     :return: NamedTuple
 
     """
-    if file_exists(file_path=metadata_file_path):
-        _metadata: dict = load_file_from_s3(file_path=metadata_file_path)
+    if file_exists(file_path=s3_metadata_file_path):
+        _metadata: dict = load_file_from_s3(file_path=s3_metadata_file_path)
         _evolutionary_algorithm: EvolutionaryAlgorithm = EvolutionaryAlgorithm(metadata=_metadata)
         if environment_reaction is not None:
             _evolutionary_algorithm.gather_metadata(environment_reaction=environment_reaction)
@@ -166,6 +175,19 @@ def evolutionary_algorithm(metadata_file_path: str,
             else:
                 _evolve: str = 'false'
                 _generator_instructions: List[dict] = []
+                _evolutionary_algorithm.generate_visualization_config(path=s3_output_file_path_visualization,
+                                                                      results_table=True,
+                                                                      model_distribution=True,
+                                                                      model_evolution=True,
+                                                                      param_distribution=False,
+                                                                      train_time_distribution=True,
+                                                                      breeding_map=False,
+                                                                      breeding_graph=False,
+                                                                      fitness_distribution=True,
+                                                                      fitness_evolution=True,
+                                                                      fitness_dimensions=True,
+                                                                      per_iteration=True
+                                                                      )
     else:
         _evolutionary_algorithm: EvolutionaryAlgorithm = EvolutionaryAlgorithm(metadata=None)
         _evolutionary_algorithm.generate_metadata_template(algorithm=algorithm,
@@ -193,19 +215,29 @@ def evolutionary_algorithm(metadata_file_path: str,
         _evolve: str = 'false'
         _stopping_reason: str = None
         _generator_instructions: List[dict] = _evolutionary_algorithm.populate()
-    for file_path, obj in [(output_file_path_metadata, _evolutionary_algorithm.metadata),
-                           (output_file_path_evolve, _evolve),
+    _enriched_generator_instructions: List[dict] = []
+    if len(_generator_instructions) > 0:
+        for individual in _generator_instructions:
+            _instructions: dict = copy.deepcopy(individual)
+            _instructions.update({'file_path_model_artifact': os.path.join(s3_output_file_path_modeling, f'model_artifact_{_instructions.get("id")}.p'),
+                                  'file_path_model_param': os.path.join(s3_output_file_path_modeling, f'model_param{_instructions.get("id")}.json'),
+                                  'file_path_model_fitness': os.path.join(s3_output_file_path_modeling, f'model_fitness{_instructions.get("id")}.json'),
+                                  })
+            _enriched_generator_instructions.append(_instructions)
+    for file_path, obj in [(output_file_path_evolve, _evolve),
                            (output_file_path_stopping_reason, _stopping_reason),
-                           (output_file_path_generator_instructions, _generator_instructions),
+                           (output_file_path_generator_instructions, _enriched_generator_instructions),
                            (output_file_path_current_iteration_meta_data, _evolutionary_algorithm.metadata['current_iteration_meta_data']),
                            (output_file_path_iteration_history, _evolutionary_algorithm.metadata['iteration_history']),
                            (output_file_path_evolution_history, _evolutionary_algorithm.metadata['evolution_history']),
                            (output_file_path_evolution_gradient, _evolutionary_algorithm.metadata['evolution_gradient'])
                            ]:
         file_handler(file_path=file_path, obj=obj)
-    return [_evolutionary_algorithm.metadata,
-            _evolve,
+    save_file_to_s3(file_path=s3_metadata_file_path, obj=_evolutionary_algorithm.metadata)
+    Log().log(msg=f'Save evolutionary metadata: {s3_metadata_file_path}')
+    return [_evolve,
             _stopping_reason,
+            _enriched_generator_instructions,
             _evolutionary_algorithm.metadata['current_iteration_meta_data'],
             _evolutionary_algorithm.metadata['iteration_history'],
             _evolutionary_algorithm.metadata['evolution_history'],
@@ -214,13 +246,12 @@ def evolutionary_algorithm(metadata_file_path: str,
 
 
 if __name__ == '__main__':
-    evolutionary_algorithm(metadata_file_path=ARGS.metadata_file_path,
+    evolutionary_algorithm(s3_metadata_file_path=ARGS.s3_metadata_file_path,
                            target=ARGS.target,
                            features=ARGS.features,
                            models=ARGS.models,
                            train_data_file_path=ARGS.train_data_file_path,
                            test_data_file_path=ARGS.test_data_file_path,
-                           output_file_path_metadata=ARGS.output_file_path_metadata,
                            output_file_path_evolve=ARGS.output_file_path_evolve,
                            output_file_path_stopping_reason=ARGS.output_file_path_stopping_reason,
                            output_file_path_generator_instructions=ARGS.output_file_path_generator_instructions,
