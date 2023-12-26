@@ -39,6 +39,17 @@ PARSER.add_argument('-re_populate', type=int, required=False, default=1, help='w
 PARSER.add_argument('-re_populate_threshold', type=float, required=False, default=3.0, help='fitness score threshold for re-population')
 PARSER.add_argument('-max_trials', type=int, required=False, default=2, help='number of trials for re-population before continuing evolution process')
 PARSER.add_argument('-environment_reaction', type=Any, required=False, default=None, help='action of the generator and the according reactions of the environment')
+PARSER.add_argument('-results_table', type=int, required=False, default=1, help='enable evolution results table visualization')
+PARSER.add_argument('-model_distribution', type=int, required=False, default=1, help='enable evolution model distribution visualization')
+PARSER.add_argument('-model_evolution', type=int, required=False, default=1, help='enable model evolution visualization')
+PARSER.add_argument('-param_distribution', type=int, required=False, default=0, help='enable evolution param distribution visualization')
+PARSER.add_argument('-train_time_distribution', type=int, required=False, default=1, help='enable evolution training time distribution visualization')
+PARSER.add_argument('-breeding_map', type=int, required=False, default=0, help='enable evolution breeding map visualization')
+PARSER.add_argument('-breeding_graph', type=int, required=False, default=0, help='enable evolution breeding graph visualization')
+PARSER.add_argument('-fitness_distribution', type=int, required=False, default=1, help='enable evolution fitness distribution visualization')
+PARSER.add_argument('-fitness_evolution', type=int, required=False, default=1, help='enable evolution fitness evolution visualization')
+PARSER.add_argument('-fitness_dimensions', type=int, required=False, default=1, help='enable evolution fitness dimension visualization')
+PARSER.add_argument('-per_iteration', type=int, required=False, default=1, help='enable evolution per iteration visualization')
 PARSER.add_argument('-output_file_path_evolve', type=str, required=False, default=None, help='file path of the proportion of valid features')
 PARSER.add_argument('-output_file_path_stopping_reason', type=str, required=False, default=None, help='complete customized file path of the data health check output')
 PARSER.add_argument('-output_file_path_generator_instructions', type=str, required=False, default=None, help='complete customized file path of the missing data output')
@@ -82,7 +93,18 @@ def evolutionary_algorithm(s3_metadata_file_path: str,
                            re_populate: bool = False,
                            re_populate_threshold: float = 3.0,
                            max_trials: int = 2,
-                           environment_reaction: dict = None
+                           environment_reaction: dict = None,
+                           results_table: bool = True,
+                           model_distribution: bool = True,
+                           model_evolution: bool = True,
+                           param_distribution: bool = False,
+                           train_time_distribution: bool = True,
+                           breeding_map: bool = False,
+                           breeding_graph: bool = False,
+                           fitness_distribution: bool = True,
+                           fitness_evolution: bool = True,
+                           fitness_dimensions: bool = True,
+                           per_iteration: bool = True
                            ) -> NamedTuple('outputs', [('evolve', str),
                                                        ('stopping_reason', str),
                                                        ('generator_instructions', dict),
@@ -176,17 +198,17 @@ def evolutionary_algorithm(s3_metadata_file_path: str,
                 _evolve: str = 'false'
                 _generator_instructions: List[dict] = []
                 _evolutionary_algorithm.generate_visualization_config(path=s3_output_file_path_visualization,
-                                                                      results_table=True,
-                                                                      model_distribution=True,
-                                                                      model_evolution=True,
-                                                                      param_distribution=False,
-                                                                      train_time_distribution=True,
-                                                                      breeding_map=False,
-                                                                      breeding_graph=False,
-                                                                      fitness_distribution=True,
-                                                                      fitness_evolution=True,
-                                                                      fitness_dimensions=True,
-                                                                      per_iteration=True
+                                                                      results_table=results_table,
+                                                                      model_distribution=model_distribution,
+                                                                      model_evolution=model_evolution,
+                                                                      param_distribution=param_distribution,
+                                                                      train_time_distribution=train_time_distribution,
+                                                                      breeding_map=breeding_map,
+                                                                      breeding_graph=breeding_graph,
+                                                                      fitness_distribution=fitness_distribution,
+                                                                      fitness_evolution=fitness_evolution,
+                                                                      fitness_dimensions=fitness_dimensions,
+                                                                      per_iteration=per_iteration
                                                                       )
     else:
         _evolutionary_algorithm: EvolutionaryAlgorithm = EvolutionaryAlgorithm(metadata=None)
@@ -259,21 +281,34 @@ if __name__ == '__main__':
                            output_file_path_iteration_history=ARGS.output_file_path_iteration_history,
                            output_file_path_evolution_history=ARGS.output_file_path_evolution_history,
                            output_file_path_evolution_gradient=ARGS.output_file_path_evolution_gradient,
+                           s3_output_file_path_modeling=ARGS.s3_output_file_path_modeling,
+                           s3_output_file_path_visualization=ARGS.s3_output_file_path_visualization,
                            val_data_file_path=ARGS.val_data_file_path,
                            algorithm=ARGS.algorithm,
                            max_iterations=ARGS.max_iterations,
                            pop_size=ARGS.pop_size,
                            burn_in_iterations=ARGS.burn_in_iterations,
-                           warm_start=ARGS.warm_start,
+                           warm_start=bool(ARGS.warm_start),
                            change_rate=ARGS.change_rate,
                            change_prob=ARGS.change_prob,
                            parents_ratio=ARGS.parents_ratio,
                            early_stopping=ARGS.early_stopping,
-                           convergence=ARGS.convergence,
+                           convergence=bool(ARGS.convergence),
                            convergence_measure=ARGS.convergence_measure,
                            timer_in_seconds=ARGS.timer_in_seconds,
-                           re_populate=ARGS.re_populate,
+                           re_populate=bool(ARGS.re_populate),
                            re_populate_threshold=ARGS.re_populate_threshold,
                            max_trials=ARGS.max_trials,
-                           environment_reaction=ARGS.environment_reaction
+                           environment_reaction=ARGS.environment_reaction,
+                           results_table=bool(ARGS.results_table),
+                           model_distribution=bool(ARGS.model_distribution),
+                           model_evolution=bool(ARGS.model_evolution),
+                           param_distribution=bool(ARGS.param_distribution),
+                           train_time_distribution=bool(ARGS.train_time_distribution),
+                           breeding_map=bool(ARGS.breeding_map),
+                           breeding_graph=bool(ARGS.breeding_graph),
+                           fitness_distribution=bool(ARGS.fitness_distribution),
+                           fitness_evolution=bool(ARGS.fitness_evolution),
+                           fitness_dimensions=bool(ARGS.fitness_dimensions),
+                           per_iteration=bool(ARGS.per_iteration)
                            )
