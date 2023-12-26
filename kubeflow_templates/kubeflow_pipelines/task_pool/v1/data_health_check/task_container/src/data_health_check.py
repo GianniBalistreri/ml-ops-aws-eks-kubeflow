@@ -43,7 +43,7 @@ class DataHealthCheck:
         """
         for invalid in INVALID_VALUES:
             self.df.replace(to_replace=invalid, value=np.nan, inplace=True)
-        Log().log(msg='Converted invalid values to missing values (NaN)')
+            Log().log(msg=f'Converted invalid values ({invalid}) to missing values (NaN)')
 
     def _is_duplicated(self, feature_name: str) -> bool:
         """
