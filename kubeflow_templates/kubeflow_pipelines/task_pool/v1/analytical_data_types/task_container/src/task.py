@@ -9,6 +9,7 @@ import pandas as pd
 
 from analytical_data_types import AnalyticalDataTypes
 from aws import save_file_to_s3
+from custom_logger import Log
 from file_handler import file_handler
 from typing import Any, NamedTuple, Tuple
 
@@ -24,7 +25,7 @@ ARGS = PARSER.parse_args()
 
 
 def analytical_data_types(data_set_path: str,
-                          output_file_path_analytical_data_type: str,
+                          output_file_path_analytical_data_types: str,
                           max_categories: int = 50,
                           date_edges: Tuple[str, str] = None,
                           sep: str = ',',
@@ -36,7 +37,7 @@ def analytical_data_types(data_set_path: str,
     :param data_set_path: str
         Complete file path of the data set
 
-    :param output_file_path_analytical_data_type: str
+    :param output_file_path_analytical_data_types: str
         Path of the analytical data type information to save
 
     :param max_categories: int
@@ -49,7 +50,7 @@ def analytical_data_types(data_set_path: str,
         Separator
 
     :param s3_output_file_path_analytical_data_types: str
-        Compelte file path of the analytical data types output
+        Complete file path of the analytical data types output
 
     :return: NamedTuple
         Analytical data types of given features
@@ -61,15 +62,16 @@ def analytical_data_types(data_set_path: str,
                                                                       max_categories=max_categories
                                                                       )
     _analytical_data_type: dict = _analytical_data_types.main()
-    file_handler(file_path=output_file_path_analytical_data_type, obj=_analytical_data_type)
+    file_handler(file_path=output_file_path_analytical_data_types, obj=_analytical_data_type)
     if s3_output_file_path_analytical_data_types is not None:
         save_file_to_s3(file_path=s3_output_file_path_analytical_data_types, obj=_analytical_data_type)
+        Log().log(msg=f'Save analytical data types: {s3_output_file_path_analytical_data_types}')
     return [_analytical_data_type]
 
 
 if __name__ == '__main__':
     analytical_data_types(data_set_path=ARGS.data_set_path,
-                          output_file_path_analytical_data_type=ARGS.output_file_path_analytical_data_type,
+                          output_file_path_analytical_data_types=ARGS.output_file_path_analytical_data_types,
                           max_categories=ARGS.max_categories,
                           date_edges=ARGS.date_edges,
                           sep=ARGS.sep,
