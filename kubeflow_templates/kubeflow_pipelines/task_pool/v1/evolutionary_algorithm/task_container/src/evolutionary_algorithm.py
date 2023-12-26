@@ -511,7 +511,6 @@ class EvolutionaryAlgorithm:
                              evolution_history=dict(id=[],
                                                     model_name=[],
                                                     iteration=[],
-                                                    #training=[],
                                                     parent=[],
                                                     change_type=[],
                                                     fitness_score=[],
@@ -546,6 +545,9 @@ class EvolutionaryAlgorithm:
                                       ) -> None:
         """
         Generate visualization configuration
+
+        :param path: str
+            Path of the visualization files
 
         :param results_table: bool
             Evolution results table
@@ -592,16 +594,16 @@ class EvolutionaryAlgorithm:
             Visualize results of each generation in detail or visualize just evolutionary results
         """
         _charts: dict = {}
-        _evolution_history_data: pd.DataFrame = pd.DataFrame(data=self.evolution_history)
+        _evolution_history_data: pd.DataFrame = pd.DataFrame(data=self.metadata['evolution_history'])
         _m: List[str] = ['fitness_score', 'ml_metric', 'train_test_diff']
         _evolution_history_data[_m] = _evolution_history_data[_m].round(decimals=2)
-        _evolution_gradient_data: pd.DataFrame = pd.DataFrame(data=self.evolution_gradient)
-        _evolution_gradient_data['generation'] = [i for i in range(0, len(self.evolution_gradient.get('max')), 1)]
+        _evolution_gradient_data: pd.DataFrame = pd.DataFrame(data=self.metadata['evolution_gradient'])
+        _evolution_gradient_data['iteration'] = [i for i in range(0, len(self.metadata['evolution_gradient'].get('max')), 1)]
         if results_table:
             self.plot.update({'Results of Genetic Algorithm:': dict(df=_evolution_history_data,
                                                                     features=_evolution_history_data.columns.to_list(),
                                                                     plot_type='table',
-                                                                    file_path=os.path.join(self.output_file_path, 'ga_metadata_table.html'),
+                                                                    file_path=os.path.join(path, 'ea_metadata_table.html'),
                                                                     )
                               })
         if model_evolution:
@@ -610,7 +612,7 @@ class EvolutionaryAlgorithm:
                                                                    color_feature='model',
                                                                    plot_type='scatter',
                                                                    melt=True,
-                                                                   file_path=os.path.join(self.output_file_path, 'ga_model_evolution.html'),
+                                                                   file_path=os.path.join(path, 'ea_model_evolution.html'),
                                                                    )
                               })
         if model_distribution:
@@ -619,15 +621,15 @@ class EvolutionaryAlgorithm:
                                                                           features=['model'],
                                                                           group_by=['iteration'] if per_iteration else None,
                                                                           plot_type='pie',
-                                                                          file_path=os.path.join(self.output_file_path, 'ga_model_distribution.html'),
+                                                                          file_path=os.path.join(path, 'ea_model_distribution.html'),
                                                                           )
                                   })
         if param_distribution:
             self.plot.update({'Distribution of ML Model parameters:': dict(data=_evolution_history_data,
                                                                            features=['model_param'],
-                                                                           group_by=['generation'] if per_iteration else None,
+                                                                           group_by=['iteration'] if per_iteration else None,
                                                                            plot_type='tree',
-                                                                           file_path=os.path.join(self.output_file_path, 'ga_parameter_treemap.html')
+                                                                           file_path=os.path.join(path, 'ea_parameter_treemap.html')
                                                                          )
                             })
         if train_time_distribution:
@@ -637,35 +639,35 @@ class EvolutionaryAlgorithm:
                                                                              melt=True,
                                                                              plot_type='violin',
                                                                              use_auto_extensions=False,
-                                                                             file_path=os.path.join(self.output_file_path, 'ga_training_time_distribution.html')
+                                                                             file_path=os.path.join(path, 'ea_training_time_distribution.html')
                                                                              )
                               })
         if breeding_map:
-            _breeding_map: pd.DataFrame = pd.DataFrame(data=dict(gen_0=self.generation_history['population']['gen_0'].get('fitness')), index=[0])
-            for i in self.generation_history['population'].keys():
+            _breeding_map: pd.DataFrame = pd.DataFrame(data=dict(gen_0=self.metadata['generation_history']['population']['gen_0'].get('fitness')), index=[0])
+            for i in self.metadata['iteration_history']['population'].keys():
                 if i != 'iter_0':
-                    _breeding_map[i] = self.generation_history['population'][i].get('fitness')
+                    _breeding_map[i] = self.metadata['iteration_history']['population'][i].get('fitness')
             self.plot.update({'Breeding Heat Map:': dict(df=_breeding_map,
                                                          features=_breeding_map.columns.to_list(),
                                                          plot_type='heat',
-                                                         file_path=os.path.join(self.output_file_path, 'ga_breeding_heatmap.html')
+                                                         file_path=os.path.join(path, 'ea_breeding_heatmap.html')
                                                          )
                               })
         if breeding_graph:
             self.plot.update({'Breeding Network Graph:': dict(df=_evolution_history_data,
-                                                              features=['generation', 'fitness_score'],
+                                                              features=['iteration', 'fitness_score'],
                                                               graph_features=dict(node='id', edge='parent'),
                                                               color_feature='model',
                                                               plot_type='network',
-                                                              file_path=os.path.join(self.output_file_path, 'ga_breeding_graph.html')
+                                                              file_path=os.path.join(path, 'ea_breeding_graph.html')
                                                               )
                               })
         if fitness_distribution:
             self.plot.update({'Distribution of Fitness Metric:': dict(df=_evolution_history_data,
                                                                       features=['fitness_score'],
-                                                                      time_features=['generation'],
+                                                                      time_features=['iteration'],
                                                                       plot_type='ridgeline',
-                                                                      file_path=os.path.join(self.output_file_path, 'ga_fitness_score_distribution_per_generation.html')
+                                                                      file_path=os.path.join(path, 'ea_fitness_score_distribution_per_generation.html')
                                                                       )
                               })
         if fitness_dimensions:
@@ -681,16 +683,16 @@ class EvolutionaryAlgorithm:
                                                                      ],
                                                            color_feature='model',
                                                            plot_type='parcoords',
-                                                           file_path=os.path.join(self.output_file_path, 'ga_metadata_evolution_coords.html')
+                                                           file_path=os.path.join(path, 'ea_metadata_evolution_coords.html')
                                                            )
                               })
         if fitness_evolution:
             self.plot.update({'Fitness Evolution:': dict(df=_evolution_gradient_data,
                                                          features=['min', 'median', 'mean', 'max'],
-                                                         time_features=['generation'],
+                                                         time_features=['iteration'],
                                                          melt=True,
                                                          plot_type='line',
-                                                         file_path=os.path.join(self.output_file_path, 'ga_evolution_fitness_score.html')
+                                                         file_path=os.path.join(path, 'ea_evolution_fitness_score.html')
                                                          )
                               })
 

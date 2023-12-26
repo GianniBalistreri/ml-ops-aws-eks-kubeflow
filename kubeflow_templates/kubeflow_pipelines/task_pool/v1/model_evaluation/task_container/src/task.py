@@ -154,12 +154,23 @@ def generate_standard_visualizations(obs: np.ndarray,
                                      ) -> dict:
     """
     Generate standard visualization based on the machine learning type
-    :param obs:
-    :param pred:
-    :param ml_type:
-    :param file_path:
+    :param obs: np.ndarray
+        Observations
+
+    :param pred: np.ndarray
+        Predictions
+
+    :param ml_type: str
+        Abbreviated name of the machine learning type
+
+    :param file_path: str
+        Path of the visualizations to save
+
     :param target_labels: List[str]
-    :return:
+        Labels of the target feature (classification only)
+
+    :return: dict
+        Subplot configuration
     """
     _plot: dict = {}
     _best_model_results: pd.DataFrame = pd.DataFrame(data=dict(obs=obs, pred=pred))
