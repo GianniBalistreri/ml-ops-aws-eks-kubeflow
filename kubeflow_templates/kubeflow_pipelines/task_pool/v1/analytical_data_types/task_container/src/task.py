@@ -31,7 +31,7 @@ def analytical_data_types(data_set_path: str,
                           s3_output_file_path_analytical_data_types: str = None,
                           ) -> NamedTuple('outputs', [('analytical_data_types', dict)]):
     """
-    Evaluate analytical data types
+    Receive analytical data types
 
     :param data_set_path: str
         Complete file path of the data set
