@@ -47,6 +47,9 @@ class AnalyticalDataTypes:
         :param feature_names: List[str]
             Name of the features to process
 
+        :param date_edges: Tuple[str, str]
+            Date boundaries to identify datetime features
+
         :param max_categories: int
             Maximum number of categories for identifying feature as categorical
         """
