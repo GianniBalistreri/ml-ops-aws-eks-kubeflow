@@ -9,10 +9,7 @@ import argparse
 from aws import save_file_to_s3
 from custom_logger import Log
 from file_handler import file_handler
-from parallelizer import (
-    distribute_analytical_data_types, distribute_cases, distribute_elements, distribute_features,
-    distribute_file_paths, ParallelizerException
-)
+from parallelizer import Parallelizer
 from typing import Any, Dict, List, NamedTuple
 
 
@@ -35,7 +32,7 @@ def parallelizer(action: str,
                  output_path_distribution: str,
                  analytical_data_types: Dict[str, List[str]] = None,
                  data_file_path: str = None,
-                 bucket_name: str = None,
+                 s3_bucket_name: str = None,
                  chunks: int = 4,
                  persist_data: bool = True,
                  elements: list = None,
@@ -62,7 +59,7 @@ def parallelizer(action: str,
     :param data_file_path: str
         Complete file path of the data set
 
-    :param bucket_name: str
+    :param s3_bucket_name: str
         Name of the S3 bucket
 
     :param chunks: int
@@ -86,35 +83,16 @@ def parallelizer(action: str,
     :return: NamedTuple
         Distributed values
     """
-    if action == 'analytical_data_types':
-        _distributed_values: list = distribute_analytical_data_types(analytical_data_types=analytical_data_types,
-                                                                     file_path=data_file_path,
-                                                                     persist_data=persist_data,
-                                                                     sep=sep
-                                                                     )
-    elif action == 'cases':
-        _distributed_values: list = distribute_cases(file_path=data_file_path,
-                                                     chunks=chunks,
-                                                     persist_data=persist_data,
-                                                     sep=sep
-                                                     )
-    elif action == 'elements':
-        _distributed_values: list = distribute_elements(elements=elements,
-                                                        chunks=chunks
-                                                        )
-    elif action == 'features':
-        _distributed_values: list = distribute_features(file_path=data_file_path,
-                                                        persist_data=persist_data,
-                                                        chunks=chunks,
-                                                        sep=sep
-                                                        )
-    elif action == 'file_paths':
-        _distributed_values: list = distribute_file_paths(chunks=chunks,
-                                                          bucket_name=bucket_name,
-                                                          prefix=prefix
-                                                          )
-    else:
-        raise ParallelizerException(f'Action ({action}) not supported')
+    _parallelizer: Parallelizer = Parallelizer(file_path=data_file_path,
+                                               chunks=chunks,
+                                               persist_data=persist_data,
+                                               analytical_data_types=analytical_data_types,
+                                               elements=elements,
+                                               s3_bucket_name=s3_bucket_name,
+                                               prefix=prefix,
+                                               sep=sep
+                                               )
+    _distributed_values: list = _parallelizer.main(action=action)
     file_handler(file_path=output_path_distribution, obj=_distributed_values)
     if s3_output_path_distribution is not None:
         save_file_to_s3(file_path=s3_output_path_distribution, obj=_distributed_values)
@@ -127,7 +105,7 @@ if __name__ == '__main__':
                  output_path_distribution=ARGS.output_path_distribution,
                  analytical_data_types=ARGS.analytical_data_types,
                  data_file_path=ARGS.data_file_path,
-                 bucket_name=ARGS.bucket_name,
+                 s3_bucket_name=ARGS.s3_bucket_name,
                  chunks=ARGS.chunks,
                  persist_data=ARGS.persist_data,
                  elements=ARGS.elements,
