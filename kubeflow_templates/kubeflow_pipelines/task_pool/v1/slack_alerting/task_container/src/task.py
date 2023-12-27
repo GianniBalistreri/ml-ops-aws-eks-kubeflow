@@ -9,6 +9,7 @@ import boto3
 import json
 import urllib3
 
+from custom_logger import Log
 from typing import NamedTuple
 
 PARSER = argparse.ArgumentParser(description="slack alerting")
@@ -45,6 +46,12 @@ def slack_alerting(msg: str,
             -> start: Start Kubeflow Pipeline
             -> abort: Abort Kubeflow Pipeline
             -> succeed: End Kubeflow Pipline successfully
+
+    :param aws_region: str
+        Code of the AWS region
+
+    :param slack_channel: str
+        Name of the Slack channel
 
     :return: NamedTuple
         Status code of the request
@@ -83,7 +90,7 @@ def slack_alerting(msg: str,
                     "elements": [
                         {
                             "type": "mrkdwn",
-                            "text": "Region: *eu-central-1*"
+                            "text": f"Region: *{aws_region}*"
                         }
                     ]
                 }
@@ -165,6 +172,7 @@ def slack_alerting(msg: str,
         raise SlackAlertingException(f'Pipeline status ({pipeline_status}) not supported')
     _encoded_msg: bytes = json.dumps(_slack_msg).encode('utf-8')
     _response = _http.request(method='POST', url=_slack_url, body=_encoded_msg)
+    Log().log(msg=f'Slack message send to channel "{slack_channel}" with response status "{_response.status}": {_slack_msg}')
     return [_slack_msg, _response.status]
 
 
