@@ -19,11 +19,11 @@ PARSER.add_argument('-data_set_path', type=str, required=True, default=None, hel
 PARSER.add_argument('-analytical_data_types', type=Any, required=True, default=None, help='assignment of features to analytical data types')
 PARSER.add_argument('-missing_value_threshold', type=float, required=False, default=0.95, help='threshold to classify features as invalid based on the amount of missing values')
 PARSER.add_argument('-sep', type=str, required=False, default=',', help='column separator')
-PARSER.add_argument('-output_file_path_data_missing_data', type=str, required=True, default=None, help='file path of features containing too much missing data')
-PARSER.add_argument('-output_file_path_invariant', type=str, required=True, default=None, help='file path of invariant features')
-PARSER.add_argument('-output_file_path_duplicated', type=str, required=True, default=None, help='file path of duplicated features')
-PARSER.add_argument('-output_file_path_valid_features', type=str, required=True, default=None, help='file path of valid features')
-PARSER.add_argument('-output_file_path_prop_valid_features', type=str, required=True, default=None, help='file path of the proportion of valid features')
+PARSER.add_argument('-output_file_path_data_missing_data', type=str, required=True, default=None, help='file path of features containing too much missing data output')
+PARSER.add_argument('-output_file_path_invariant', type=str, required=True, default=None, help='file path of invariant features output')
+PARSER.add_argument('-output_file_path_duplicated', type=str, required=True, default=None, help='file path of duplicated features output')
+PARSER.add_argument('-output_file_path_valid_features', type=str, required=True, default=None, help='file path of valid features output')
+PARSER.add_argument('-output_file_path_prop_valid_features', type=str, required=True, default=None, help='file path of the proportion of valid features output')
 PARSER.add_argument('-s3_output_file_path_data_health_check', type=str, required=False, default=None, help='S3 file path of the data health check output')
 ARGS = PARSER.parse_args()
 
@@ -55,19 +55,19 @@ def data_health_check(data_set_path: str,
         Assigned analytical data types to each feature
 
     :param output_file_path_missing_data: str
-        Path of the features containing too much missing data
+        Path of the features containing too much missing data output
 
     :param output_file_path_invariant: str
-        Path of the invariant features
+        Path of the invariant features output
 
     :param output_file_path_duplicated: str
-        Path of the duplicated features
+        Path of the duplicated features output
 
     :param output_file_path_valid_features: str
-        Path of the valid features
+        Path of the valid features output
 
     :param output_file_path_prop_valid_features: str
-        Path of the proportion of valid features
+        Path of the proportion of valid features output
 
     :param missing_value_threshold: float
         Threshold of missing values to exclude numeric feature
