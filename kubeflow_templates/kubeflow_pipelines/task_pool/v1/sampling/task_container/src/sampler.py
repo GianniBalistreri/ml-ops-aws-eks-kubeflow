@@ -150,6 +150,19 @@ class MLSampler:
             _counter += 1
         return _kfold_sample
 
+    def time_series_sampling(self) -> dict:
+        """
+        Timeseries data sampling into train & test data
+
+        :return: dict:
+            Train and test split for both target and predictors
+        """
+        if self.time_series_feature is None or self.time_series_feature not in self.df.columns:
+            raise MLSamplerException(f'Time series feature ({self.time_series_feature}) not found in data set')
+        self.df.sort_values(by=self.time_series_feature, axis=1, ascending=True, inplace=True)
+        self.random_sample = False
+        return self.train_test_sampling()
+
     def train_test_sampling(self) -> dict:
         """
         Data sampling into train & test data
@@ -194,19 +207,6 @@ class MLSampler:
                     y_val=_y_val
                     )
 
-    def time_series_sampling(self) -> dict:
-        """
-        Timeseries data sampling into train & test data
-
-        :return: dict:
-            Train and test split for both target and predictors
-        """
-        if self.time_series_feature is None or self.time_series_feature not in self.df.columns:
-            raise MLSamplerException(f'Time series feature ({self.time_series_feature}) not found in data set')
-        self.df.sort_values(by=self.time_series_feature, axis=1, ascending=True, inplace=True)
-        self.random_sample = False
-        return self.train_test_sampling()
-
     def up_sampling(self, target_class_value: Union[str, int], target_proportion: float) -> pd.DataFrame:
         """
         Up sample specific ranges of target values
@@ -243,7 +243,7 @@ class Sampler:
     """
     Class for general sampling purposes
     """
-    def __init__(self, df, size: int = None, prop: float = None, **kwargs):
+    def __init__(self, df, size: int = None, prop: float = None):
         """
         :param df: Pandas DataFrame
             Data set
@@ -253,9 +253,6 @@ class Sampler:
 
         :param prop: float
             Sample proportion
-
-        :param kwargs: dict
-            Key-word arguments for handling dask parameter settings
         """
         self.df: pd.DataFrame = df
         if size is None:
