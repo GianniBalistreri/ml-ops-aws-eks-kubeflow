@@ -19,6 +19,46 @@ class ParallelizerException(Exception):
     pass
 
 
+def distribute_analytical_data_types(analytical_data_types: Dict[str, List[str]],
+                                     file_path: str,
+                                     persist_data: bool,
+                                     sep: str = ','
+                                     ) -> list:
+    """
+    Distribute features by analytical data type assignment
+
+    :param analytical_data_types: Dict[str, List[str]]
+        Assigned analytical data type for each feature
+
+    :param file_path: str
+        Complete path to get file paths to distribute
+
+    :param persist_data: bool
+        Whether to persist distributed data in several data set or not
+
+    :param sep: str
+        Separator
+
+    :return: list
+        Distributed features based on analytical data type assignment
+    """
+    _df: pd.DataFrame = pd.read_csv(filepath_or_buffer=file_path, sep=sep)
+    _pairs: list = []
+    for analytical_data_type in analytical_data_types:
+        if len(analytical_data_type) == 0:
+            continue
+        if persist_data:
+            _new_file_name: str = file_path.replace('.', f'_{analytical_data_type}.')
+            _df_subset: pd.DataFrame = _df.loc[:, analytical_data_types.get(analytical_data_type)]
+            _df_subset.to_csv(path_or_buf=_new_file_name, sep=sep, index=False)
+            _pairs.append(_new_file_name)
+        else:
+            _pairs.append(analytical_data_types.get(analytical_data_type))
+        Log().log(msg=f'Select {len(analytical_data_type)} features assign to analytical data type {analytical_data_type} for {len(_pairs)}. chunk')
+    Log().log(msg=f'Distribute {_df.shape[1]} features into {len(_pairs)} chunks')
+    return _pairs
+
+
 def distribute_cases(file_path: str, chunks: int, persist_data: bool, sep: str = ',') -> list:
     """
     Distribute cases to different files and container
@@ -49,6 +89,7 @@ def distribute_cases(file_path: str, chunks: int, persist_data: bool, sep: str =
             _pairs.append(_new_file_name)
         else:
             _pairs.append(pair.tolist())
+        Log().log(msg=f'Select {len(pair.tolist())} cases for {len(_pairs)}. chunk')
     Log().log(msg=f'Distributed {_df.shape[0]} cases into {chunks} chunks')
     return _pairs
 
@@ -74,6 +115,7 @@ def distribute_elements(elements: Union[List[str], np.array], chunks: int) -> Li
     _pairs: list = []
     for pair in _pairs_array:
         _pairs.append(pair.tolist())
+        Log().log(msg=f'Select {len(pair.tolist())} elements for {len(_pairs)}. chunk')
     Log().log(msg=f'Distributed {len(elements)} elements into {chunks} chunks')
     return _pairs
 
@@ -100,6 +142,7 @@ def distribute_features(file_path: str, persist_data: bool, chunks: int = None, 
     _df: pd.DataFrame = pd.read_csv(filepath_or_buffer=file_path, sep=sep)
     _chunks: int = _df.shape[1] if chunks is None else chunks
     if _chunks > 100:
+        Log().log(msg=f'Reduce number of chunks from {_chunks} to 100 (maximum allowed)')
         _chunks = 100
     _pairs_array: List[np.array] = np.array_split(ary=_df.columns.values, indices_or_sections=_chunks)
     _pairs: list = []
@@ -111,6 +154,7 @@ def distribute_features(file_path: str, persist_data: bool, chunks: int = None, 
             _pairs.append(_new_file_name)
         else:
             _pairs.append(pair.tolist())
+        Log().log(msg=f'Select {len(pair.tolist())} features for {len(_pairs)}. chunk')
     Log().log(msg=f'Distribute {_df.shape[1]} features into {_chunks} chunks')
     return _pairs
 
@@ -145,5 +189,6 @@ def distribute_file_paths(chunks: int, bucket_name: str, prefix: str = None) -> 
     _pairs: List[List[str]] = []
     for pair in _pairs_array:
         _pairs.append(pair.tolist())
+        Log().log(msg=f'Select {len(pair.tolist())} files for {len(_pairs)}. chunk')
     Log().log(msg=f'Distribute {len(_file_names)} files into {chunks} chunks')
     return _pairs
