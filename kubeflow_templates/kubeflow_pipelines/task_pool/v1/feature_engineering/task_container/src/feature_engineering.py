@@ -4,6 +4,7 @@ Feature engineering of structured (tabular) data used in supervised machine lear
 
 """
 
+import copy
 import numpy as np
 import pandas as pd
 import random
@@ -14,7 +15,9 @@ from sklearn.preprocessing import MinMaxScaler, Normalizer, RobustScaler, Standa
 from typing import Dict, List, Tuple
 
 
-ENGINEERING_METH: Dict[str, List[str]] = dict(categorical=['one_hot_encoder'],
+ENGINEERING_METH: Dict[str, List[str]] = dict(categorical=['one_hot_encoder',
+                                                           'one_hot_merger'
+                                                           ],
                                               continuous=['add',
                                                           'divide',
                                                           'exp_transform',
@@ -34,6 +37,11 @@ ENGINEERING_METH: Dict[str, List[str]] = dict(categorical=['one_hot_encoder'],
                                               )
 ENGINEERING_METH.update({'ordinal': ENGINEERING_METH.get('categorical')})
 ENGINEERING_METH['ordinal'].extend(ENGINEERING_METH.get('continuous'))
+ENGINEERING_NUMERIC_INTERACTION_METH: List[str] = ['add',
+                                                   'divide',
+                                                   'multiply',
+                                                   'subtract'
+                                                   ]
 MIN_FEATURES_BY_METH: Dict[str, int] = dict(add=2,
                                             divide=2,
                                             multiply=2,
@@ -53,24 +61,95 @@ class FeatureEngineer:
     """
     Class for feature engineering
     """
-    def __init__(self, df: pd.DataFrame, processing_memory: dict = None):
+    def __init__(self,
+                 df: pd.DataFrame,
+                 analytical_data_types: Dict[str, List[str]],
+                 features: List[str] = None,
+                 processing_memory: dict = None,
+                 feature_engineering_config: Dict[str, list] = None
+                 ):
         """
         :param df: pd.DataFrame
             Data set
 
+        :param analytical_data_types: Dict[str, List[str]]
+            Analytical data types assignment
+
+        :param features: List[str]
+            Name of the features
+
         :param processing_memory: dict
             Processing memory
+
+        :param feature_engineering_config: Dict[str, list]
+            Pre-defined configuration
         """
         self.df: pd.DataFrame = df
+        self.features: List[str] = self.df.columns.tolist() if features is None else features
         if processing_memory is None:
             self.processing_memory: dict = dict(level={'0': df.columns.tolist()},
                                                 processor={},
+                                                feature_relations={},
+                                                analytical_data_types=analytical_data_types,
+                                                next_level_numeric_features_base=[],
+                                                next_level_categorical_features_base=[],
                                                 numeric_features=[],
                                                 categorical_features=[],
                                                 exclude=[]
                                                 )
         else:
             self.processing_memory: dict = processing_memory
+        self.level: int = len(self.processing_memory['level'].keys())
+        self.processor = None
+        self.feature_engineering_config: Dict[str, list] = {} if feature_engineering_config is None else feature_engineering_config
+        if self.feature_engineering_config is None:
+            self._config_feature_engineering()
+
+    def _config_feature_engineering(self) -> None:
+        """
+        Configure feature engineering based on processor memory
+        """
+        if len(self.processing_memory['level'].keys()) == 1:
+            for analytical_data_type in self.processing_memory['analytical_data_types'].keys():
+                _n_features: int = len(self.processing_memory['analytical_data_types'].get(analytical_data_type))
+                if _n_features > 0:
+                    for meth in ENGINEERING_METH.get(analytical_data_type):
+                        _min_features: int = 1 if MIN_FEATURES_BY_METH.get(meth) is None else MIN_FEATURES_BY_METH.get(meth)
+                        if _n_features >= _min_features:
+                            self.feature_engineering_config.update({meth: []})
+                            for feature in self.processing_memory['analytical_data_types'].get(analytical_data_type):
+                                if _min_features == 1:
+                                    if feature in self.features:
+                                        self.feature_engineering_config[meth].append(feature)
+                                else:
+                                    for interactor in self.processing_memory['analytical_data_types'].get(analytical_data_type):
+                                        if feature in self.features:
+                                            if feature != interactor:
+                                                if interactor in self.features:
+                                                    self.feature_engineering_config[meth].append((feature, interactor))
+        else:
+            _next_level_numeric_features: List[str] = [numeric_feature for numeric_feature in self.processing_memory['next_level_numeric_features_base'] if numeric_feature in self.df.columns.tolist()]
+            if len(_next_level_numeric_features) >= 2:
+                _n_numeric_pairs: int = int(len(_next_level_numeric_features) / 2)
+                if _n_numeric_pairs % 2 != 1:
+                    _n_numeric_pairs += 1
+                _numeric_pairs: List[np.array] = np.array_split(ary=np.array(_next_level_numeric_features), indices_or_sections=_n_numeric_pairs)
+                for numeric_pair in _numeric_pairs:
+                    if numeric_pair[1] in self.processing_memory['feature_relations'][numeric_pair[0]]:
+                        continue
+                    for meth in ENGINEERING_NUMERIC_INTERACTION_METH:
+                        self.feature_engineering_config[meth].append((numeric_pair[0], numeric_pair[1]))
+            _next_level_categorical_features: List[str] = [categorical_feature for categorical_feature in self.processing_memory['next_level_categorical_features_base'] if categorical_feature in self.df.columns.tolist()]
+            if len(_next_level_categorical_features) >= 2:
+                _n_categorical_pairs: int = int(len(_next_level_categorical_features) / 2)
+                if _n_categorical_pairs % 2 != 1:
+                    _n_categorical_pairs += 1
+                _categorical_pairs: List[np.array] = np.array_split(ary=np.array(_next_level_categorical_features), indices_or_sections=_n_categorical_pairs)
+                for categorical_pair in _categorical_pairs:
+                    if categorical_pair[1] in self.processing_memory['feature_relations'][categorical_pair[0]]:
+                        continue
+                    self.feature_engineering_config['one_hot_merger'].append((categorical_pair[0], categorical_pair[1]))
+        Log().log(msg=f'Configure feature engineering: {len(self.feature_engineering_config.keys())} actions')
 
     def _force_rename_feature(self, feature: str, max_length: int = 100, new_length: int = 25) -> str:
         """
@@ -98,6 +177,81 @@ class FeatureEngineer:
         else:
             return feature
 
+    def _get_feature_relations(self, feature: str) -> List[str]:
+        """
+        Get feature relations of given feature
+
+        :param feature: str
+            Name of the feature
+
+        :return: List[str]
+            Name of the features related to given feature
+        """
+        _feature_relations: List[str] = []
+        if self.processing_memory['feature_relations'].get(feature) is None:
+            Log().log(msg=f'No feature relations for feature ({feature}) found')
+        else:
+            _direct_relations: List[str] = copy.deepcopy(self.processing_memory['feature_relations'][feature])
+            _indirect_relations: List[str] = []
+            for relation in _direct_relations:
+                _keep_searching: bool = True
+                _next_relations: List[str] = []
+                while _keep_searching:
+                    if self.processing_memory['feature_relations'].get(relation) is None:
+                        _keep_searching = False
+                    else:
+                        if len(_next_relations) == 0:
+                            _next_relations.append(copy.deepcopy(self.processing_memory['feature_relations'][relation]))
+                            _indirect_relations.extend(copy.deepcopy(self.processing_memory['feature_relations'][relation]))
+                        if self.processing_memory['feature_relations'].get(_next_relations[0]) is None:
+                            del _next_relations[0]
+                        else:
+                            _next_relations.extend(copy.deepcopy(self.processing_memory['feature_relations'][_next_relations[0]]))
+                            _indirect_relations.extend(copy.deepcopy(self.processing_memory['feature_relations'][_next_relations[0]]))
+                    if len(_next_relations) == 0:
+                        _keep_searching = False
+            _direct_relations.extend(_indirect_relations)
+            Log().log(msg=f'Found {len(_direct_relations)} relations for feature ({feature})')
+        return _feature_relations
+
+    def _process_memory(self, meth: str, param: dict, feature: str, interactor: str, new_feature: str, categorical: bool) -> None:
+        """
+        Process memory
+
+        :param meth:
+        :param param:
+        :param feature:
+        :param interactor:
+        :param new_feature:
+        :param categorical:
+        """
+        self.processing_memory['level'][str(self.level)].update({new_feature: dict(meth=meth,
+                                                                                   param=param,
+                                                                                   feature=feature,
+                                                                                   interactor=interactor
+                                                                                   )
+                                                                 })
+        if self.processor is not None:
+            if self.processing_memory['processor'].get(new_feature) is None:
+                self.processing_memory['processor'].update({new_feature: self.processor})
+            else:
+                self.processing_memory['processor'].update({new_feature: self.processor})
+            self.processor = None
+        if self.processing_memory['feature_relations'].get(new_feature) is None:
+            self.processing_memory['feature_relations'].update({new_feature: [feature]})
+        else:
+            if feature not in self.processing_memory['feature_relations'][new_feature]:
+                self.processing_memory['feature_relations'][new_feature].append(feature)
+        if interactor is not None:
+            if interactor not in self.processing_memory['feature_relations'][new_feature]:
+                self.processing_memory['feature_relations'][new_feature].append(interactor)
+        if categorical:
+            self.processing_memory['analytical_data_types']['categorical'].append(new_feature)
+            self.processing_memory['next_level_categorical_features_base'].append(new_feature)
+        else:
+            self.processing_memory['analytical_data_types']['continuous'].append(new_feature)
+            self.processing_memory['next_level_numeric_features_base'].append(new_feature)
+
     def add(self, feature_name: str, interaction_feature_name: str) -> np.ndarray:
         """
         Addition of two features
@@ -123,7 +277,7 @@ class FeatureEngineer:
                          hour: bool = True,
                          minute: bool = True,
                          second: bool = True
-                         ) -> np.ndarray:
+                         ) -> pd.DataFrame:
         """
         Extract categorical features based on datetime feature
 
@@ -154,26 +308,27 @@ class FeatureEngineer:
         :param second: bool
             Extract second from date
 
-        :return: np.ndarray
-            Categorized feature
+        :return: pd.DataFrame
+            Categorized features
         """
+        _df: pd.DataFrame = pd.DataFrame()
         if year:
-            return self.df[feature_name].dt.year.values
+            _df[f'{feature_name}_year'] = self.df[feature_name].dt.year.values
         if month:
-            return self.df[feature_name].dt.month.values
+            _df[f'{feature_name}_month'] = self.df[feature_name].dt.month.values
         if week:
-            return self.df[feature_name].dt.week.values
+            _df[f'{feature_name}_week'] = self.df[feature_name].dt.week.values
         if week_day:
-            return self.df[feature_name].dt.day_name().values
+            _df[f'{feature_name}_week_day'] = self.df[feature_name].dt.day_name().values
         if day:
-            return self.df[feature_name].dt.day.values
+            _df[f'{feature_name}_day'] = self.df[feature_name].dt.day.values
         if hour:
-            return self.df[feature_name].dt.hour.values
+            _df[f'{feature_name}_hour'] = self.df[feature_name].dt.hour.values
         if minute:
-            return self.df[feature_name].dt.minute.values
+            _df[f'{feature_name}_minute'] = self.df[feature_name].dt.minute.values
         if second:
-            return self.df[feature_name].dt.second.values
-        raise FeatureEngineerException('No date categorizer parameter set to True')
+            _df[f'{feature_name}_second'] = self.df[feature_name].dt.second.values
+        return _df
 
     def disparity(self,
                   feature_name: str,
@@ -186,7 +341,7 @@ class FeatureEngineer:
                   minutes: bool = True,
                   seconds: bool = True,
                   digits: int = 6
-                  ):
+                  ) -> pd.DataFrame:
         """
         Calculate disparity time features
 
@@ -219,22 +374,26 @@ class FeatureEngineer:
 
         :param digits: int
             Amount of digits to round
+
+        :return: pd.DataFrame
+            Time disparity features
         """
+        _df: pd.DataFrame = pd.DataFrame()
         if years:
-            return np.round(a=((self.df[feature_name] - self.df[interaction_feature_name]).dt.days / 365).values, decimals=digits)
+            _df[f'{feature_name}_{interaction_feature_name}_disparity_years'] = np.round(a=((self.df[feature_name] - self.df[interaction_feature_name]).dt.days / 365).values, decimals=digits)
         if months:
-            return np.round(a=((self.df[feature_name] - self.df[interaction_feature_name]).dt.days / 12).values, decimals=digits)
+            _df[f'{feature_name}_{interaction_feature_name}_disparity_months'] = np.round(a=((self.df[feature_name] - self.df[interaction_feature_name]).dt.days / 12).values, decimals=digits)
         if weeks:
-            return np.round(a=((self.df[feature_name] - self.df[interaction_feature_name]).dt.days / 7).values, decimals=digits)
+            _df[f'{feature_name}_{interaction_feature_name}_disparity_weeks'] = np.round(a=((self.df[feature_name] - self.df[interaction_feature_name]).dt.days / 7).values, decimals=digits)
         if days:
-            return np.round(a=(self.df[feature_name] - self.df[interaction_feature_name]).values, decimals=digits)
+            _df[f'{feature_name}_{interaction_feature_name}_disparity_days'] = np.round(a=(self.df[feature_name] - self.df[interaction_feature_name]).values, decimals=digits)
         if hours:
-            return ((self.df[feature_name] - self.df[interaction_feature_name]).dt.days * 24).values
+            _df[f'{feature_name}_{interaction_feature_name}_disparity_hours'] = ((self.df[feature_name] - self.df[interaction_feature_name]).dt.days * 24).values
         if minutes:
-            return (((self.df[feature_name] - self.df[interaction_feature_name]).dt.days * 24) * 60).values
+            _df[f'{feature_name}_{interaction_feature_name}_disparity_minutes'] = (((self.df[feature_name] - self.df[interaction_feature_name]).dt.days * 24) * 60).values
         if seconds:
-            return ((((self.df[feature_name] - self.df[interaction_feature_name]).dt.days * 24) * 60) * 60).values
-        raise FeatureEngineerException('No date disparity parameter set to True')
+            _df[f'{feature_name}_{interaction_feature_name}_disparity_seconds'] = ((((self.df[feature_name] - self.df[interaction_feature_name]).dt.days * 24) * 60) * 60).values
+        return _df
 
     def disparity_time_series(self,
                               feature_name: str,
@@ -295,23 +454,57 @@ class FeatureEngineer:
         """
         return np.exp(self.df[feature_name].values)
 
-    def label_encoder(self, feature_name: str, encode: bool, encoder: dict = None) -> Tuple[np.ndarray, dict]:
+    def generate_re_engineering_instructions(self, features: List[str]) -> List[dict]:
         """
-        Encode labels (written categories) into integer values
+        Generate instructions for re-engineering used in inference pipeline
+
+        :param features: List[str]
+            Name of the features
+
+        :return: List[dict]
+            Step-by-step engineering instructions
+        """
+        _instructions: List[dict] = []
+        for feature in features:
+            _feature_relations: List[str] = self._get_feature_relations(feature=feature)
+            for relation in _feature_relations:
+                for level in range(self.level - 1, 0, -1):
+                    if self.processing_memory['level'][str(level)].get(relation) is not None:
+                        _instructions.append(self.processing_memory['level'][str(level)][relation])
+                        break
+        return _instructions
+
+    def label_decoder(self, feature_name: str) -> np.ndarray:
+        """
+        Decode numeric into verbal categories
 
         :param feature_name: str
             Name of the feature to process
 
-        :param encode: bool
-            Encode labels into integers or decode integers into labels
-
-        :param encoder: dict
-            Mapping template for decoding integer to labels
+        :return: np.ndarray
+            Label decoded feature
         """
-        if encode:
-            _values: dict = {label: i for i, label in enumerate(self.df[feature_name].unique())}
-        else:
-            _data: pd.DataFrame = self.df[feature_name].replace({val: label for label, val in encoder})
+        _df: pd.DataFrame = pd.DataFrame()
+        _encoding: dict = self.processing_memory['processor'][feature_name]
+        _df[f'{feature_name}_label'] = self.df[feature_name].values
+        _df[f'{feature_name}_label'].replace(to_replace={val: label for label, val in _encoding}, inplace=True)
+        return _df[f'{feature_name}_label'].values
+
+    def label_encoder(self, feature_name: str) -> np.ndarray:
+        """
+        Encode labels (verbal categories) into numeric values
+
+        :param feature_name: str
+            Name of the feature to process
+
+        :return: np.ndarray
+            label encoded feature
+        """
+        _df: pd.DataFrame = pd.DataFrame()
+        self.processor = {label: i for i, label in enumerate(self.df[feature_name].unique())}
+        _df[f'{feature_name}_enc'] = self.df[feature_name].values
+        _df[f'{feature_name}_enc'].replace(to_replace=self.processor, inplace=True)
+        return _df[f'{feature_name}_enc'].values
 
     def log_transform(self, feature_name: str) -> np.ndarray:
         """
@@ -325,7 +518,100 @@ class FeatureEngineer:
         """
         return np.log(self.df[feature_name].values)
 
-    def min_max_scaler(self, feature_name: str, minmax_range: Tuple[int, int] = (0, 1)) -> Tuple[np.ndarray, MinMaxScaler]:
+    def main(self, feature_engineering_config: Dict[str, list]) -> pd.DataFrame:
+        """
+        Apply feature engineering using (tabular) structured data
+
+        :return: pd.DataFrame
+            Engineered data set
+        """
+        self.processing_memory['level'].update({str(self.level): {}})
+        _df: pd.DataFrame = pd.DataFrame()
+        for meth in feature_engineering_config.keys():
+            _engineering_meth = getattr(self, meth, None)
+            for element in feature_engineering_config[meth]:
+                if isinstance(element, str):
+                    _param: dict = dict(feature_name=element)
+                elif isinstance(element, tuple):
+                    _param: dict = dict(feature_name=element[0], interaction_feature_name=element[1])
+                else:
+                    raise FeatureEngineerException(f'Element type ({element}) not supported')
+                if _engineering_meth and callable(_engineering_meth):
+                    if meth == 'one_hot_encoder':
+                        _df_one_hot: pd.DataFrame = _engineering_meth(**_param)
+                        for new_feature_name in _df_one_hot.columns.tolist():
+                            if new_feature_name not in _df.columns.tolist():
+                                _new_feature_name: str = self._force_rename_feature(feature=new_feature_name)
+                                _df[_new_feature_name] = _df_one_hot[new_feature_name].values
+                                if self.processing_memory['processor'].get(_new_feature_name) is None:
+                                    self.processing_memory['processor'].update({element: [_new_feature_name]})
+                                else:
+                                    self.processing_memory['processor'][element].append(_new_feature_name)
+                                self._process_memory(meth=meth,
+                                                     param=_param,
+                                                     feature=_param.get('feature_name'),
+                                                     interactor=_param.get('interaction_feature_name'),
+                                                     new_feature=_new_feature_name,
+                                                     categorical=True
+                                                     )
+                    elif meth == 'date_categorizer':
+                        _df_date_categorized: pd.DataFrame = _engineering_meth(**_param)
+                        for new_categorical_feature_name in _df_date_categorized.columns.tolist():
+                            if new_categorical_feature_name not in _df.columns.tolist():
+                                _new_feature_name: str = self._force_rename_feature(feature=new_categorical_feature_name)
+                                _df[_new_feature_name] = _df_date_categorized[new_categorical_feature_name].values
+                                self._process_memory(meth=meth,
+                                                     param=_param,
+                                                     feature=_param.get('feature_name'),
+                                                     interactor=_param.get('interaction_feature_name'),
+                                                     new_feature=_new_feature_name,
+                                                     categorical=True
+                                                     )
+                        _df_one_hot: pd.DataFrame = self.one_hot_encoder(feature_name=element)
+                        for new_feature_name in _df_one_hot.columns.tolist():
+                            if new_feature_name not in _df.columns.tolist():
+                                _new_feature_name: str = self._force_rename_feature(feature=new_feature_name)
+                                _df[_new_feature_name] = _df_one_hot[new_feature_name].values
+                                if self.processing_memory['processor'].get(_new_feature_name) is None:
+                                    self.processing_memory['processor'].update({element: [_new_feature_name]})
+                                else:
+                                    self.processing_memory['processor'][element].append(_new_feature_name)
+                                self._process_memory(meth='one_hot_encoder',
+                                                     param=_param,
+                                                     feature=_param.get('feature_name'),
+                                                     interactor=_param.get('interaction_feature_name'),
+                                                     new_feature=_new_feature_name,
+                                                     categorical=True
+                                                     )
+                    elif meth == 'disparity':
+                        _df_disparity: pd.DataFrame = _engineering_meth(**_param)
+                        for new_feature_name in _df_disparity.columns.tolist():
+                            if new_feature_name not in _df.columns.tolist():
+                                _new_feature_name: str = self._force_rename_feature(feature=new_feature_name)
+                                _df[_new_feature_name] = _df_disparity[new_feature_name].values
+                                self._process_memory(meth=meth,
+                                                     param=_param,
+                                                     feature=_param.get('feature_name'),
+                                                     interactor=_param.get('interaction_feature_name'),
+                                                     new_feature=_new_feature_name,
+                                                     categorical=False
+                                                     )
+                    else:
+                        _new_feature_name: str = self._force_rename_feature(feature=f'{element}_{meth}')
+                        _df[_new_feature_name] = _engineering_meth(**_param)
+                        self._process_memory(meth=meth,
+                                             param=_param,
+                                             feature=_param.get('feature_name'),
+                                             interactor=_param.get('interaction_feature_name'),
+                                             new_feature=_new_feature_name,
+                                             categorical=True if meth in ENGINEERING_METH.get('categorical') else False
+                                             )
+                        Log().log(msg=f'Generated feature "{_new_feature_name}": transformed feature "{element}" using "{meth}" method')
+                else:
+                    Log().log(msg=f'Feature engineering method ({meth}) not supported')
+        return _df
+
+    def min_max_scaler(self, feature_name: str, minmax_range: Tuple[int, int] = (0, 1)) -> np.ndarray:
         """
         Min-Max scaling
 
@@ -335,12 +621,13 @@ class FeatureEngineer:
         :param minmax_range: Tuple[int, int]
             Range of allowed values
 
-        :return: Tuple[np.ndarray, MinMaxScaler]
-            Scaled feature and MinMaxScaler object
+        :return: np.ndarray
+            Min-Max scaled feature
         """
         _minmax: MinMaxScaler = MinMaxScaler(feature_range=minmax_range)
         _minmax.fit(np.reshape(self.df[feature_name], (-1, 1)), y=None)
-        return np.reshape(_minmax.transform(X=np.reshape(self.df[feature_name], (-1, 1))), (1, -1))[0], _minmax
+        self.processor = _minmax
+        return np.reshape(_minmax.transform(X=np.reshape(self.df[feature_name], (-1, 1))), (1, -1))[0]
 
     def multiply(self, feature_name: str, interaction_feature_name: str) -> np.ndarray:
         """
@@ -357,7 +644,7 @@ class FeatureEngineer:
         """
         return (self.df[feature_name] * self.df[interaction_feature_name]).values
 
-    def normalizer(self, feature_name: str, norm_meth: str = 'l2') -> Tuple[np.ndarray, Normalizer]:
+    def normalizer(self, feature_name: str, norm_meth: str = 'l2') -> np.ndarray:
         """
         Normalization
 
@@ -369,12 +656,29 @@ class FeatureEngineer:
                 -> l1: L1
                 -> l2: L2
 
-        :return: Tuple[np.ndarray, Normalizer]
-            Normalized feature and Normalizer object
+        :return: np.ndarray
+            Normalized feature
         """
         _normalizer: Normalizer = Normalizer(norm=norm_meth)
         _normalizer.fit(X=np.reshape(self.df[feature_name], (-1, 1)))
-        return np.reshape(_normalizer.transform(X=np.reshape(self.df[feature_name], (-1, 1))), (1, -1))[0], _normalizer
+        self.processor = _normalizer
+        return np.reshape(_normalizer.transform(X=np.reshape(self.df[feature_name], (-1, 1))), (1, -1))[0]
+
+    def one_hot_decoder(self, feature_name: str) -> pd.DataFrame:
+        """
+        One-hot decoding of categorical feature for inference pipeline
+
+        :param feature_name: str
+            Name of the feature
+
+        :return: pd.DataFrame
+            One-hot encoded features
+        """
+        _df: pd.DataFrame = pd.DataFrame()
+        _categorical_values: list = [str(val).split(sep=f'{feature_name}_')[-1] for val in self.processing_memory['processor'][feature_name]]
+        for i, feature in enumerate(self.processing_memory['processor'][feature_name]):
+            _df[feature] = self.df[feature_name].apply(lambda x: 1 if x == _categorical_values[i] else 0)
+        return _df
 
     def one_hot_encoder(self, feature_name: str) -> pd.DataFrame:
         """
@@ -430,12 +734,65 @@ class FeatureEngineer:
         """
         return np.power(self.df[feature_name].values, exponent)
 
+    def re_engineering(self, features: List[str]) -> pd.DataFrame:
+        """
+        Re-engineer features for inference (batch-prediction)
+
+        :param features: List[str]
+            Names of features to re-engineer
+
+        :return: pd.DataFrame
+            Re-engineered data set
+        """
+        _df: pd.DataFrame = pd.DataFrame()
+        for feature in features:
+            _feature_relations: List[str] = self._get_feature_relations(feature=feature)
+            for relation in _feature_relations:
+                for level in range(self.level - 1, 0, -1):
+                    if self.processing_memory['level'][str(level)].get(relation) is not None:
+                        if self.processing_memory['level'][str(level)][relation]['meth'] == 'one_hot_encoder':
+                            pass
+                        elif self.processing_memory['level'][str(level)][relation]['meth'] == 'one_hot_merger':
+                            pass
+                        elif self.processing_memory['level'][str(level)][relation]['meth'] == 'add':
+                            pass
+                        elif self.processing_memory['level'][str(level)][relation]['meth'] == 'divide':
+                            pass
+                        elif self.processing_memory['level'][str(level)][relation]['meth'] == 'multiply':
+                            pass
+                        elif self.processing_memory['level'][str(level)][relation]['meth'] == 'subtract':
+                            pass
+                        elif self.processing_memory['level'][str(level)][relation]['meth'] == 'exp_transform':
+                            pass
+                        elif self.processing_memory['level'][str(level)][relation]['meth'] == 'log_transform':
+                            pass
+                        elif self.processing_memory['level'][str(level)][relation]['meth'] == 'add':
+                            pass
+                        elif self.processing_memory['level'][str(level)][relation]['meth'] == 'add':
+                            pass
+                        elif self.processing_memory['level'][str(level)][relation]['meth'] == 'add':
+                            pass
+                        break
+        return _df
+
+    def re_scaler(self, feature_name: str) -> np.ndarray:
+        """
+        Re-scale feature based on fitted scaling processor
+
+        :param feature_name: str
+            Name of the feature
+
+        :return: np.ndarray
+            Re-scaled feature
+        """
+        return np.reshape(self.processing_memory['processor'][feature_name].transform(X=np.reshape(self.df[feature_name], (-1, 1))), (1, -1))[0]
+
     def robust_scaler(self,
                       feature_name: str,
                       with_centering: bool = True,
                       with_scaling: bool = True,
                       quantile_range: Tuple[float, float] = (0.25, 0.75),
-                      ) -> Tuple[np.ndarray, RobustScaler]:
+                      ) -> np.ndarray:
         """
         Robust scaling of continuous feature
 
@@ -451,12 +808,13 @@ class FeatureEngineer:
         :param quantile_range: Tuple[float, float]
             Quantile ranges of the robust scaler
 
-        :return: Tuple[np.ndarray, RobustScaler]
-            Scaled feature and RobustScaler object
+        :return: np.ndarray
+            Robust scaled feature
         """
         _robust: RobustScaler = RobustScaler(with_centering=with_centering, with_scaling=with_scaling, quantile_range=quantile_range)
         _robust.fit(np.reshape(self.df[feature_name], (-1, 1)), y=None)
-        return np.reshape(_robust.transform(X=np.reshape(self.df[feature_name], (-1, 1))), (1, -1))[0], _robust
+        self.processor = _robust
+        return np.reshape(_robust.transform(X=np.reshape(self.df[feature_name], (-1, 1))), (1, -1))[0]
 
     def square_root_transform(self, feature_name: str) -> np.ndarray:
         """
@@ -474,7 +832,7 @@ class FeatureEngineer:
                         feature_name: str,
                         with_mean: bool = True,
                         with_std: bool = True
-                        ) -> Tuple[np.ndarray, StandardScaler]:
+                        ) -> np.ndarray:
         """
         Standardize feature
 
@@ -487,12 +845,13 @@ class FeatureEngineer:
         :param with_std: bool
             Using standard deviation to standardize features
 
-        :return: Tuple[np.ndarray, StandardScaler]
-            Scaled feature and StandardScaler object
+        :return: np.ndarray
+            Standard scaled feature
         """
         _standard: StandardScaler = StandardScaler(with_mean=with_mean, with_std=with_std)
         _standard.fit(np.reshape(self.df[feature_name], (-1, 1)), y=None)
-        return np.reshape(_standard.transform(X=np.reshape(self.df[feature_name], (-1, 1))), (1, -1))[0], _standard
+        self.processor = _standard
+        return np.reshape(_standard.transform(X=np.reshape(self.df[feature_name], (-1, 1))), (1, -1))[0]
 
     def subtract(self, feature_name: str, interaction_feature_name: str) -> np.ndarray:
         """
@@ -508,294 +867,3 @@ class FeatureEngineer:
             Subtractive feature
         """
         return (self.df[feature_name] - self.df[interaction_feature_name]).values
-
-    def main(self, feature_engineering_config: Dict[str, list]) -> pd.DataFrame:
-        """
-        Apply feature engineering using (tabular) structured data
-
-        :param feature_engineering_config: Dict[str, list]
-            Pre-defined configuration
-
-        :return: pd.DataFrame
-            Engineered data set
-        """
-        _level: int = 0
-        while self.processing_memory['level'].get(str(_level)) is not None:
-            _level += 1
-        self.processing_memory['level'].update({str(_level): {}})
-        _df: pd.DataFrame = pd.DataFrame()
-        for meth in feature_engineering_config.keys():
-            for element in feature_engineering_config[meth]:
-                if isinstance(element, str):
-                    if meth.find('exp') >= 0:
-                        _new_feature_name: str = self._force_rename_feature(feature=f'{element}_exp')
-                        _df[_new_feature_name] = self.exp_transform(feature_name=element)
-                        self.processing_memory['numeric_features'].append(_new_feature_name)
-                        self.processing_memory['level'][str(_level)].update({_new_feature_name: dict(meth='exp_transform',
-                                                                                                     param=None,
-                                                                                                     feature=element,
-                                                                                                     interactor=None
-                                                                                                     )
-                                                                             })
-                        Log().log(msg=f'Generated feature "{_new_feature_name}": transformed feature "{element}" using exponential transform method')
-                    elif meth.find('log') >= 0:
-                        _new_feature_name: str = self._force_rename_feature(feature=f'{element}_log')
-                        _df[_new_feature_name] = self.log_transform(feature_name=element)
-                        self.processing_memory['numeric_features'].append(_new_feature_name)
-                        self.processing_memory['level'][str(_level)].update({_new_feature_name: dict(meth='log_transform',
-                                                                                                     param=None,
-                                                                                                     feature=element,
-                                                                                                     interactor=None
-                                                                                                     )
-                                                                             })
-                        Log().log(msg=f'Generated feature "{_new_feature_name}": transformed feature "{element}" using logarithmic transform method')
-                    elif meth.find('min_max') >= 0:
-                        _new_feature_name: str = self._force_rename_feature(feature=f'{element}_minmax')
-                        _new_feature, _scaler_obj = self.min_max_scaler(feature_name=element,
-                                                                        minmax_range=(0, 1)
-                                                                        )
-                        _df[_new_feature_name] = _new_feature
-                        self.processing_memory['numeric_features'].append(_new_feature_name)
-                        self.processing_memory['processor'].update({_new_feature_name: {'min_max_scaler': _scaler_obj}})
-                        self.processing_memory['level'][str(_level)].update({_new_feature_name: dict(meth='min_max_scaler',
-                                                                                                     param=None,
-                                                                                                     feature=element,
-                                                                                                     interactor=None
-                                                                                                     )
-                                                                             })
-                        Log().log(msg=f'Generated feature "{_new_feature_name}": transformed feature "{element}" using min-max scaling method')
-                    elif meth.find('norm') >= 0:
-                        _new_feature_name: str = self._force_rename_feature(feature=f'{element}_norm')
-                        _new_feature, _scaler_obj = self.normalizer(feature_name=element,
-                                                                    norm_meth='l2'
-                                                                    )
-                        _df[_new_feature_name] = _new_feature
-                        self.processing_memory['numeric_features'].append(_new_feature_name)
-                        self.processing_memory['processor'].update({_new_feature_name: {'norm': _scaler_obj}})
-                        self.processing_memory['level'][str(_level)].update({_new_feature_name: dict(meth='normalizer',
-                                                                                                     param=None,
-                                                                                                     feature=element,
-                                                                                                     interactor=None
-                                                                                                     )
-                                                                             })
-                        Log().log(msg=f'Generated feature "{_new_feature_name}": transformed feature "{element}" using normalizing scaling method')
-                    elif meth == 'one_hot_encoder':
-                        _df_one_hot: pd.DataFrame = self.one_hot_encoder(feature_name=element)
-                        _df = pd.concat(objs=[_df, _df_one_hot])
-                        for new_feature_name in _df_one_hot.columns.tolist():
-                            self.processing_memory['categorical_features'].append(new_feature_name)
-                            self.processing_memory['level'][str(_level)].update({new_feature_name: dict(meth='one_hot_encoder',
-                                                                                                        param=None,
-                                                                                                        feature=element,
-                                                                                                        interactor=None
-                                                                                                        )
-                                                                                 })
-                            Log().log(msg=f'Generated feature "{new_feature_name}": transformed feature "{element}" using one-hot encoding method')
-                    elif meth.find('pow') >= 0:
-                        _new_feature_name: str = self._force_rename_feature(feature=f'{element}_pow')
-                        _df[_new_feature_name] = self.power_transform(feature_name=element,
-                                                                      exponent=2
-                                                                      )
-                        self.processing_memory['numeric_features'].append(_new_feature_name)
-                        self.processing_memory['level'][str(_level)].update({_new_feature_name: dict(meth='power_transform',
-                                                                                                     param=None,
-                                                                                                     feature=element,
-                                                                                                     interactor=None
-                                                                                                     )
-                                                                             })
-                        Log().log(msg=f'Generated feature "{_new_feature_name}": transformed feature "{element}" using power transform method')
-                    elif meth.find('robust') >= 0:
-                        _new_feature_name: str = self._force_rename_feature(feature=f'{element}_robust')
-                        _new_feature, _scaler_obj = self.robust_scaler(feature_name=element,
-                                                                       with_centering=True,
-                                                                       with_scaling=True,
-                                                                       quantile_range=(0.25, 0.75)
-                                                                       )
-                        _df[_new_feature_name] = _new_feature
-                        self.processing_memory['numeric_features'].append(_new_feature_name)
-                        self.processing_memory['processor'].update({_new_feature_name: {'robust': _scaler_obj}})
-                        self.processing_memory['level'][str(_level)].update({_new_feature_name: dict(meth='robust_scaler',
-                                                                                                     param=None,
-                                                                                                     feature=element,
-                                                                                                     interactor=None
-                                                                                                     )
-                                                                             })
-                        Log().log(msg=f'Generated feature "{_new_feature_name}": transformed feature "{element}" using robust scaling method')
-                    elif meth.find('square') >= 0:
-                        _new_feature_name: str = self._force_rename_feature(feature=f'{element}_squared')
-                        _df[_new_feature_name] = self.square_root_transform(feature_name=element)
-                        self.processing_memory['numeric_features'].append(_new_feature_name)
-                        self.processing_memory['level'][str(_level)].update({_new_feature_name: dict(meth='square_root_transform',
-                                                                                                     param=None,
-                                                                                                     feature=element,
-                                                                                                     interactor=None
-                                                                                                     )
-                                                                             })
-                        Log().log(msg=f'Generated feature "{_new_feature_name}": transformed feature "{element}" using square root transform method')
-                    elif meth.find('standard') >= 0:
-                        _new_feature_name: str = self._force_rename_feature(feature=f'{element}_standard')
-                        _new_feature, _scaler_obj = self.standard_scaler(feature_name=element,
-                                                                         with_mean=True,
-                                                                         with_std=True
-                                                                         )
-                        _df[_new_feature_name] = _new_feature
-                        self.processing_memory['numeric_features'].append(_new_feature_name)
-                        self.processing_memory['processor'].update({_new_feature_name: {'standard': _scaler_obj}})
-                        self.processing_memory['level'][str(_level)].update({_new_feature_name: dict(meth='standard_scaler',
-                                                                                                     param=None,
-                                                                                                     feature=element,
-                                                                                                     interactor=None
-                                                                                                     )
-                                                                             })
-                        Log().log(msg=f'Generated feature "{_new_feature_name}": transformed feature "{element}" using standard scaling method')
-                    else:
-                        raise FeatureEngineerException(f'Feature engineering method ({meth}) not supported')
-                elif isinstance(element, tuple):
-                    if meth.find('add') >= 0:
-                        _new_feature_name: str = self._force_rename_feature(feature=f'{element[0]}_add_{element[1]}')
-                        _df[_new_feature_name] = self.add(feature_name=element[0],
-                                                          interaction_feature_name=element[1]
-                                                          )
-                        self.processing_memory['numeric_features'].append(_new_feature_name)
-                        self.processing_memory['level'][str(_level)].update({_new_feature_name: dict(meth='add',
-                                                                                                     param=None,
-                                                                                                     feature=element[0],
-                                                                                                     interactor=element[1]
-                                                                                                     )
-                                                                             })
-                        Log().log(msg=f'Generated feature "{_new_feature_name}": addition of feature "{element[0]}" and "{element[1]}"')
-                    elif meth.find('date_categorizer') >= 0:
-                        try:
-                            assert pd.to_datetime(self.df[element])
-                        except (ValueError, TypeError):
-                            Log().log(msg=f'Feature "{element}" could not be converted to datetime')
-                            continue
-                        _new_feature_name: str = self._force_rename_feature(feature=f'{element[0]}_{element[1]}')
-                        _df[_new_feature_name] = self.date_categorizer(feature_name=element[0],
-                                                                       year=True if element[1] == 'year' else False,
-                                                                       month=True if element[1] == 'month' else False,
-                                                                       week=True if element[1] == 'week' else False,
-                                                                       week_day=True if element[1] == 'week_day' else False,
-                                                                       day=True if element[1] == 'day' else False,
-                                                                       hour=True if element[1] == 'hour' else False,
-                                                                       minute=True if element[1] == 'minute' else False,
-                                                                       second=True if element[1] == 'second' else False
-                                                                       )
-                        if _new_feature_name not in self.processing_memory['exclude']:
-                            self.processing_memory['exclude'].append(_new_feature_name)
-                        self.processing_memory['level'][str(_level)].update({_new_feature_name: dict(meth='date_categorizer',
-                                                                                                     param=dict(action=element[1]),
-                                                                                                     feature=element[0],
-                                                                                                     interactor=None
-                                                                                                     )
-                                                                             })
-                        _df_one_hot: pd.DataFrame = self.one_hot_encoder(feature_name=_new_feature_name)
-                        _df = pd.concat(objs=[_df, _df_one_hot])
-                        for new_feature_name in _df_one_hot.columns.tolist():
-                            self.processing_memory['categorical_features'].append(new_feature_name)
-                            self.processing_memory['level'][str(_level)].update({new_feature_name: dict(meth='one_hot_encoder',
-                                                                                                        param=None,
-                                                                                                        feature=_new_feature_name,
-                                                                                                        interactor=None
-                                                                                                        )
-                                                                                 })
-                            Log().log(msg=f'Generated feature "{new_feature_name}": transformed feature "{_new_feature_name}" using one-hot encoding method')
-                    elif meth.find('disparity') >= 0:
-                        try:
-                            assert pd.to_datetime(self.df[element[0]])
-                        except (ValueError, TypeError):
-                            Log().log(msg=f'Feature "{element[0]}" could not be converted to datetime')
-                            continue
-                        try:
-                            assert pd.to_datetime(self.df[element[1]])
-                        except (ValueError, TypeError):
-                            Log().log(msg=f'Feature "{element[1]}" could not be converted to datetime')
-                            continue
-                        _new_feature_name: str = self._force_rename_feature(feature=f'time_diff_{element[0]}_{element[1]}_in_{element[2]}')
-                        _df[_new_feature_name] = self.disparity(feature_name=element[0],
-                                                                interaction_feature_name=element[1],
-                                                                years=True if element[2] == 'years' else False,
-                                                                months=True if element[2] == 'months' else False,
-                                                                weeks=True if element[2] == 'weeks' else False,
-                                                                days=True if element[2] == 'days' else False,
-                                                                hours=True if element[2] == 'hours' else False,
-                                                                minutes=True if element[2] == 'minutes' else False,
-                                                                seconds=True if element[2] == 'seconds' else False
-                                                                )
-                        self.processing_memory['numeric_features'].append(_new_feature_name)
-                        self.processing_memory['level'][str(_level)].update({_new_feature_name: dict(meth='disparity',
-                                                                                                     param=dict(action=element[2]),
-                                                                                                     feature=element[0],
-                                                                                                     interactor=element[1]
-                                                                                                     )
-                                                                             })
-                        Log().log(msg=f'Generated feature "{_new_feature_name}": time disparity of feature "{element[0]}" and "{element[1]}" in "{element[2]}"')
-                    elif meth.find('div') >= 0:
-                        _new_feature_name: str = self._force_rename_feature(feature=f'{element[0]}_div_{element[1]}')
-                        _df[_new_feature_name] = self.divide(feature_name=element[0],
-                                                             interaction_feature_name=element[1]
-                                                             )
-                        self.processing_memory['numeric_features'].append(_new_feature_name)
-                        self.processing_memory['level'][str(_level)].update({_new_feature_name: dict(meth='divide',
-                                                                                                     param=None,
-                                                                                                     feature=element[0],
-                                                                                                     interactor=element[1]
-                                                                                                     )
-                                                                             })
-                        Log().log(msg=f'Generated feature "{_new_feature_name}": division of feature "{element[0]}" and "{element[1]}"')
-                    elif meth.find('multi') >= 0:
-                        _new_feature_name: str = self._force_rename_feature(feature=f'{element[0]}_multi_{element[1]}')
-                        _df[_new_feature_name] = self.multiply(feature_name=element[0],
-                                                               interaction_feature_name=element[1]
-                                                               )
-                        self.processing_memory['numeric_features'].append(_new_feature_name)
-                        self.processing_memory['level'][str(_level)].update({_new_feature_name: dict(meth='multiply',
-                                                                                                     param=None,
-                                                                                                     feature=element[0],
-                                                                                                     interactor=element[1]
-                                                                                                     )
-                                                                             })
-                        Log().log(msg=f'Generated feature "{_new_feature_name}": multiplication of feature "{element[0]}" and "{element[1]}"')
-                    elif meth == 'one_hot_merger':
-                        _new_feature_name: str = self._force_rename_feature(feature=f'{element[0]}_m_{element[1]}')
-                        _df[_new_feature_name] = self.one_hot_merger(feature_name=element[0],
-                                                                     interaction_feature_name=element[1]
-                                                                     )
-                        self.processing_memory['categorical_features'].append(_new_feature_name)
-                        self.processing_memory['level'][str(_level)].update({_new_feature_name: dict(meth='one_hot_merger',
-                                                                                                     param=None,
-                                                                                                     feature=element[0],
-                                                                                                     interactor=element[1]
-                                                                                                     )
-                                                                             })
-                        Log().log(msg=f'Generated feature "{_new_feature_name}": merging of one-hot encoded feature "{element[0]}" and "{element[1]}"')
-                    elif meth.find('sub') >= 0:
-                        _new_feature_name: str = self._force_rename_feature(feature=f'{element[0]}_sub_{element[1]}')
-                        _df[_new_feature_name] = self.subtract(feature_name=element[0],
-                                                               interaction_feature_name=element[1]
-                                                               )
-                        self.processing_memory['numeric_features'].append(_new_feature_name)
-                        self.processing_memory['level'][str(_level)].update({_new_feature_name: dict(meth='subtract',
-                                                                                                     param=None,
-                                                                                                     feature=element[0],
-                                                                                                     interactor=element[1]
-                                                                                                     )
-                                                                             })
-                        Log().log(msg=f'Generated feature "{_new_feature_name}": subtraction of feature "{element[0]}" and "{element[1]}"')
-                    else:
-                        raise FeatureEngineerException(f'Feature engineering method ({meth}) not supported')
-                else:
-                    raise FeatureEngineerException(f'Element type ({element}) not supported')
-        return _df
-
-    def re_engineering(self, features: List[str]) -> pd.DataFrame:
-        """
-        Re-engineer features for inference
-
-        :param features: List[str]
-            Names of features to re-engineer
-
-        :return: pd.DataFrame
-            Re-engineered data set
-        """
-        pass

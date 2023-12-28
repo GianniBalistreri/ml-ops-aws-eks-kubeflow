@@ -17,7 +17,7 @@ from typing import Any, Dict, NamedTuple, List
 PARSER = argparse.ArgumentParser(description="feature engineering")
 PARSER.add_argument('-data_set_path', type=str, required=True, default=None, help='file path of the data set')
 PARSER.add_argument('-analytical_data_types', type=Any, required=True, default=None, help='assignment of features to analytical data types')
-PARSER.add_argument('-target_feature_name', type=str, required=True, default=None, help='name of the target feature')
+PARSER.add_argument('-target_feature', type=str, required=True, default=None, help='name of the target feature')
 PARSER.add_argument('-output_bucket_name', type=str, required=True, default=None, help='name of the S3 output bucket')
 PARSER.add_argument('-output_file_path_data_set', type=str, required=True, default=None, help='file path of the data set')
 PARSER.add_argument('-output_file_path_processor_memory', type=str, required=True, default=None, help='file path of output processing memory')
@@ -37,28 +37,19 @@ ARGS = PARSER.parse_args()
 def feature_engineer(data_set_path: str,
                      analytical_data_types: dict,
                      target_feature_name: str,
-                     output_file_path_data_set: str,
-                     output_file_path_processor_memory: str,
-                     output_file_path_target: str,
+                     s3_output_file_path_data_set: str,
+                     s3_output_file_path_processor_memory: str,
                      output_file_path_predictors: str,
-                     output_file_path_engineered_feature_names: str,
+                     output_file_path_analytical_data_types: str,
                      re_engineering: bool = False,
                      next_level: bool = False,
                      feature_engineering_config: Dict[str, list] = None,
                      feature_names: List[str] = None,
                      exclude: List[str] = None,
                      exclude_original_data: bool = False,
-                     sep: str = ',',
-                     output_file_path_data_set_customized: str = None,
-                     output_file_path_processor_memory_customized: str = None,
-                     output_file_path_target_customized: str = None,
-                     output_file_path_predictors_customized: str = None,
-                     output_file_path_engineered_feature_names_customized: str = None
-                     ) -> NamedTuple('outputs', [('file_path_data', str),
-                                                 ('file_path_processor_obj', str),
-                                                 ('engineered_feature_names', list),
-                                                 ('predictors', list),
-                                                 ('target', str)
+                     sep: str = ','
+                     ) -> NamedTuple('outputs', [('predictors', list),
+                                                 ('analytical_data_types', dict)
                                                  ]
                                      ):
     """
@@ -114,18 +105,17 @@ def feature_engineer(data_set_path: str,
     """
     _df: pd.DataFrame = pd.read_csv(filepath_or_buffer=data_set_path, sep=sep)
     _features: List[str] = _df.columns.tolist() if feature_names is None else feature_names
-    _s3_resource: boto3 = boto3.resource('s3')
     if re_engineering:
         _predictors: List[str] = _features
         _feature_names_engineered: List[str] = None
-        _processing_memory: dict = load_file_from_s3(file_path=output_file_path_processor_memory,
+        _processing_memory: dict = load_file_from_s3(file_path=s3_output_file_path_processor_memory,
                                                      encoding='utf-8'
                                                      )
         _feature_engineer: FeatureEngineer = FeatureEngineer(df=_df, processing_memory=_processing_memory)
         _df_engineered = _feature_engineer.re_engineering(features=_predictors)
     else:
         if next_level:
-            _processing_memory: dict = load_file_from_s3(file_path=output_file_path_processor_memory,
+            _processing_memory: dict = load_file_from_s3(file_path=s3_output_file_path_processor_memory,
                                                          encoding='utf-8'
                                                          )
             _feature_engineering_config: Dict[str, list] = {}
@@ -133,29 +123,12 @@ def feature_engineer(data_set_path: str,
             _processing_memory: dict = None
             if feature_engineering_config is None:
                 _feature_engineering_config: Dict[str, list] = {}
-                for analytical_data_type in analytical_data_types.keys():
-                    _n_features: int = len(analytical_data_types.get(analytical_data_type))
-                    if _n_features > 0:
-                        for meth in ENGINEERING_METH.get(analytical_data_type):
-                            _min_features: int = 1 if MIN_FEATURES_BY_METH.get(meth) is None else MIN_FEATURES_BY_METH.get(meth)
-                            if _n_features >= _min_features:
-                                _feature_engineering_config.update({meth: []})
-                                for feature in analytical_data_types.get(analytical_data_type):
-                                    if _min_features == 1:
-                                        if feature in _features:
-                                            _feature_engineering_config[meth].append(feature)
-                                    else:
-                                        for interactor in analytical_data_types.get(analytical_data_type):
-                                            if feature in _features:
-                                                if feature != interactor:
-                                                    if interactor in _features:
-                                                        _feature_engineering_config[meth].append((feature, interactor))
+
             else:
                 _feature_engineering_config: Dict[str, list] = feature_engineering_config
         _feature_engineer: FeatureEngineer = FeatureEngineer(df=_df, processing_memory=_processing_memory)
         _df_engineered = _feature_engineer.main(feature_engineering_config=_feature_engineering_config)
-        _file_path: str = output_file_path_data_set if output_file_path_processor_memory_customized.find('s3://') >= 0 else f's3://{output_file_path_data_set}'
-        pd.concat(objs=[_df, _df_engineered], axis=1).to_csv(path_or_buf=_file_path, sep=sep, index=False)
+        pd.concat(objs=[_df, _df_engineered], axis=1).to_csv(path_or_buf=s3_output_file_path_data_set, sep=sep, index=False)
         _feature_names_engineered: List[str] = _df_engineered.columns.tolist()
         _predictors: List[str] = _features
         _predictors.extend(_feature_names_engineered)

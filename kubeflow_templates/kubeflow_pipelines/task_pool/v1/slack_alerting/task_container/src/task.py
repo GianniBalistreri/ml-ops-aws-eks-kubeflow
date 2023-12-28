@@ -45,7 +45,7 @@ def slack_alerting(msg: str,
         Abbreviated name of the pipeline status
             -> start: Start Kubeflow Pipeline
             -> abort: Abort Kubeflow Pipeline
-            -> succeed: End Kubeflow Pipline successfully
+            -> succeed: Finish Kubeflow Pipline successfully
 
     :param aws_region: str
         Code of the AWS region
