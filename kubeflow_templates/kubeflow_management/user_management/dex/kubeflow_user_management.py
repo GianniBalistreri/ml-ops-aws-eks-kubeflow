@@ -1,5 +1,7 @@
 """
+
 Management of Kubeflow users in dex without using external identity provider service
+
 """
 
 import argparse
@@ -16,7 +18,7 @@ PARSER.add_argument('-user_email', type=str, required=True, default=None, help='
 PARSER.add_argument('-user_name', type=str, required=True, default=None, help='user name')
 PARSER.add_argument('-aws_account_id', type=str, required=True, default=None, help='AWS account id')
 PARSER.add_argument('-aws_region', type=str, required=False, default='eu-central-1', help='AWS region code')
-PARSER.add_argument('-include_profile', type=str, required=False, default=True, help='whether to create Kubeflow profile namespace or not (multi tenancy)')
+PARSER.add_argument('-include_profile', type=int, required=False, default=1, help='whether to create Kubeflow profile namespace or not (multi-tenancy)')
 PARSER.add_argument('-cluster_name', type=str, required=False, default='kubeflow', help='name of the EKS cluster')
 PARSER.add_argument('-iam_role_name', type=str, required=False, default='kubeflow-user-role', help='name of the IAM role attached to Kubeflow profile namespace')
 PARSER.add_argument('-meth', type=str, required=True, default=None, help='method name of class KubeflowUserManagement to apply')
@@ -340,7 +342,7 @@ if __name__ == '__main__':
                                                                                user_name=ARGS.user_name,
                                                                                aws_account_id=ARGS.aws_account_id,
                                                                                aws_region=ARGS.aws_region,
-                                                                               include_profile=ARGS.include_profile,
+                                                                               include_profile=bool(ARGS.include_profile),
                                                                                cluster_name=ARGS.cluster_name,
                                                                                iam_role_name=ARGS.iam_role_name
                                                                                )

@@ -27,7 +27,7 @@ weight = 10
 ### Deploy models from S3 Bucket 
 1. Create Secret:
   ```sh
-  cat <<EOF > secret.yaml
+  cat <<EOF > add_secret.yaml
   apiVersion: v1
   kind: Secret
   metadata:
