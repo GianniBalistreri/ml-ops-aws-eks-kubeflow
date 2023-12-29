@@ -70,6 +70,7 @@ class FeatureEngineer:
                  df: pd.DataFrame,
                  analytical_data_types: Dict[str, List[str]],
                  features: List[str] = None,
+                 target_feature: str = None,
                  processing_memory: dict = None,
                  feature_engineering_config: Dict[str, list] = None
                  ):
@@ -83,6 +84,9 @@ class FeatureEngineer:
         :param features: List[str]
             Name of the features
 
+        :param target_feature: str
+            Name of the target feature
+
         :param processing_memory: dict
             Processing memory
 
@@ -90,6 +94,7 @@ class FeatureEngineer:
             Pre-defined configuration
         """
         self.df: pd.DataFrame = df
+        self.target_feature: str = target_feature
         self.features: List[str] = self.df.columns.tolist() if features is None else features
         if processing_memory is None:
             self.processing_memory: dict = dict(level={'0': df.columns.tolist()},
@@ -98,9 +103,7 @@ class FeatureEngineer:
                                                 analytical_data_types=analytical_data_types,
                                                 next_level_numeric_features_base=[],
                                                 next_level_categorical_features_base=[],
-                                                numeric_features=[],
-                                                categorical_features=[],
-                                                exclude=[]
+                                                new_target_feature=target_feature
                                                 )
         else:
             self.processing_memory: dict = processing_memory
@@ -223,12 +226,23 @@ class FeatureEngineer:
         """
         Process memory
 
-        :param meth:
-        :param param:
-        :param feature:
-        :param interactor:
-        :param new_feature:
-        :param categorical:
+        :param meth: str
+            Name of the feature engineering (class method)
+
+        :param param: dict
+            Parameter setting
+
+        :param feature: str
+            Name of the feature
+
+        :param interactor: str
+            Name of the interactor feature
+
+        :param new_feature: str
+            Name of the new generated feature
+
+        :param categorical: bool
+            Whether new generated feature is categorical or numeric
         """
         self.processing_memory['level'][str(self.level)].update({new_feature: dict(meth=meth,
                                                                                    param=param,
@@ -252,10 +266,16 @@ class FeatureEngineer:
                 self.processing_memory['feature_relations'][new_feature].append(interactor)
         if categorical:
             self.processing_memory['analytical_data_types']['categorical'].append(new_feature)
-            self.processing_memory['next_level_categorical_features_base'].append(new_feature)
+            if feature == self.target_feature:
+                self.processing_memory['new_target_feature'] = new_feature
+            else:
+                self.processing_memory['next_level_categorical_features_base'].append(new_feature)
         else:
             self.processing_memory['analytical_data_types']['continuous'].append(new_feature)
-            self.processing_memory['next_level_numeric_features_base'].append(new_feature)
+            if feature == self.target_feature:
+                self.processing_memory['new_target_feature'] = new_feature
+            else:
+                self.processing_memory['next_level_numeric_features_base'].append(new_feature)
 
     def add(self, feature_name: str, interaction_feature_name: str) -> np.ndarray:
         """
@@ -523,7 +543,7 @@ class FeatureEngineer:
         """
         return np.log(self.df[feature_name].values)
 
-    def main(self, feature_engineering_config: Dict[str, list]) -> pd.DataFrame:
+    def main(self) -> pd.DataFrame:
         """
         Apply feature engineering using (tabular) structured data
 
@@ -532,9 +552,9 @@ class FeatureEngineer:
         """
         self.processing_memory['level'].update({str(self.level): {}})
         _df: pd.DataFrame = pd.DataFrame()
-        for meth in feature_engineering_config.keys():
+        for meth in self.feature_engineering_config.keys():
             _engineering_meth = getattr(self, meth, None)
-            for element in feature_engineering_config[meth]:
+            for element in self.feature_engineering_config[meth]:
                 if isinstance(element, str):
                     _param: dict = dict(feature_name=element)
                 elif isinstance(element, tuple):
