@@ -1,0 +1,13 @@
+apiVersion: kubeflow.org/v1
+kind: Profile
+metadata:
+  name: $(PROFILE_NAME) # e.g.: kubeflow-user
+spec:
+  owner:
+    kind: User
+    name: $(PROFILE_USER) # e.g.: user@example.com
+  plugins:
+    - kind: AwsIamForServiceAccount
+      spec:
+        awsIamRole: arn:aws:iam::$(ACCOUNT_ID):role/$(IAM_ROLE_NAME) # $(aws iam get-role --role-name $PROFILE_NAME-$CLUSTER_NAME-role --output text --query 'Role.Arn')
+        annotateOnly: true
