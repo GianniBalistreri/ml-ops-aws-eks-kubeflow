@@ -18,7 +18,7 @@ from typing import List, Tuple
 
 class ImageProcessorException(Exception):
     """
-    Class for handling exceptions of class ImageProcessor
+    Class for handling exceptions for class ImageProcessor
     """
     pass
 
@@ -30,8 +30,7 @@ class ImageProcessor:
     def __init__(self,
                  file_paths: List[str],
                  n_channels: int = 1,
-                 batch_size: int = 1,
-                 image_resolution: tuple = None,
+                 image_resolution: Tuple[int, int] = None,
                  normalize: bool = False,
                  flip: bool = True,
                  crop: Tuple[Tuple[int, int], Tuple[int, int]] = None,
@@ -58,10 +57,7 @@ class ImageProcessor:
                 -> 0: gray
                 -> 3: color (rgb)
 
-        :param batch_size: int
-            Batch size
-
-        :param image_resolution: tuple
+        :param image_resolution: Tuple[int, int]
             Force resizing image into given resolution
 
         :param normalize: bool
@@ -70,7 +66,7 @@ class ImageProcessor:
         :param flip: bool
             Whether to flip image based on probability distribution or not
 
-        :parm crop: Tuple[Tuple[int, int], Tuple[int, int]]
+        :param crop: Tuple[Tuple[int, int], Tuple[int, int]]
             Define image cropping
 
         :param skew: bool
@@ -117,8 +113,7 @@ class ImageProcessor:
         self.file_paths: List[str] = file_paths
         self.file_type: str = '' if file_type is None else file_type
         self.n_channels: int = 3 if n_channels > 1 else 1
-        self.batch_size: int = batch_size
-        self.image_resolution: tuple = image_resolution
+        self.image_resolution: Tuple[int, int] = image_resolution
         self.normalize: bool = normalize
         self.flip: bool = flip
         self.crop: Tuple[Tuple[int, int], Tuple[int, int]] = crop
@@ -241,58 +236,15 @@ class ImageProcessor:
             _angle = 90 + _angle
         return -1.0 * _angle
 
-    def _load_images(self, n_images: int = None, label: int = None) -> Tuple[str, np.array]:
-        """
-        Load images without batching
-
-        :param n_images: int
-            Number of images
-
-        :param label: int
-            Label number
-
-        :return Tuple[List[str], np.array]
-            List of image file names & array of loaded images
-        """
-        _images_path: List[str] = []
-        _images_noisy: List[np.array] = []
-        if self.file_path_multi_noisy_images is None:
-            _file_paths_noisy: List[str] = glob(os.path.join('.', self.file_path_noisy_images, f'*{self.file_type}'))
-        else:
-            _file_paths_noisy: List[str] = glob(os.path.join('.', self.file_path_multi_noisy_images[label], f'*{self.file_type}'))
-        if n_images is not None and n_images > 0:
-            for i in range(0, n_images, 1):
-                _file_paths_noisy_sample: List[str] = np.random.choice(_file_paths_noisy, 1, replace=False)
-                for path_image_noisy in _file_paths_noisy_sample:
-                    _images_path.append(path_image_noisy)
-                    _images_noisy.append(self._read_image(file_path=path_image_noisy))
-                if self.normalize:
-                    yield _images_path, self._normalize(np.array(_images_noisy))
-                else:
-                    yield _images_path, np.array(_images_noisy)
-        else:
-            self.n_batches = int(len(_file_paths_noisy))
-            _total_samples: int = self.n_batches * self.batch_size
-            _file_paths_noisy_sample: List[str] = np.random.choice(_file_paths_noisy, _total_samples, replace=False)
-            for i in range(0, self.n_batches - 1, 1):
-                _batch_noisy: List[str] = _file_paths_noisy_sample[i * self.batch_size:(i + 1) * self.batch_size]
-                for path_image_noisy in _batch_noisy:
-                    _images_path.append(path_image_noisy)
-                    _images_noisy.append(self._read_image(file_path=path_image_noisy))
-                if self.normalize:
-                    yield _images_path, self._normalize(np.array(_images_noisy))
-                else:
-                    yield _images_path, np.array(_images_noisy)
-
     @staticmethod
-    def _normalize(images: np.array) -> np.array:
+    def _normalize(image: np.array) -> np.array:
         """
-        Normalize images
+        Normalize image
 
-        :param images: np.array
-            Images
+        :param image: np.array
+            Image data
         """
-        return images / 255
+        return image / 255
 
     def _read_image(self, file_path: str) -> np.array:
         """
@@ -304,19 +256,7 @@ class ImageProcessor:
         :return np.array
             Image
         """
-        _image: np.array = load_file_from_s3(file_path=file_path, image_channels=self.n_channels)
-        if self.crop is not None:
-            _image = _image[self.crop[0][0]:self.crop[0][1], self.crop[1][0]:self.crop[1][1]]
-        if self.image_resolution is not None:
-            _image = resize(image=_image, output_shape=self.image_resolution)
-        if self.flip:
-            if np.random.random() > 0.5:
-                if np.random.random() > 0.5:
-                    _direction: int = 0
-                else:
-                    _direction: int = 1
-                _image = cv2.flip(src=_image, flipCode=_direction, dst=None)
-        return _image
+        return load_file_from_s3(file_path=file_path, image_channels=self.n_channels)
 
     @staticmethod
     def _rotate_image(image: np.array, angle: float) -> np.array:
@@ -443,6 +383,17 @@ class ImageProcessor:
         _images: List[np.ndarray] = []
         for image_file_path in self.file_paths:
             _image: np.ndarray = self._read_image(file_path=image_file_path)
+            if self.crop is not None:
+                _image = _image[self.crop[0][0]:self.crop[0][1], self.crop[1][0]:self.crop[1][1]]
+            if self.image_resolution is not None:
+                _image = resize(image=_image, output_shape=self.image_resolution)
+            if self.flip:
+                if np.random.random() > 0.5:
+                    if np.random.random() > 0.5:
+                        _direction: int = 0
+                    else:
+                        _direction: int = 1
+                    _image = cv2.flip(src=_image, flipCode=_direction, dst=None)
             if self.skew:
                 _image = self._skew(image=_image)
             if self.deskew:
@@ -455,9 +406,14 @@ class ImageProcessor:
                 _image = self._salt_pepper(image=_image)
             if self.generate_noise_watermark:
                 _image = self._watermark(image=_image)
+            if self.normalize:
+                _image = self._normalize(image=_image)
             if save_as_image:
-                save_file_to_s3(file_path=image_path, obj=_image)
+                _file_name: str = os.path.join(image_path, image_file_path.split('/')[-1])
+                save_file_to_s3(file_path=_file_name, obj=_image)
+                Log().log(msg=f'Save image: {_file_name}')
             else:
                 _images.append(_image)
         if len(_images) > 0:
             save_file_to_s3(file_path=file_path_array, obj=_images)
+            Log().log(msg=f'Save images: {file_path_array}')
