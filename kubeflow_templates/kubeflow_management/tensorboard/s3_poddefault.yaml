@@ -3,11 +3,11 @@ kind: PodDefault
 metadata:
   name: tensorboard-s3-config
 spec:
-  desc: S3 config for ${AWS_REGION} region
+  desc: S3 config for $(AWS_REGION) region
   selector:
     matchLabels:
       tb-s3-config: "true"
   env:
     - name: AWS_REGION
-      value: ${AWS_REGION}
-  serviceAccountName: ${SERVICE_ACCOUNT_NAME}
+      value: $(AWS_REGION)
+  serviceAccountName: $(SERVICE_ACCOUNT_NAME)

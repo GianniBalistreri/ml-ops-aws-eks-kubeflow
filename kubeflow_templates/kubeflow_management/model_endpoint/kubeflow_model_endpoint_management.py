@@ -100,11 +100,12 @@ class KubeflowModelEndpointManagement:
         subprocess.run(_cmd, shell=True, capture_output=False, text=True)
         with open('knative_service_configmap.yaml', 'r') as file:
             _knative_service_configmap_yaml = file.read()
-        _config_yaml: List[str] = ['apiVersion: v1', 'data:', f'  {self.domain_name}: ""']
+        _config_yaml: List[str] = []
         _ignore_line: bool = False
         for line in _knative_service_configmap_yaml.split('\n'):
             if line.find('_example: |') >= 0:
                 _ignore_line = True
+                _config_yaml.append(f'  {self.domain_name}: ""')
             if line.find('kind: ConfigMap') >= 0:
                 _ignore_line = False
             if not _ignore_line:
@@ -133,6 +134,7 @@ class KubeflowModelEndpointManagement:
         with open('add_secret.yaml', 'r') as file:
             _secret_yaml = file.read()
         _secret_yaml = _secret_yaml.replace("$(PROFILE_NAME)", self.profile_namespace)
+        _secret_yaml = _secret_yaml.replace("$(CLUSTER_REGION)", self.aws_region)
         with open('new_secret.yaml', 'w') as file:
             file.write(_secret_yaml)
         subprocess.run('kubectl apply -f new_secret.yaml', shell=True, capture_output=False, text=True)

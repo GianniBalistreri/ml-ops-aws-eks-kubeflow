@@ -23,7 +23,7 @@ PARSER.add_argument('-cluster_name', type=str, required=False, default='kubeflow
 PARSER.add_argument('-iam_role_name', type=str, required=False, default='kubeflow-user-role', help='name of the IAM role attached to Kubeflow profile namespace')
 PARSER.add_argument('-meth', type=str, required=True, default=None, help='method name of class KubeflowUserManagement to apply')
 PARSER.add_argument('-pwd', type=str, required=True, default=None, help='user password')
-PARSER.add_argument('-hashed', type=bool, required=False, default=False, help='whether user password is already hashed by bcrypt or not')
+PARSER.add_argument('-hashed', type=int, required=False, default=0, help='whether user password is already hashed by bcrypt or not')
 ARGS = PARSER.parse_args()
 
 
@@ -349,12 +349,12 @@ if __name__ == '__main__':
     if ARGS.meth == 'add_profile':
         _kubeflow_user_management.add_profile()
     elif ARGS.meth == 'add_user':
-        _kubeflow_user_management.add_user(pwd=ARGS.pwd, hashed=ARGS.hashed)
+        _kubeflow_user_management.add_user(pwd=ARGS.pwd, hashed=bool(ARGS.hashed))
     elif ARGS.meth == 'delete_profile':
         _kubeflow_user_management.delete_profile()
     elif ARGS.meth == 'delete_user':
         _kubeflow_user_management.delete_user()
     elif ARGS.meth == 'initial_deployment':
-        _kubeflow_user_management.initial_deployment(pwd=ARGS.pwd, hashed=ARGS.hashed)
+        _kubeflow_user_management.initial_deployment(pwd=ARGS.pwd, hashed=bool(ARGS.hashed))
     else:
         raise KubeflowUserManagementException(f'Method ({ARGS.meth}) not supported')

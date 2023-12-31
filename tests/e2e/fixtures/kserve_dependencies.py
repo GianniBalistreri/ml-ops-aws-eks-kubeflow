@@ -27,7 +27,7 @@ from e2e.utils.custom_resources import get_inference_service
 
 
 RANDOM_PREFIX = rand_name("kserve-")
-SECRET_CONFIG_FILE = "./resources/kserve/kserve-secret.yaml"
+SECRET_CONFIG_FILE = "./resources/kserve/kserve-add_secret.yaml"
 INFERENCE_CONFIG_FILE = "./resources/kserve/inference-service.yaml"
 AUTHORIZATION_POLICY_CONFIG_FILE = "./utils/kserve/allow-predictor-transformer.yaml"
 PROFILE_NAMESPACE = "kubeflow-user-example-com"

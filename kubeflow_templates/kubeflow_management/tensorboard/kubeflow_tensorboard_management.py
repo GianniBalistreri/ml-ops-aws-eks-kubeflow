@@ -68,12 +68,10 @@ class KubeflowTensorboard:
         """
         Adjust S3 poddefault yaml
         """
-        _cmd: str = "kubectl get configmap config-domain -n knative-serving -o yaml > knative_service_configmap.yaml"
-        subprocess.run(_cmd, shell=True, capture_output=False, text=True)
         with open('s3_poddefault.yaml', 'r') as file:
             _s3_poddefault_yaml = file.read()
-        _s3_poddefault_yaml = _s3_poddefault_yaml.replace("${AWS_REGION}", self.aws_region)
-        _s3_poddefault_yaml = _s3_poddefault_yaml.replace("${SERVICE_ACCOUNT_NAME}", self.service_account_name)
+        _s3_poddefault_yaml = _s3_poddefault_yaml.replace("$(AWS_REGION)", self.aws_region)
+        _s3_poddefault_yaml = _s3_poddefault_yaml.replace("$(SERVICE_ACCOUNT_NAME)", self.service_account_name)
         with open('new_s3_poddefault.yaml', 'w') as file:
             file.write(_s3_poddefault_yaml)
         subprocess.run(f'kubectl apply -f new_s3_poddefault.yaml -n {self.profile_namespace}', shell=True, capture_output=False, text=True)

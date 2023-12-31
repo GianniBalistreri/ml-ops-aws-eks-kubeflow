@@ -65,7 +65,7 @@ class KubeflowKatibManagement:
         subprocess.run(_cmd, shell=True, capture_output=False, text=True)
         with open('katib_config.yaml', 'r') as file:
             _katib_config_yaml = file.read()
-        _config_yaml: List[str] = ['apiVersion: v1', 'data:']
+        _config_yaml: List[str] = []
         _found_area: bool = False
         for line in _katib_config_yaml.split('\n'):
             if line.find('suggestion: |-') >= 0:
@@ -75,7 +75,7 @@ class KubeflowKatibManagement:
             _config_yaml.append(line)
             if _found_area:
                 if line.find('"image":') >= 0:
-                    _config_yaml.append(f'    "serviceAccountName": "{self.service_account_name}"')
+                    _config_yaml.append(f'        "serviceAccountName": "{self.service_account_name}"')
         return "\n".join(_config_yaml)
 
     def _login_to_eks_cluster(self) -> None:
