@@ -4,7 +4,7 @@ resources:
   - ../../namespace-install
   - minio
   - webhooks
-  - argo-server-sso-secret.yaml
+  - argo-server-sso-add_secret.yaml
   - executor/emissary/executor-role.yaml
   - executor-default-rolebinding.yaml
   - pod-manager-role.yaml

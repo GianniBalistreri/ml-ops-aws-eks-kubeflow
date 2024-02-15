@@ -3,7 +3,7 @@ kind: Kustomization
 
 resources:
 - csi-s3-deployment.yaml
-- csi-s3-secret.yaml
+- csi-s3-add_secret.yaml
 
 namespace: kubeflow
 

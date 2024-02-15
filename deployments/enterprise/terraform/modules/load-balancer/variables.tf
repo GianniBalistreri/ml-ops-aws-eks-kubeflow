@@ -12,19 +12,24 @@ variable "load_balancer_scheme" {
   description = "Scheme of the load balancer"
 }
 
+variable "top_level_domain_name" {
+  type        = string
+  description = "Name of the top level domain"
+}
+
 variable "domain_name" {
   type        = string
   description = "Name of the domain"
 }
 
-variable "sub_domain_name" {
+variable "environment_sub_domain_name" {
   type        = string
-  description = "Name of the subdomain"
+  description = "Name of the environment subdomain"
 }
 
-variable "top_level_domain_name" {
+variable "namespace_sub_domain_name" {
   type        = string
-  description = "Name of the top level domain"
+  description = "Name of the namespace subdomain"
 }
 
 ########

@@ -1,0 +1,18 @@
+curl -v -H "Content-Type: application/json" http://torch-transformer.production.dev.shopware-kubeflow.net -d iris-input.json
+curl -v -H "Content-Type: application/json" http://torch-transformer.production.dev.shopware-kubeflow.net/v1/models/torch-transformer:predict -d iris-input.json
+curl -v -H "Content-Type: application/json" http://sklearn-iris.production.dev.shopware-kubeflow.net -d iris-input.json
+curl -v -H "Content-Type: application/json" http://sklearn-iris.production.dev.shopware-kubeflow.net/v1/models/sklearn-iris:predict -d iris-input.json
+
+
+# use kubectl create instead of apply because the job template is using generateName which doesn't work with kubectl apply
+kubectl create -f https://raw.githubusercontent.com/kserve/kserve/release-0.11/docs/samples/v1beta1/sklearn/v1/perf.yaml -n production
+
+
+export INGRESS_HOST=$(kubectl -n istio-system get service istio-ingressgateway -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+export INGRESS_PORT=$(kubectl -n istio-system get service istio-ingressgateway -o jsonpath='{.spec.ports[?(@.name=="http2")].port}')
+SERVICE_HOSTNAME=$(kubectl get inferenceservice sklearn-iris -n kserve-test -o jsonpath='{.status.url}' | cut -d "/" -f 3)
+curl -v -H "Host: ${SERVICE_HOSTNAME}" -H "Content-Type: application/json" "http://${INGRESS_HOST}:${INGRESS_PORT}/v1/models/sklearn-iris:predict" -d iris-input.json
+
+eksctl create iamserviceaccount --name sa --namespace production --cluster kubeflow --region eu-central-1 --attach-policy-arn=arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly --attach-policy-arn=arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess  --override-existing-serviceaccounts --approve
+
+kubectl patch serviceaccount sa -n production -p '{"secrets": [{"name": "aws-secret"}]}'

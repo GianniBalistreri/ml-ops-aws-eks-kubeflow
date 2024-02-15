@@ -1,7 +1,12 @@
 variable "tags" {
-  description = "Additional tags (e.g. `map('BusinessUnit`,`XYZ`)"
+  description = "Additional tags"
   type        = map(string)
   default     = {}
+}
+
+variable "top_level_domain_name" {
+  type        = string
+  description = "Name of the top level domain"
 }
 
 variable "domain_name" {
@@ -9,7 +14,12 @@ variable "domain_name" {
   description = "Name of the domain"
 }
 
-variable "sub_domain_name" {
+variable "environment_sub_domain_name" {
   type        = string
-  description = "Name of the subdomain"
+  description = "Name of the environment subdomain"
+}
+
+variable "namespace_sub_domain_name" {
+  type        = string
+  description = "Name of the namespace subdomain"
 }

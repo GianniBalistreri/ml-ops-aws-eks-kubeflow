@@ -1,0 +1,13 @@
+apiVersion: serving.kubeflow.org/v1
+kind: InferenceService
+metadata:
+  name: endpoint-name
+  namespace: namespace # profile name
+spec:
+  predictor:
+    pytorch:
+      storageUri: "s3://your-model-bucket/model.pth"
+  default:
+    predictorName: pytorch-model
+    minReplicas: 1
+    maxReplicas: 1

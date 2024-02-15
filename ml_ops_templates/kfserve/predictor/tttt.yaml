@@ -1,0 +1,17 @@
+apiVersion: "serving.kserve.io/v1beta1"
+kind: "InferenceService"
+metadata:
+  name: "test-xgb-occupancy" #"test-sklearn-iris"
+  namespace: "production"
+  annotations:
+    sidecar.istio.io/inject: "false"
+spec:
+  predictor:
+    serviceAccountName: sa
+    model:
+      modelFormat:
+        name: xgboost #sklearn
+      #protocolVersion: v2
+      #runtime: kserve-xgbserver
+      storageUri: "s3://shopware-ml-ops-model-store-dev/occupancy/occupancy_xgb_model.joblib" #"s3://shopware-ml-ops-model-store-dev/model.joblib"
+

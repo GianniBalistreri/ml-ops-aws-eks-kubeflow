@@ -3,4 +3,4 @@ kind: Kustomization
 resources:
   - minio-deploy.yaml
   - minio-service.yaml
-  - my-minio-cred-secret.yaml
+  - my-minio-cred-add_secret.yaml

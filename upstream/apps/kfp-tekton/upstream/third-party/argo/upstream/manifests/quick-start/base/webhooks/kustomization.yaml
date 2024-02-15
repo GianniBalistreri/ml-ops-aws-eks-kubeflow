@@ -4,4 +4,4 @@ resources:
   - submit-workflow-template-role.yaml
   - github.com-sa.yaml
   - github.com-rolebinding.yaml
-  - argo-workflows-webhook-clients-secret.yaml
+  - argo-workflows-webhook-clients-add_secret.yaml

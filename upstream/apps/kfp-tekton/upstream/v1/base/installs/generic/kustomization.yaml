@@ -7,7 +7,7 @@ resources:
   - ../../cache
   - ../../cache-deployer
   - pipeline-install-config.yaml
-  - mysql-secret.yaml
+  - mysql-add_secret.yaml
 
 
 # Used by Kustomize

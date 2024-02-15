@@ -1,5 +1,5 @@
 output "kubelow_platform_domain" {
-  value = "${var.second_sub_domain_name}.${data.aws_route53_zone.subdomain.name}"
+  value = "${var.namespace_sub_domain_name}.${var.environment_sub_domain_name}.${var.domain_name}.${var.top_level_domain_name}"
 }
 
 output "user_pool_arn" {

@@ -117,9 +117,9 @@ module "user_namespace_irsa" {
 module "filter_secrets_manager_set_values" {
   source     = "../../../../../iaac/terraform/utils/set-values-filter"
   set_values = {
-    "rds.secretName" = try(aws_secretsmanager_secret.rds_secret.name, null)
+    "rds.secretName" = try(var.rds_secret, null)
   }
-  depends_on = [kubernetes_namespace.kubeflow, aws_secretsmanager_secret.rds_secret]
+  depends_on = [kubernetes_namespace.kubeflow]
 }
 
 module "secrets_manager" {
@@ -130,13 +130,15 @@ module "secrets_manager" {
     set   = module.filter_secrets_manager_set_values.set_values
   }
   addon_context = var.addon_context
-  depends_on    = [kubernetes_namespace.kubeflow, aws_secretsmanager_secret_version.rds_secret_version]
+  depends_on    = [kubernetes_namespace.kubeflow]
 }
 
 module "subdomain" {
-  source          = "../subdomain"
-  domain_name     = "${var.domain_name}.${var.top_level_domain_name}"
-  sub_domain_name = "${var.sub_domain_name}.${var.domain_name}.${var.top_level_domain_name}"
+  source                      = "../subdomain"
+  top_level_domain_name       = var.top_level_domain_name
+  domain_name                 = var.domain_name
+  environment_sub_domain_name = var.environment_sub_domain_name
+  namespace_sub_domain_name   = var.namespace_sub_domain_name
 }
 
 module "kubeflow_issuer" {
@@ -162,10 +164,10 @@ module "ingress_cognito" {
   source                                       = "../cognito"
   cognito_user_pool_name                       = var.cognito_user_pool_name
   cognito_user_pool_client_allowed_oauth_flows = var.cognito_user_pool_client_allowed_oauth_flows
-  domain_name                                  = var.domain_name
-  sub_domain_name                              = var.sub_domain_name
-  second_sub_domain_name                       = var.second_sub_domain_name
   top_level_domain_name                        = var.top_level_domain_name
+  domain_name                                  = var.domain_name
+  environment_sub_domain_name                  = var.environment_sub_domain_name
+  namespace_sub_domain_name                    = var.namespace_sub_domain_name
   load_balancer_scheme                         = var.load_balancer_scheme
   cluster_name                                 = var.cluster_name
   tags                                         = var.tags
@@ -194,15 +196,16 @@ module "kubeflow_aws_authservice" {
 }
 
 module "load_balancer" {
-  count                 = var.use_cognito ? 0 : 1
-  source                = "../load-balancer"
-  cluster_name          = var.cluster_name
-  http_header_name      = var.http_header_name
-  load_balancer_scheme  = var.load_balancer_scheme
-  domain_name           = var.domain_name
-  sub_domain_name       = var.sub_domain_name
-  top_level_domain_name = var.top_level_domain_name
-  depends_on            = [module.subdomain, module.kubeflow_istio]
+  count                       = var.use_cognito ? 0 : 1
+  source                      = "../load-balancer"
+  cluster_name                = var.cluster_name
+  http_header_name            = var.http_header_name
+  load_balancer_scheme        = var.load_balancer_scheme
+  top_level_domain_name       = var.top_level_domain_name
+  domain_name                 = var.domain_name
+  environment_sub_domain_name = var.environment_sub_domain_name
+  namespace_sub_domain_name   = var.namespace_sub_domain_name
+  depends_on                  = [module.subdomain, module.kubeflow_istio]
 }
 
 module "kubeflow_dex" {
@@ -273,7 +276,7 @@ module "kubeflow_istio_resources" {
 module "filter_kfp_set_values" {
   source     = "../../../../../iaac/terraform/utils/set-values-filter"
   set_values = {
-    "rds.dbHost"            = try(aws_db_instance.kubeflow_db.address, null),
+    "rds.dbHost"            = try(var.kubeflow_db_address, null),
     "s3.bucketName"         = var.s3_bucket_kubeflow_artifact_store
     "s3.minioServiceRegion" = coalesce(null, var.addon_context.aws_region_name)
     "rds.mlmdDb"            = "metadb",

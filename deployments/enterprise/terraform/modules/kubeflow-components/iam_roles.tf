@@ -45,11 +45,6 @@ resource "aws_iam_policy" "s3" {
       {
         Action   = "s3:*",
         Effect   = "Deny",
-        Resource = "arn:aws:s3:::shopware-feature-store*/*"
-      },
-      {
-        Action   = "s3:*",
-        Effect   = "Deny",
         Resource = "arn:aws:s3:::shopware-data-lake*/*"
       },
       {

@@ -11,4 +11,4 @@ configMapGenerator:
 generatorOptions:
   disableNameSuffixHash: true
 patchesStrategicMerge:
-- ./s3/disable-default-secret.yaml
+- ./s3/disable-default-add_secret.yaml

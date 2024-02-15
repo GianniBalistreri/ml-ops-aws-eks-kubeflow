@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "feature_selector"
+version = "0.1.0"
+description = "Select most important structured (tabular) features using decision tree algorithms"
+authors = ["gianni <g.balistreri@shopware.com>"]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.11"
+boto3 = "^1.28.39"
+catboost = "^1.2.2"
+s3fs = "^2023.9.2"
+scikit-learn = "^1.3.2"
+xgboost = "^2.0.2"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

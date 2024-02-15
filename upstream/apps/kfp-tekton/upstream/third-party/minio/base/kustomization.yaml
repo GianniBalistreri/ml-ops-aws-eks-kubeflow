@@ -5,6 +5,6 @@ resources:
 - minio-deployment.yaml
 - minio-pvc.yaml
 - minio-service.yaml
-- mlpipeline-minio-artifact-secret.yaml
+- mlpipeline-minio-artifact-add_secret.yaml
 
 namespace: kubeflow

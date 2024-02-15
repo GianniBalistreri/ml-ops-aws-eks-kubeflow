@@ -1,0 +1,28 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: "occupancy-xgb-replicated"
+  namespace: "production"
+  annotations:
+    sidecar.istio.io/inject: "false"
+spec:
+  predictor:
+    serviceAccountName: sa
+    containers:
+      #- name: kserve-container
+      - image: 973450839031.dkr.ecr.eu-central-1.amazonaws.com/ml-ops-occupancy-rest-api:v49
+        command:
+          - "python"
+          - "rest_api.py"
+        args:
+          - "-model_name"
+          - "occupancy-xgb-replicated"
+          - "-n_replicas"
+          - "2"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "2"
+          limits:
+            memory: "2Gi"
+            cpu: "3"

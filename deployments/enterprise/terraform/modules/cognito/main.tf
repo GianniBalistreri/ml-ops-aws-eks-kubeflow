@@ -1,5 +1,5 @@
 data "aws_acm_certificate" "subdomain" {
-  domain = "*.${var.sub_domain_name}.${var.domain_name}.${var.top_level_domain_name}"
+  domain = "*.${var.namespace_sub_domain_name}.${var.environment_sub_domain_name}.${var.domain_name}.${var.top_level_domain_name}"
 }
 
 resource "null_resource" "istio_ingress" {
@@ -77,7 +77,7 @@ data "aws_lb" "istio_ingress" {
 
 resource "aws_route53_record" "cname_record" {
   allow_overwrite = true
-  name            = "${var.second_sub_domain_name}.${data.aws_route53_zone.subdomain.name}"
+  name            = "${var.namespace_sub_domain_name}.${var.environment_sub_domain_name}.${var.domain_name}.${var.top_level_domain_name}"
   zone_id         = data.aws_route53_zone.subdomain.zone_id
   type            = "CNAME"
   records         = [data.aws_lb.istio_ingress.dns_name]

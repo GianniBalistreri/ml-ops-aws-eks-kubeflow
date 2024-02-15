@@ -1,0 +1,36 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: "occupancy_xgb"
+  namespace: "production"
+  annotations:
+    sidecar.istio.io/inject: "false"
+spec:
+  default:
+    minReplicas: 1
+    maxReplicas: 5
+    predictor:
+      serviceAccountName: sa
+      model:
+        modelFormat:
+          name: sklearn
+      containers:
+        - image: 973450839031.dkr.ecr.eu-central-1.amazonaws.com/ml-ops-occupancy-rest-api:v1
+          name: kserve-container
+          command:
+            - "python"
+            - "task.py"
+          args:
+            - "-model_name"
+            - "occupancy_xgb"
+    transformer:
+      serviceAccountName: sa
+      containers:
+        - image: 973450839031.dkr.ecr.eu-central-1.amazonaws.com/ml-ops-occupancy-rest-api:v1
+          name: kserve-container
+          command:
+            - "python"
+            - "task.py"
+          args:
+            - "-model_name"
+            - "occupancy_xgb"

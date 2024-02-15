@@ -4,11 +4,13 @@ deploy: init \
  		create-vpc \
  		create-eks-cluster \
  		deploy-eks-blueprints-k8s-addons \
+ 		deploy-kubeflow-utils \
  		deploy-kubeflow-components \
  		deploy-monitoring
 
 delete: delete-monitoring \
 		delete-kubeflow-components \
+		delete-kubeflow-utils \
  		delete-eks-blueprints-k8s-addons \
  		delete-eks-cluster \
  		delete-vpc
@@ -21,7 +23,6 @@ deploy-eks: init \
 
 init:
 	terraform init
-
 
 create-vpc:
 	terraform apply -target="module.vpc" -auto-approve
@@ -36,14 +37,11 @@ deploy-eks-blueprints-k8s-addons:
 deploy-kubeflow-components:
 	terraform apply -target="module.kubeflow_components" -auto-approve
 
+deploy-kubeflow-utils:
+	terraform apply -target="module.kubeflow_utils" -auto-approve
+
 deploy-monitoring:
 	terraform apply -target="module.monitoring" -auto-approve
-
-deploy-load-balancer:
-	terraform apply -target="module.load_balancer" -auto-approve
-
-deploy-custom-components:
-	terraform apply -target="module.custom_components" -auto-approve
 
 
 delete-vpc:
@@ -58,14 +56,11 @@ delete-eks-blueprints-k8s-addons:
 delete-kubeflow-components:
 	terraform destroy -target="module.kubeflow_components" -auto-approve
 
+delete-kubeflow-utils:
+	terraform destroy -target="module.kubeflow_utils" -auto-approve
+
 delete-monitoring:
 	terraform destroy -target="module.monitoring" -auto-approve
-
-delete-load-balancer:
-	terraform destroy -target="module.load_balancer" -auto-approve
-
-delete-custom-components:
-	terraform destroy -target="module.custom_components" -auto-approve
 
 # don't create executables
 .PHONY: *

@@ -1,0 +1,63 @@
+name: Destroy infrastructure on AWS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Install Terraform
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnupg software-properties-common curl
+          curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+          sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+          sudo apt-get update && sudo apt-get install terraform
+          terraform --version
+
+      - name: Install kubectl
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y apt-transport-https ca-certificates curl
+          curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+          sudo apt-get update
+          sudo apt-get install -y kubectl
+          kubectl version --client
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set Terraform working directory
+        run: cd deployments/enterprise/modules
+        working-directory: deployments/enterprise/modules
+
+      - name: Destroy Monitoring
+        run: terraform destroy -target="module.monitoring" -auto-approve
+
+      - name: Destroy Kubeflow Utils
+        run: terraform destroy -target="module.kubeflow_utils" -auto-approve
+
+      - name: Destroy Kubeflow
+        run: terraform destroy -target="module.kubeflow_components" -auto-approve
+
+      - name: Destroy EKS Blueprints K8s Addons
+        run: terraform destroy -target="module.eks_blueprints_kubernetes_addons" -auto-approve
+
+      - name: Destroy EKS Cluster
+        run: terraform destroy -target="module.eks_blueprints" -auto-approve
+
+      - name: Destroy VPC
+        run: terraform destroy -target="module.vpc" -auto-approve
+
+      - name: Destroy rest
+        run: terraform destroy -auto-approve

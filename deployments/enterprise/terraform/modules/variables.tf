@@ -31,11 +31,6 @@ variable "s3_bucket_ml_ops_interim" {
   description = "The name of the ML-Ops interim S3 bucket"
 }
 
-variable "s3_bucket_raw_tracking_data_tag_name" {
-  type        = string
-  description = "The tag name of the ML-Ops temporary S3 bucket"
-}
-
 variable "s3_bucket_kubeflow_artifact_store" {
   type        = string
   description = "The name of the Kubeflow artifact store S3 bucket"
@@ -44,6 +39,11 @@ variable "s3_bucket_kubeflow_artifact_store" {
 variable "s3_bucket_ml_ops_model_store" {
   type        = string
   description = "The name of the ML-Ops model store S3 bucket"
+}
+
+variable "s3_bucket_tag_name" {
+  type        = string
+  description = "The tag name of the ML-Ops S3 bucket"
 }
 
 ########################
@@ -167,24 +167,24 @@ variable "db_tags" {
 # Network: #
 ############
 
+variable "top_level_domain_name" {
+  type        = string
+  description = "Name of the top level domain"
+}
+
 variable "domain_name" {
   type        = string
   description = "Name of the domain"
 }
 
-variable "sub_domain_name" {
+variable "environment_sub_domain_name" {
   type        = string
-  description = "Name of the subdomain"
+  description = "Name of the environment subdomain"
 }
 
-variable "second_sub_domain_name" {
+variable "namespace_sub_domain_name" {
   type        = string
-  description = "Name of the second subdomain"
-}
-
-variable "top_level_domain_name" {
-  type        = string
-  description = "Name of the top level domain"
+  description = "Name of the namespace subdomain"
 }
 
 variable "http_header_name" {
@@ -299,24 +299,9 @@ variable "ecr_anomaly_detection" {
   description = "The name of the anomaly detection Elastic Container Registry (ECR) repository"
 }
 
-variable "ecr_computer_vision" {
-  type        = string
-  description = "The name of the computer vision Elastic Container Registry (ECR) repository"
-}
-
 variable "ecr_data_health_check" {
   type        = string
   description = "The name of the data health check Elastic Container Registry (ECR) repository"
-}
-
-variable "ecr_data_import" {
-  type        = string
-  description = "The name of the data import Elastic Container Registry (ECR) repository"
-}
-
-variable "ecr_dimensionality_reduction" {
-  type        = string
-  description = "The name of the dimensionality reduction Elastic Container Registry (ECR) repository"
 }
 
 variable "ecr_evolutionary_algorithm" {
@@ -329,19 +314,9 @@ variable "ecr_feature_engineering" {
   description = "The name of the feature engineering Elastic Container Registry (ECR) repository"
 }
 
-variable "ecr_feature_importance" {
-  type        = string
-  description = "The name of the feature importance Elastic Container Registry (ECR) repository"
-}
-
 variable "ecr_feature_selector" {
   type        = string
   description = "The name of the feature selector Elastic Container Registry (ECR) repository"
-}
-
-variable "ecr_generative_adversarial_neural_networks" {
-  type        = string
-  description = "The name of the generative adversarial neural networks Elastic Container Registry (ECR) repository"
 }
 
 variable "ecr_model_evaluation" {
@@ -364,11 +339,6 @@ variable "ecr_model_generator_supervised" {
   description = "The name of the model generator supervised Elastic Container Registry (ECR) repository"
 }
 
-variable "ecr_model_generator_timeseries" {
-  type        = string
-  description = "The name of the model generator timeseries Elastic Container Registry (ECR) repository"
-}
-
 variable "ecr_natural_language_processing" {
   type        = string
   description = "The name of the natural language processing Elastic Container Registry (ECR) repository"
@@ -382,11 +352,6 @@ variable "ecr_sampling" {
 variable "ecr_slack_alerting" {
   type        = string
   description = "The name of the slack alerting Elastic Container Registry (ECR) repository"
-}
-
-variable "ecr_transformer_llm" {
-  type        = string
-  description = "The name of the large language model transformers Elastic Container Registry (ECR) repository"
 }
 
 ############
