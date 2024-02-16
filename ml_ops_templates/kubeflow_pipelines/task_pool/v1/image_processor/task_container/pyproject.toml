@@ -2,7 +2,7 @@
 name = "image_processor"
 version = "0.1.0"
 description = "Process images"
-authors = ["gianni <g.balistreri@shopware.com>"]
+authors = ["gianni <xxx>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"

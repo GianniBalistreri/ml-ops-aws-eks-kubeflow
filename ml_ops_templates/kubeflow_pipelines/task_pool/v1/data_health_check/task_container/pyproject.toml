@@ -2,7 +2,7 @@
 name = "data_health_check"
 version = "0.1.0"
 description = "Apply data health checks on structured (tabular) data"
-authors = ["gianni <g.balistreri@shopware.com>"]
+authors = ["gianni <xxx>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"

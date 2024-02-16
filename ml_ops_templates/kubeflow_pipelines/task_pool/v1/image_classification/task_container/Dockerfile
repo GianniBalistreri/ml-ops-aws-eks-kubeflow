@@ -22,13 +22,10 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 9
 
 RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10
 
-#RUN apt-get update
-#RUN apt-get install -y libgl1-mesa-glx libglib2.0-0
-
 RUN mkdir "/src"
 
-COPY kubeflow_pipelines/task_pool/v1/image_classification/task_container/src /src
-COPY kubeflow_pipelines/task_pool/v1/image_classification/task_container/pyproject.toml /src
+COPY ml_ops_templates/kubeflow_pipelines/task_pool/v1/image_classification/task_container/src /src
+COPY ml_ops_templates/kubeflow_pipelines/task_pool/v1/image_classification/task_container/pyproject.toml /src
 
 WORKDIR /src
 

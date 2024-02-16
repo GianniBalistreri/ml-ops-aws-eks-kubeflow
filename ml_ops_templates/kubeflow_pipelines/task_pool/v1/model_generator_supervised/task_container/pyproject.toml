@@ -2,7 +2,7 @@
 name = "supervised_machine_learning"
 version = "0.1.0"
 description = "Generate supervised machine learning models (non-neural networks)"
-authors = ["gianni <g.balistreri@shopware.com>"]
+authors = ["gianni <xxx>"]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.11"

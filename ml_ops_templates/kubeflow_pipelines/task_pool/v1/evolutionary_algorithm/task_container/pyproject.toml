@@ -2,7 +2,7 @@
 name = "evolutionary_algorithm"
 version = "0.1.0"
 description = "Apply evolutionary algorithm"
-authors = ["gianni <g.balistreri@shopware.com>"]
+authors = ["gianni <xxx>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"

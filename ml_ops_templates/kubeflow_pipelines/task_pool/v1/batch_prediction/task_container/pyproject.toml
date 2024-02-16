@@ -2,7 +2,7 @@
 name = "batch_prediction"
 version = "0.1.0"
 description = "Generate predictions based on batches (offline)"
-authors = ["gianni <g.balistreri@shopware.com>"]
+authors = ["gianni <xxx>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"

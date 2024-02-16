@@ -2,7 +2,7 @@
 name = "text_classification"
 version = "0.1.0"
 description = "Classify natural language based data"
-authors = ["gianni <g.balistreri@shopware.com>"]
+authors = ["gianni <xxx>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"

@@ -2,7 +2,7 @@
 name = "sampling"
 version = "0.1.0"
 description = "Sampling data sets for training, testing and validation used for applying supervised machine learning models"
-authors = ["gianni <g.balistreri@shopware.com>"]
+authors = ["gianni <xxx>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"

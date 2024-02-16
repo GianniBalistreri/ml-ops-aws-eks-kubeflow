@@ -30,8 +30,8 @@ RUN apt-get install -y libgl1-mesa-glx libglib2.0-0
 
 RUN mkdir "/src"
 
-COPY kubeflow_pipelines/task_pool/v1/image_translation_gpu/task_container/src /src
-COPY kubeflow_pipelines/task_pool/v1/image_translation_gpu/task_container/pyproject.toml /src
+COPY ml_ops_templates/kubeflow_pipelines/task_pool/v1/image_translation_gpu/task_container/src /src
+COPY ml_ops_templates/kubeflow_pipelines/task_pool/v1/image_translation_gpu/task_container/pyproject.toml /src
 
 WORKDIR /src
 

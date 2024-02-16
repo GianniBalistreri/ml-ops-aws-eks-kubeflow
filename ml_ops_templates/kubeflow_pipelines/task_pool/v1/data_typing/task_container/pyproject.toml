@@ -2,7 +2,7 @@
 name = "data_typing"
 version = "0.1.0"
 description = "Convert data types of features according to their analytical data types of structured (tabular) data"
-authors = ["gianni <g.balistreri@shopware.com>"]
+authors = ["gianni <xxx>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"

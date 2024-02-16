@@ -12,7 +12,7 @@ from typing import List
 
 PARSER = argparse.ArgumentParser(description="manage kubeflow hyperparameter tuning service called katib")
 PARSER.add_argument('-aws_account_id', type=str, required=True, default=None, help='AWS account id')
-PARSER.add_argument('-service_account_name', type=str, required=False, default='default-editor', help='name of the service account')
+PARSER.add_argument('-service_account_name', type=str, required=False, default='sa', help='name of the service account')
 PARSER.add_argument('-aws_region', type=str, required=False, default='eu-central-1', help='AWS region code')
 PARSER.add_argument('-cluster_name', type=str, required=False, default='kubeflow', help='name of the EKS cluster')
 ARGS = PARSER.parse_args()

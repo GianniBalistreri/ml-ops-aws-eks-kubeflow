@@ -2,7 +2,7 @@
 name = "image_translation"
 version = "0.1.0"
 description = "Translate characteristics of images"
-authors = ["gianni <g.balistreri@shopware.com>"]
+authors = ["gianni <xxx>"]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.11"

@@ -2,7 +2,7 @@
 name = "slack_alerting"
 version = "0.1.0"
 description = "Send alerts and messages to dedicated Slack channel"
-authors = ["gianni <g.balistreri@shopware.com>"]
+authors = ["gianni <xxx>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"

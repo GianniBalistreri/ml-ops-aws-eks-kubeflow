@@ -2,7 +2,7 @@
 name = "model_generator_clustering"
 version = "0.1.0"
 description = "Generate (unsupervised) clustering models (non-neural networks)"
-authors = ["gianni <g.balistreri@shopware.com>"]
+authors = ["gianni <xxx>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"

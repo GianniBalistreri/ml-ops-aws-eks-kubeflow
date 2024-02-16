@@ -2,7 +2,7 @@
 name = "interactive_visualizer"
 version = "0.1.0"
 description = "Generate interactive visualization using plot.ly as a backbone"
-authors = ["gianni <g.balistreri@shopware.com>"]
+authors = ["gianni <xxx>"]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.11"

@@ -2,7 +2,7 @@
 name = "feature_selector"
 version = "0.1.0"
 description = "Select most important structured (tabular) features using decision tree algorithms"
-authors = ["gianni <g.balistreri@shopware.com>"]
+authors = ["gianni <xxx>"]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.11"

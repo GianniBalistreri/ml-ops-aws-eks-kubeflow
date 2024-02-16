@@ -2,8 +2,8 @@ FROM python:3.9
 
 RUN mkdir "/src"
 
-COPY kubeflow_pipelines/task_pool/v1/model_generator_clustering/task_container/src /src
-COPY kubeflow_pipelines/task_pool/v1/model_generator_clustering/task_container/pyproject.toml /src
+COPY ml_ops_templates/kubeflow_pipelines/task_pool/v1/model_generator_clustering/task_container/src /src
+COPY ml_ops_templates/kubeflow_pipelines/task_pool/v1/model_generator_clustering/task_container/pyproject.toml /src
 
 WORKDIR /src
 

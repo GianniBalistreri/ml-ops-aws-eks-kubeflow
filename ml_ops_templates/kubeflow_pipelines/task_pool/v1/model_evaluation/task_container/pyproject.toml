@@ -2,7 +2,7 @@
 name = "model_evaluation"
 version = "0.1.0"
 description = "Metrics for evaluation of supervised machine learning models"
-authors = ["gianni <g.balistreri@shopware.com>"]
+authors = ["gianni <xxx>"]
 
 [tool.poetry.dependencies]
 python = "^3.9"
