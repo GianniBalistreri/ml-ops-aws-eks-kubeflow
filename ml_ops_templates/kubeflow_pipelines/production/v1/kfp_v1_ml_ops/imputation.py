@@ -12,6 +12,8 @@ from typing import List, Union
 def imputation(data_set_path: str,
                features: List[str],
                s3_output_path_imputed_data_set: str,
+               aws_account_id: str,
+               aws_region: str,
                imp_meth: str = 'multiple',
                multiple_meth: str = 'random',
                single_meth: str = 'constant',
@@ -23,7 +25,6 @@ def imputation(data_set_path: str,
                analytical_data_types_path: str = None,
                sep: str = ',',
                output_file_path_imp_features: str = 'imputed_features.json',
-               aws_account_id: str = '711117404296',
                docker_image_name: str = 'ml-ops-imputation',
                docker_image_tag: str = 'v1',
                volume: dsl.VolumeOp = None,
@@ -52,8 +53,11 @@ def imputation(data_set_path: str,
     :param s3_output_path_imputed_data_set: str
         Complete file path of the imputed data set
 
-    :param output_file_path_imp_features: str
-        File path of the imputed feature names
+    :param aws_account_id: str
+        AWS account id
+
+    :param aws_region: str
+        AWS region name
 
     :param imp_meth: str
             Name of the imputation method
@@ -83,7 +87,7 @@ def imputation(data_set_path: str,
         Convergence threshold used for multiple imputation
 
     :param mice_config: dict
-        bla
+        -
 
     :param imp_config: dict
         Assignment of different imputation methods to features
@@ -96,8 +100,8 @@ def imputation(data_set_path: str,
     :param sep: str
         Separator
 
-    :param aws_account_id: str
-        AWS account id
+    :param output_file_path_imp_features: str
+        File path of the imputed feature names
 
     :param docker_image_name: str
         Name of the docker image repository
@@ -170,7 +174,7 @@ def imputation(data_set_path: str,
     if analytical_data_types_path is not None:
         _arguments.extend(['-analytical_data_types_path', analytical_data_types_path])
     _task: dsl.ContainerOp = dsl.ContainerOp(name='imputation',
-                                             image=f'{aws_account_id}.dkr.ecr.eu-central-1.amazonaws.com/{docker_image_name}:{docker_image_tag}',
+                                             image=f'{aws_account_id}.dkr.ecr.{aws_region}.amazonaws.com/{docker_image_name}:{docker_image_tag}',
                                              command=["python", "task.py"],
                                              arguments=_arguments,
                                              init_containers=None,

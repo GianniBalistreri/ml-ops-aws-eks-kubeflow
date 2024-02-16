@@ -14,6 +14,8 @@ def feature_engineer(data_set_path: Any,
                      target_feature: str,
                      s3_output_file_path_data_set: Any,
                      s3_output_file_path_processor_memory: str,
+                     aws_account_id: str,
+                     aws_region: str,
                      re_engineering: bool = False,
                      next_level: bool = False,
                      feature_engineering_config: str = None,
@@ -27,7 +29,6 @@ def feature_engineer(data_set_path: Any,
                      parallel_mode: bool = False,
                      output_file_path_predictors: str = 'features.json',
                      output_file_path_new_target_feature: str = 'new_target_feature.json',
-                     aws_account_id: str = '711117404296',
                      docker_image_name: str = 'ml-ops-feature-engineering',
                      docker_image_tag: str = 'v1',
                      volume: dsl.VolumeOp = None,
@@ -62,11 +63,11 @@ def feature_engineer(data_set_path: Any,
     :param s3_output_file_path_processor_memory: str
         Complete file path of the processing memory to save
 
-    :param output_file_path_predictors: str
-        Path of the predictors output
+    :param aws_account_id: str
+        AWS account id
 
-    :param output_file_path_new_target_feature: str
-        Path of the new target feature output
+    :param aws_region: str
+        AWS region name
 
     :param re_engineering: bool
         Whether to re-engineer features for inference or to engineer for training
@@ -101,8 +102,11 @@ def feature_engineer(data_set_path: Any,
     :param parallel_mode: bool
         Whether to run task in parallel mode or not
 
-    :param aws_account_id: str
-        AWS account id
+    :param output_file_path_predictors: str
+        Path of the predictors output
+
+    :param output_file_path_new_target_feature: str
+        Path of the new target feature output
 
     :param docker_image_name: str
         Name of the docker image repository
@@ -181,7 +185,7 @@ def feature_engineer(data_set_path: Any,
     if use_only_meth is not None:
         _arguments.extend(['-use_only_meth', use_only_meth])
     _task: dsl.ContainerOp = dsl.ContainerOp(name='feature_engineer',
-                                             image=f'{aws_account_id}.dkr.ecr.eu-central-1.amazonaws.com/{docker_image_name}:{docker_image_tag}',
+                                             image=f'{aws_account_id}.dkr.ecr.{aws_region}.amazonaws.com/{docker_image_name}:{docker_image_tag}',
                                              command=["python", "task.py"],
                                              arguments=_arguments,
                                              init_containers=None,

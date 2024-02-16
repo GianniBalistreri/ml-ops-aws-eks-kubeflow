@@ -9,6 +9,8 @@ from kfp import dsl
 
 
 def parallelizer(action: str,
+                 aws_account_id: str,
+                 aws_region: str,
                  analytical_data_types_path: str = None,
                  data_file_path: str = None,
                  s3_bucket_name: str = None,
@@ -20,7 +22,6 @@ def parallelizer(action: str,
                  sep: str = ',',
                  output_path_distribution: str = 'distribution.json',
                  s3_output_path_distribution: str = None,
-                 aws_account_id: str = '711117404296',
                  docker_image_name: str = 'ml-ops-parallelizer',
                  docker_image_tag: str = 'v1',
                  volume: dsl.VolumeOp = None,
@@ -46,6 +47,12 @@ def parallelizer(action: str,
             -> elements: elements of given list
             -> features: features of given data set
             -> file_paths: file path in given S3 bucket
+
+    :param aws_account_id: str
+        AWS account id
+
+    :param aws_region: str
+        AWS region name
 
     :param output_path_distribution: str
         Path of the distribution output
@@ -79,9 +86,6 @@ def parallelizer(action: str,
 
     :param s3_output_path_distribution: str
         Complete file path of the distribution output
-
-    :param aws_account_id: str
-        AWS account id
 
     :param docker_image_name: str
         Name of the docker image repository
@@ -155,7 +159,7 @@ def parallelizer(action: str,
     if s3_output_path_distribution is not None:
         _arguments.extend(['-s3_output_path_distribution', s3_output_path_distribution])
     _task: dsl.ContainerOp = dsl.ContainerOp(name='parallelizer',
-                                             image=f'{aws_account_id}.dkr.ecr.eu-central-1.amazonaws.com/{docker_image_name}:{docker_image_tag}',
+                                             image=f'{aws_account_id}.dkr.ecr.{aws_region}.amazonaws.com/{docker_image_name}:{docker_image_tag}',
                                              command=["python", "task.py"],
                                              arguments=_arguments,
                                              init_containers=None,

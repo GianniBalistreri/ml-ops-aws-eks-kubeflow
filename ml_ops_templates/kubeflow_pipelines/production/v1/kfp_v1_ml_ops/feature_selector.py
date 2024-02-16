@@ -13,6 +13,8 @@ def feature_selector(ml_type: str,
                      train_data_set_path: str,
                      test_data_set_path: str,
                      target_feature: str,
+                     aws_account_id: str,
+                     aws_region: str,
                      features: List[str] = None,
                      init_pairs: int = 3,
                      init_games: int = 5,
@@ -33,7 +35,6 @@ def feature_selector(ml_type: str,
                      output_path_imp_features: str = 'imp_features.json',
                      s3_output_path_metadata: str = None,
                      s3_output_path_visualization_data: str = None,
-                     aws_account_id: str = '711117404296',
                      docker_image_name: str = 'ml-ops-feature-selector',
                      docker_image_tag: str = 'v1',
                      volume: dsl.VolumeOp = None,
@@ -68,8 +69,11 @@ def feature_selector(ml_type: str,
     :param target_feature: str
         Name of the target feature
 
-    :param output_path_imp_features: str
-        Output path of the important features
+    :param aws_account_id: str
+        AWS account id
+
+    :param aws_region: str
+        AWS region name
 
     :param features: List[str]
         Name of the features
@@ -127,6 +131,9 @@ def feature_selector(ml_type: str,
 
     :param sep: str
         Separator
+
+    :param output_path_imp_features: str
+        Output path of the important features
 
     :param s3_output_path_metadata: str
         Complete file path of the metadata output
@@ -218,7 +225,7 @@ def feature_selector(ml_type: str,
     if s3_output_path_visualization_data is not None:
         _arguments.extend(['-s3_output_path_visualization_data', s3_output_path_visualization_data])
     _task: dsl.ContainerOp = dsl.ContainerOp(name='feature_selector',
-                                             image=f'{aws_account_id}.dkr.ecr.eu-central-1.amazonaws.com/{docker_image_name}:{docker_image_tag}',
+                                             image=f'{aws_account_id}.dkr.ecr.{aws_region}.amazonaws.com/{docker_image_name}:{docker_image_tag}',
                                              command=["python", "task.py"],
                                              arguments=_arguments,
                                              init_containers=None,

@@ -10,7 +10,7 @@ from typing import Any, List, Union
 
 
 def generate_supervised_model(ml_type: Union[str, dsl.PipelineParam],
-                              model_name: str,
+                              model_name: Union[str, dsl.PipelineParam],
                               target_feature: Union[str, dsl.PipelineParam],
                               train_data_set_path: Union[str, dsl.PipelineParam],
                               test_data_set_path: Union[str, dsl.PipelineParam],
@@ -19,6 +19,8 @@ def generate_supervised_model(ml_type: Union[str, dsl.PipelineParam],
                               s3_output_path_metadata: Union[str, dsl.PipelineParam],
                               s3_output_path_evaluation_train_data: Union[str, dsl.PipelineParam],
                               s3_output_path_evaluation_test_data: Union[str, dsl.PipelineParam],
+                              aws_account_id: str,
+                              aws_region: str,
                               predictors: Union[List[str], dsl.PipelineParam] = None,
                               model_id: Union[int, dsl.PipelineParam] = None,
                               model_param_path: Union[str, dsl.PipelineParam] = None,
@@ -33,7 +35,6 @@ def generate_supervised_model(ml_type: Union[str, dsl.PipelineParam],
                               val_data_set_path: Union[str, dsl.PipelineParam] = None,
                               s3_output_path_evaluation_val_data: Union[str, dsl.PipelineParam] = None,
                               output_path_training_status: str = 'training_status.json',
-                              aws_account_id: str = '711117404296',
                               docker_image_name: str = 'ml-ops-model-generator-supervised',
                               docker_image_tag: str = 'v1',
                               volume: dsl.VolumeOp = None,
@@ -87,8 +88,11 @@ def generate_supervised_model(ml_type: Union[str, dsl.PipelineParam],
     :param s3_output_path_evaluation_test_data: str
         Complete file path of the evaluation test data set output
 
-    :param output_path_training_status: str
-        Path of the training status output
+    :param aws_account_id: str
+        AWS account id
+
+    :param aws_region: str
+        AWS region name
 
     :param predictors: List[str]
         Name of the predictors
@@ -129,8 +133,8 @@ def generate_supervised_model(ml_type: Union[str, dsl.PipelineParam],
     :param s3_output_path_evaluation_val_data: str
         Complete file path of the evaluation validation data set output
 
-    :param aws_account_id: str
-        AWS account id
+    :param output_path_training_status: str
+        Path of the training status output
 
     :param docker_image_name: str
         Name of the docker image repository
@@ -221,7 +225,7 @@ def generate_supervised_model(ml_type: Union[str, dsl.PipelineParam],
     if kwargs is not None:
         _arguments.extend(['-kwargs', kwargs])
     _task: dsl.ContainerOp = dsl.ContainerOp(name='supervised_model_generator',
-                                             image=f'{aws_account_id}.dkr.ecr.eu-central-1.amazonaws.com/{docker_image_name}:{docker_image_tag}',
+                                             image=f'{aws_account_id}.dkr.ecr.{aws_region}.amazonaws.com/{docker_image_name}:{docker_image_tag}',
                                              command=["python", "task.py"],
                                              arguments=_arguments,
                                              init_containers=None,

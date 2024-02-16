@@ -12,6 +12,8 @@ def image_translation(train_data_set_a_path: str,
                       train_data_set_b_path: str,
                       test_data_set_b_path: str,
                       s3_output_file_path_evaluation: str,
+                      aws_account_id: str,
+                      aws_region: str,
                       unpaired: bool = True,
                       n_channels: int = 3,
                       image_height: int = 256,
@@ -46,8 +48,7 @@ def image_translation(train_data_set_a_path: str,
                       evaluation_epoch_interval: int = 1,
                       print_model_architecture: bool = True,
                       s3_output_file_path_model_artifact: str = None,
-                      aws_account_id: str = '711117404296',
-                      docker_image_name: str = 'ml-ops-generative-adversarial-neural-networks',
+                      docker_image_name: str = 'ml-ops-image-translation',
                       docker_image_tag: str = 'v1',
                       volume: dsl.VolumeOp = None,
                       volume_dir: str = '/mnt',
@@ -78,6 +79,12 @@ def image_translation(train_data_set_a_path: str,
 
     :param s3_output_file_path_evaluation: str
         Path of the evaluation output images
+
+    :param aws_account_id: str
+        AWS account id
+
+    :param aws_region: str
+        AWS region name
 
     :param unpaired: bool
         Whether to have paired or unpaired data set for image translation
@@ -210,9 +217,6 @@ def image_translation(train_data_set_a_path: str,
     :param volume_dir: str
         Name of the volume directory
 
-    :param aws_account_id: str
-        AWS account id
-
     :param docker_image_name: str
         Name of the docker image repository
 
@@ -310,7 +314,7 @@ def image_translation(train_data_set_a_path: str,
     if kwargs is not None:
         _arguments.extend(['-kwargs', kwargs])
     _task: dsl.ContainerOp = dsl.ContainerOp(name='image_translation',
-                                             image=f'{aws_account_id}.dkr.ecr.eu-central-1.amazonaws.com/{docker_image_name}:{docker_image_tag}',
+                                             image=f'{aws_account_id}.dkr.ecr.{aws_region}.amazonaws.com/{docker_image_name}:{docker_image_tag}',
                                              command=["python", "task.py"],
                                              arguments=_arguments,
                                              init_containers=None,

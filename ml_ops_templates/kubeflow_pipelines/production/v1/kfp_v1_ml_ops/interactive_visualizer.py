@@ -10,6 +10,8 @@ from typing import List, Union
 
 
 def interactive_visualizer(s3_output_image_path: Union[str, dsl.PipelineParam],
+                           aws_account_id: str,
+                           aws_region: str,
                            data_set_path: Union[str, dsl.PipelineParam] = None,
                            plot_type: str = None,
                            interactive: bool = True,
@@ -35,7 +37,6 @@ def interactive_visualizer(s3_output_image_path: Union[str, dsl.PipelineParam],
                            subplots_file_path: Union[str, dsl.PipelineParam] = None,
                            sep: str = ',',
                            output_file_paths: str = 'file_paths.json',
-                           aws_account_id: str = '711117404296',
                            docker_image_name: str = 'ml-ops-interactive-visualizer',
                            docker_image_tag: str = 'v1',
                            volume: dsl.VolumeOp = None,
@@ -57,6 +58,12 @@ def interactive_visualizer(s3_output_image_path: Union[str, dsl.PipelineParam],
 
     :param s3_output_image_path: str
         Name of the output destination of the image
+
+    :param aws_account_id: str
+        AWS account id
+
+    :param aws_region: str
+        AWS region name
 
     :param data_set_path: str
         Complete file path of the data set
@@ -147,9 +154,6 @@ def interactive_visualizer(s3_output_image_path: Union[str, dsl.PipelineParam],
 
     :param sep: str
         Separator
-
-    :param aws_account_id: str
-        AWS account id
 
     :param docker_image_name: str
         Name of the docker image repository
@@ -246,7 +250,7 @@ def interactive_visualizer(s3_output_image_path: Union[str, dsl.PipelineParam],
     if subplots_file_path is not None:
         _arguments.extend(['-subplots_file_path', subplots_file_path])
     _task: dsl.ContainerOp = dsl.ContainerOp(name='interactive_visualizer',
-                                             image=f'{aws_account_id}.dkr.ecr.eu-central-1.amazonaws.com/{docker_image_name}:{docker_image_tag}',
+                                             image=f'{aws_account_id}.dkr.ecr.{aws_region}.amazonaws.com/{docker_image_name}:{docker_image_tag}',
                                              command=["python", "task.py"],
                                              arguments=_arguments,
                                              init_containers=None,

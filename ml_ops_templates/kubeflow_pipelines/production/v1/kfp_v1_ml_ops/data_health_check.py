@@ -11,6 +11,8 @@ from typing import List
 
 def data_health_check(data_set_path: str,
                       analytical_data_types_path: str,
+                      aws_account_id: str,
+                      aws_region: str,
                       features: List[str] = None,
                       missing_value_threshold: float = 0.95,
                       sep: str = ',',
@@ -22,7 +24,6 @@ def data_health_check(data_set_path: str,
                       output_file_path_prop_valid_features: str = 'prop_valid_features.json',
                       output_file_path_n_valid_features: str = 'n_valid_features.json',
                       s3_output_file_path_data_health_check: str = None,
-                      aws_account_id: str = '711117404296',
                       docker_image_name: str = 'ml-ops-data-health-check',
                       docker_image_tag: str = 'v1',
                       volume: dsl.VolumeOp = None,
@@ -47,6 +48,12 @@ def data_health_check(data_set_path: str,
 
     :param analytical_data_types_path: str
         Complete file path of the analytical data types
+
+    :param aws_account_id: str
+        AWS account id
+
+    :param aws_region: str
+        AWS region name
 
     :param features: List[str]
         Name of the features to check
@@ -152,7 +159,7 @@ def data_health_check(data_set_path: str,
     if s3_output_file_path_data_health_check is not None:
         _arguments.extend(['-s3_output_file_path_data_health_check', s3_output_file_path_data_health_check])
     _task: dsl.ContainerOp = dsl.ContainerOp(name='data_health_check',
-                                             image=f'{aws_account_id}.dkr.ecr.eu-central-1.amazonaws.com/{docker_image_name}:{docker_image_tag}',
+                                             image=f'{aws_account_id}.dkr.ecr.{aws_region}.amazonaws.com/{docker_image_name}:{docker_image_tag}',
                                              command=["python", "task.py"],
                                              arguments=_arguments,
                                              init_containers=None,

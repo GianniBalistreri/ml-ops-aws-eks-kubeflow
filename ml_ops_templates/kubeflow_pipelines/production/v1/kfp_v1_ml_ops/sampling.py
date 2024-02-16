@@ -12,6 +12,8 @@ from typing import Dict, List
 def sampling(action: str,
              data_set_file_path: str,
              target_feature: str,
+             aws_account_id: str,
+             aws_region: str,
              output_file_path_sampling_metadata: str = 'metadata.json',
              output_file_path_sampling_file_paths: str = 'file_paths.json',
              s3_output_file_path_train_data_set: str = None,
@@ -30,7 +32,6 @@ def sampling(action: str,
              quotas: Dict[str, Dict[str, float]] = None,
              sep: str = ',',
              s3_output_file_path_sampling_metadata: str = None,
-             aws_account_id: str = '711117404296',
              docker_image_name: str = 'ml-ops-sampling',
              docker_image_tag: str = 'v1',
              volume: dsl.VolumeOp = None,
@@ -64,6 +65,12 @@ def sampling(action: str,
 
     :param target_feature: str
         Name of the target feature
+
+    :param aws_account_id: str
+        AWS account id
+
+    :param aws_region: str
+        AWS region name
 
     :param output_file_path_sampling_metadata: str
         Complete file path of the sampling metadata output
@@ -118,9 +125,6 @@ def sampling(action: str,
 
     :param s3_output_file_path_sampling_metadata: str
         Complete file path of the sampling metadata
-
-    :param aws_account_id: str
-        AWS account id
 
     :param docker_image_name: str
         Name of the docker image repository
@@ -208,7 +212,7 @@ def sampling(action: str,
     if s3_output_file_path_sampling_metadata is not None:
         _arguments.extend(['-s3_output_file_path_sampling_metadata', s3_output_file_path_sampling_metadata])
     _task: dsl.ContainerOp = dsl.ContainerOp(name='sampling',
-                                             image=f'{aws_account_id}.dkr.ecr.eu-central-1.amazonaws.com/{docker_image_name}:{docker_image_tag}',
+                                             image=f'{aws_account_id}.dkr.ecr.{aws_region}.amazonaws.com/{docker_image_name}:{docker_image_tag}',
                                              command=["python", "task.py"],
                                              arguments=_arguments,
                                              init_containers=None,

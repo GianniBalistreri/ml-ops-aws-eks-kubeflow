@@ -6,7 +6,7 @@ Kubeflow Pipeline Component: Machine Learning Model Evaluation
 
 from .container_op_parameters import add_container_op_parameters
 from kfp import dsl
-from typing import Dict, List
+from typing import Dict, List, Union
 
 ML_OUTPUT_METRICS: Dict[str, Dict[str, str]] = dict(clf_binary=dict(accuracy='accuracy_metric.json',
                                                                     precision='precision_metric.json',
@@ -25,9 +25,11 @@ ML_OUTPUT_METRICS: Dict[str, Dict[str, str]] = dict(clf_binary=dict(accuracy='ac
 def evaluate_machine_learning(ml_type: str,
                               target_feature_name: str,
                               prediction_feature_name: str,
-                              train_data_set_path: str,
-                              test_data_set_path: str,
-                              s3_output_path_metrics: str,
+                              train_data_set_path: Union[str, dsl.PipelineParam],
+                              test_data_set_path: Union[str, dsl.PipelineParam],
+                              s3_output_path_metrics: Union[str, dsl.PipelineParam],
+                              aws_account_id: str,
+                              aws_region: str,
                               s3_output_path_visualization: str = None,
                               s3_output_path_confusion_matrix: str = None,
                               s3_output_path_roc_curve: str = None,
@@ -39,7 +41,6 @@ def evaluate_machine_learning(ml_type: str,
                               sep: str = ',',
                               output_path_metadata: str = 'metadata.json',
                               output_path_sml_score_metric: str = 'sml_score_metric.json',
-                              aws_account_id: str = '711117404296',
                               docker_image_name: str = 'ml-ops-model-evaluation',
                               docker_image_tag: str = 'v1',
                               volume: dsl.VolumeOp = None,
@@ -78,14 +79,14 @@ def evaluate_machine_learning(ml_type: str,
     :param test_data_set_path: str
         Complete file path of the tests data set
 
-    :param output_path_metadata: str
-        File path of the metadata output file
-
-    :param output_path_sml_score_metric: str
-        Path of the output sml test metric results to save
-
     :param s3_output_path_metrics: str
         Complete file path of the metrics output
+
+    :param aws_account_id: str
+        AWS account id
+
+    :param aws_region: str
+        AWS region name
 
     :param s3_output_path_visualization: str
         Complete file path of the visualization output
@@ -114,8 +115,11 @@ def evaluate_machine_learning(ml_type: str,
     :param sep: str
         Separator
 
-    :param aws_account_id: str
-        AWS account id
+    :param output_path_metadata: str
+        File path of the metadata output file
+
+    :param output_path_sml_score_metric: str
+        Path of the output sml test metric results to save
 
     :param docker_image_name: str
         Name of the docker image repository
@@ -212,7 +216,7 @@ def evaluate_machine_learning(ml_type: str,
                 continue
         _file_outputs.update({output_metric: ML_OUTPUT_METRICS[ml_type][output_metric]})
     _task: dsl.ContainerOp = dsl.ContainerOp(name='model_evaluation',
-                                             image=f'{aws_account_id}.dkr.ecr.eu-central-1.amazonaws.com/{docker_image_name}:{docker_image_tag}',
+                                             image=f'{aws_account_id}.dkr.ecr.{aws_region}.amazonaws.com/{docker_image_name}:{docker_image_tag}',
                                              command=["python", "task.py"],
                                              arguments=_arguments,
                                              init_containers=None,

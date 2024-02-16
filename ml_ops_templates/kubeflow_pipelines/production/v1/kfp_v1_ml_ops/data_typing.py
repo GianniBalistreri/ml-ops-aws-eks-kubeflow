@@ -12,11 +12,12 @@ from typing import Dict, List
 def data_typing(data_set_path: str,
                 analytical_data_types_path: str,
                 s3_output_file_path_data_set: str,
+                aws_account_id: str,
+                aws_region: str,
                 missing_value_features: List[str] = None,
                 data_types_config: Dict[str, str] = None,
                 sep: str = ',',
                 s3_output_file_path_data_typing: str = None,
-                aws_account_id: str = '711117404296',
                 docker_image_name: str = 'ml-ops-data-typing',
                 docker_image_tag: str = 'v1',
                 volume: dsl.VolumeOp = None,
@@ -44,6 +45,12 @@ def data_typing(data_set_path: str,
 
     :param s3_output_file_path_data_set: str
         Complete file path of the typed data set
+
+    :param aws_account_id: str
+        AWS account id
+
+    :param aws_region: str
+        AWS region name
 
     :param missing_value_features: List[str]
         Name of the features containing missing values
@@ -123,7 +130,7 @@ def data_typing(data_set_path: str,
     if s3_output_file_path_data_typing is not None:
         _arguments.extend(['-s3_output_file_path_data_typing', s3_output_file_path_data_typing])
     _task: dsl.ContainerOp = dsl.ContainerOp(name='data_typing',
-                                             image=f'{aws_account_id}.dkr.ecr.eu-central-1.amazonaws.com/{docker_image_name}:{docker_image_tag}',
+                                             image=f'{aws_account_id}.dkr.ecr.{aws_region}.amazonaws.com/{docker_image_name}:{docker_image_tag}',
                                              command=["python", "task.py"],
                                              arguments=_arguments,
                                              init_containers=None,

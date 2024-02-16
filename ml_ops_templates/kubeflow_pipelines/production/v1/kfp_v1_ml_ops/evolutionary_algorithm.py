@@ -27,6 +27,7 @@ class EvolutionaryAlgorithm:
                  features: Union[List[str], dsl.PipelineParam],
                  models: List[str],
                  metrics: List[str],
+                 metric_types: List[str],
                  train_data_file_path: str,
                  test_data_file_path: str,
                  s3_output_file_path_generator_instructions: str,
@@ -35,7 +36,12 @@ class EvolutionaryAlgorithm:
                  s3_output_file_path_evolutionary_algorithm_images: str,
                  s3_output_file_path_best_model_visualization: str,
                  s3_output_file_path_best_model_images: str,
+                 aws_account_id: str,
+                 aws_region: str,
                  val_data_file_path: str = None,
+                 s3_output_path_confusion_matrix: str = None,
+                 s3_output_path_roc_curve: str = None,
+                 s3_output_path_metric_table: str = None,
                  algorithm: str = 'ga',
                  max_iterations: int = 10,
                  pop_size: int = 64,
@@ -64,7 +70,11 @@ class EvolutionaryAlgorithm:
                  fitness_evolution: bool = True,
                  fitness_dimensions: bool = True,
                  per_iteration: bool = True,
-                 aws_account_id: str = '711117404296',
+                 metric_values: List[float] = None,
+                 metric_formats: List[str] = None,
+                 target_feature: str = None,
+                 prediction_feature: str = None,
+                 labels: List[str] = None,
                  evolutionary_algorithm_docker_image_name: str = 'ml-ops-evolutionary-algorithm',
                  evolutionary_algorithm_docker_image_tag: str = 'v1',
                  evolutionary_algorithm_volume: dsl.VolumeOp = None,
@@ -165,7 +175,7 @@ class EvolutionaryAlgorithm:
                  interactive_visualizer_instance_name: str = 'm5.xlarge',
                  interactive_visualizer_max_cache_staleness: str = 'P0D',
                  display_visualization_python_version: str = '3.9',
-                 display_visualization_display_name: str = 'Gather Metadata',
+                 display_visualization_display_name: str = 'Display Visualization',
                  display_visualization_n_cpu_request: str = None,
                  display_visualization_n_cpu_limit: str = None,
                  display_visualization_n_gpu: str = None,
@@ -177,7 +187,7 @@ class EvolutionaryAlgorithm:
                  display_visualization_instance_name: str = 'm5.xlarge',
                  display_visualization_max_cache_staleness: str = 'P0D',
                  display_metric_python_version: str = '3.9',
-                 display_metric_display_name: str = 'Gather Metadata',
+                 display_metric_display_name: str = 'Display Metrics',
                  display_metric_n_cpu_request: str = None,
                  display_metric_n_cpu_limit: str = None,
                  display_metric_n_gpu: str = None,
@@ -373,6 +383,10 @@ class EvolutionaryAlgorithm:
         self.features: Union[List[str], dsl.PipelineParam] = features
         self.models: List[str] = models
         self.metrics: List[str] = metrics
+        self.metric_types: List[str] = metric_types
+        self.s3_output_path_confusion_matrix: str = s3_output_path_confusion_matrix
+        self.s3_output_path_roc_curve: str = s3_output_path_roc_curve
+        self.s3_output_path_metric_table: str = s3_output_path_metric_table
         self.train_data_file_path: str = train_data_file_path
         self.test_data_file_path: str = test_data_file_path
         self.s3_output_file_path_generator_instructions: str = s3_output_file_path_generator_instructions
@@ -410,7 +424,14 @@ class EvolutionaryAlgorithm:
         self.fitness_evolution: bool = fitness_evolution
         self.fitness_dimensions: bool = fitness_dimensions
         self.per_iteration: bool = per_iteration
+        self.metric_values: List[float] = metric_values
+        self.metric_formats: List[str] = metric_formats
+        self.target_feature: str = target_feature
+        self.prediction_feature: str = prediction_feature
+        self.labels: List[str] = labels
+        self.header: List[str] = ['index', 'metric_name', 'metric_value', 'data_set']
         self.aws_account_id: str = aws_account_id
+        self.aws_region: str = aws_region
         self.evolutionary_algorithm_docker_image_name: str = evolutionary_algorithm_docker_image_name
         self.evolutionary_algorithm_docker_image_tag: str = evolutionary_algorithm_docker_image_tag
         self.evolutionary_algorithm_volume: dsl.VolumeOp = evolutionary_algorithm_volume
@@ -547,24 +568,24 @@ class EvolutionaryAlgorithm:
         self.display_metric_instance_name: str = display_metric_instance_name
         self.display_metric_max_cache_staleness: str = display_metric_max_cache_staleness
 
-    def _display_metrics(self, file_paths: dsl.PipelineParam) -> dsl.ContainerOp:
+    def _display_metrics(self, file_paths: List[str]) -> dsl.ContainerOp:
         """
         Get dsl.ContainerOp of display metrics component
 
-        :param file_paths: dsl.PipelineParam
+        :param file_paths: List[str]
             Complete file path of the metrics to display
 
         :return: dsl.ContainerOp
             Container operator for display metrics
         """
         return display_metrics(file_paths=file_paths,
-                               metric_types=None,
-                               metric_values=None,
-                               metric_formats=None,
-                               target_feature=None,
-                               prediction_feature=None,
-                               labels=None,
-                               header=None,
+                               metric_types=self.metric_types,
+                               metric_values=self.metric_values,
+                               metric_formats=self.metric_formats,
+                               target_feature=self.target_feature,
+                               prediction_feature=self.prediction_feature,
+                               labels=self.labels,
+                               header=self.header,
                                python_version=self.display_metric_python_version,
                                display_name=self.display_metric_display_name,
                                n_cpu_request=self.display_metric_n_cpu_request,
@@ -604,6 +625,97 @@ class EvolutionaryAlgorithm:
                                      max_cache_staleness=self.display_visualization_max_cache_staleness
                                      )
 
+    def _evaluate_machine_learning(self,
+                                   train_data_set_path: dsl.PipelineParam,
+                                   test_data_set_path: dsl.PipelineParam,
+                                   s3_output_path_metrics: dsl.PipelineParam,
+                                   visualize: bool = False
+                                   ) -> dsl.ContainerOp:
+        """
+        Get dsl.ContainerOp of evaluate machine learning component
+
+        :return: dsl.ContainerOp
+            Container operator for evaluate machine learning
+        """
+        return evaluate_machine_learning(ml_type=self.ml_type,
+                                         target_feature_name=self.target,
+                                         prediction_feature_name='prediction',
+                                         train_data_set_path=train_data_set_path,
+                                         test_data_set_path=test_data_set_path,
+                                         aws_account_id=self.aws_account_id,
+                                         aws_region=self.aws_region,
+                                         metrics=None if visualize else self.metrics,
+                                         s3_output_path_metrics=s3_output_path_metrics,
+                                         s3_output_path_visualization=self.s3_output_file_path_best_model_visualization if visualize else None,
+                                         s3_output_path_confusion_matrix=self.s3_output_path_confusion_matrix if visualize else None,
+                                         s3_output_path_roc_curve=self.s3_output_path_roc_curve if visualize else None,
+                                         s3_output_path_metric_table=self.s3_output_path_metric_table if visualize else None,
+                                         labels=self.labels,
+                                         docker_image_name=self.evaluate_machine_learning_docker_image_name,
+                                         docker_image_tag=self.evaluate_machine_learning_docker_image_tag,
+                                         display_name=self.evaluate_machine_learning_display_name,
+                                         n_cpu_request=self.evaluate_machine_learning_n_cpu_request,
+                                         n_cpu_limit=self.evaluate_machine_learning_n_cpu_limit,
+                                         n_gpu=self.evaluate_machine_learning_n_gpu,
+                                         gpu_vendor=self.evaluate_machine_learning_gpu_vendor,
+                                         memory_request=self.evaluate_machine_learning_memory_request,
+                                         memory_limit=self.evaluate_machine_learning_memory_limit,
+                                         ephemeral_storage_request=self.evaluate_machine_learning_ephemeral_storage_request,
+                                         ephemeral_storage_limit=self.evaluate_machine_learning_ephemeral_storage_limit,
+                                         instance_name=self.evaluate_machine_learning_instance_name,
+                                         max_cache_staleness=self.evaluate_machine_learning_max_cache_staleness
+                                         )
+
+    def _generate_supervised_model(self,
+                                   model_name: dsl.PipelineParam,
+                                   s3_output_path_model: dsl.PipelineParam,
+                                   s3_output_path_param: dsl.PipelineParam,
+                                   s3_output_path_metadata: dsl.PipelineParam,
+                                   s3_output_path_evaluation_train_data: dsl.PipelineParam,
+                                   s3_output_path_evaluation_test_data: dsl.PipelineParam,
+                                   model_id: dsl.PipelineParam,
+                                   model_param_path: dsl.PipelineParam,
+                                   param_rate: dsl.PipelineParam,
+                                   warm_start: dsl.PipelineParam
+                                   ) -> dsl.ContainerOp:
+        """
+        Get dsl.ContainerOp of evaluate machine learning component
+
+        :return: dsl.ContainerOp
+            Container operator for evaluate machine learning
+        """
+        return generate_supervised_model(ml_type=self.ml_type,
+                                         model_name=model_name,
+                                         target_feature=self.target,
+                                         train_data_set_path=self.train_data_file_path,
+                                         test_data_set_path=self.test_data_file_path,
+                                         s3_output_path_model=s3_output_path_model,
+                                         s3_output_path_param=s3_output_path_param,
+                                         s3_output_path_metadata=s3_output_path_metadata,
+                                         s3_output_path_evaluation_train_data=s3_output_path_evaluation_train_data,
+                                         s3_output_path_evaluation_test_data=s3_output_path_evaluation_test_data,
+                                         aws_account_id=self.aws_account_id,
+                                         aws_region=self.aws_region,
+                                         predictors=self.features,
+                                         model_id=model_id,
+                                         model_param_path=model_param_path,
+                                         param_rate=param_rate,
+                                         warm_start=warm_start,
+                                         docker_image_name=self.generate_supervised_model_docker_image_name,
+                                         docker_image_tag=self.generate_supervised_model_docker_image_tag,
+                                         display_name=self.generate_supervised_model_display_name,
+                                         n_cpu_request=self.generate_supervised_model_n_cpu_request,
+                                         n_cpu_limit=self.generate_supervised_model_n_cpu_limit,
+                                         n_gpu=self.generate_supervised_model_n_gpu,
+                                         gpu_vendor=self.generate_supervised_model_gpu_vendor,
+                                         memory_request=self.generate_supervised_model_memory_request,
+                                         memory_limit=self.generate_supervised_model_memory_limit,
+                                         ephemeral_storage_request=self.generate_supervised_model_ephemeral_storage_request,
+                                         ephemeral_storage_limit=self.generate_supervised_model_ephemeral_storage_limit,
+                                         instance_name=self.generate_supervised_model_instance_name,
+                                         max_cache_staleness=self.generate_supervised_model_max_cache_staleness
+                                         )
+
     def _iterate(self, idx: dsl.PipelineParam) -> dsl.ContainerOp:
         """
         Iteration of evolutionary algorithm using Kubeflow graph components
@@ -630,56 +742,22 @@ class EvolutionaryAlgorithm:
                                                            instance_name=self.extract_instruction_instance_name,
                                                            max_cache_staleness=self.extract_instruction_max_cache_staleness
                                                            )
-            _task_3: dsl.ContainerOp = generate_supervised_model(ml_type=self.ml_type,
-                                                                 model_name=_task_2.outputs['model_name'],
-                                                                 target_feature=self.target,
-                                                                 train_data_set_path=self.train_data_file_path,
-                                                                 test_data_set_path=self.test_data_file_path,
-                                                                 s3_output_path_model=_task_2.outputs['model_artifact_path'],
-                                                                 s3_output_path_param=_task_2.outputs['model_param_path'],
-                                                                 s3_output_path_metadata=_task_2.outputs['model_metadata_path'],
-                                                                 s3_output_path_evaluation_train_data=_task_2.outputs['evaluate_train_data_path'],
-                                                                 s3_output_path_evaluation_test_data=_task_2.outputs['evaluate_test_data_path'],
-                                                                 predictors=self.features,
-                                                                 model_id=_task_2.outputs['id'],
-                                                                 model_param_path=_task_2.outputs['model_input_param_path'],
-                                                                 param_rate=_task_2.outputs['param_rate'],
-                                                                 warm_start=_task_2.outputs['warm_start'],
-                                                                 docker_image_name=self.generate_supervised_model_docker_image_name,
-                                                                 docker_image_tag=self.generate_supervised_model_docker_image_tag,
-                                                                 display_name=self.generate_supervised_model_display_name,
-                                                                 n_cpu_request=self.generate_supervised_model_n_cpu_request,
-                                                                 n_cpu_limit=self.generate_supervised_model_n_cpu_limit,
-                                                                 n_gpu=self.generate_supervised_model_n_gpu,
-                                                                 gpu_vendor=self.generate_supervised_model_gpu_vendor,
-                                                                 memory_request=self.generate_supervised_model_memory_request,
-                                                                 memory_limit=self.generate_supervised_model_memory_limit,
-                                                                 ephemeral_storage_request=self.generate_supervised_model_ephemeral_storage_request,
-                                                                 ephemeral_storage_limit=self.generate_supervised_model_ephemeral_storage_limit,
-                                                                 instance_name=self.generate_supervised_model_instance_name,
-                                                                 max_cache_staleness=self.generate_supervised_model_max_cache_staleness
-                                                                 )
-            _task_4: dsl.ContainerOp = evaluate_machine_learning(ml_type=self.ml_type,
-                                                                 target_feature_name=self.target,
-                                                                 prediction_feature_name='prediction',
-                                                                 train_data_set_path=_task_2.outputs['evaluate_train_data_path'],
-                                                                 test_data_set_path=_task_2.outputs['evaluate_test_data_path'],
-                                                                 metrics=self.metrics,
-                                                                 s3_output_path_metrics=_task_2.outputs['model_fitness_path'],
-                                                                 docker_image_name=self.evaluate_machine_learning_docker_image_name,
-                                                                 docker_image_tag=self.evaluate_machine_learning_docker_image_tag,
-                                                                 display_name=self.evaluate_machine_learning_display_name,
-                                                                 n_cpu_request=self.evaluate_machine_learning_n_cpu_request,
-                                                                 n_cpu_limit=self.evaluate_machine_learning_n_cpu_limit,
-                                                                 n_gpu=self.evaluate_machine_learning_n_gpu,
-                                                                 gpu_vendor=self.evaluate_machine_learning_gpu_vendor,
-                                                                 memory_request=self.evaluate_machine_learning_memory_request,
-                                                                 memory_limit=self.evaluate_machine_learning_memory_limit,
-                                                                 ephemeral_storage_request=self.evaluate_machine_learning_ephemeral_storage_request,
-                                                                 ephemeral_storage_limit=self.evaluate_machine_learning_ephemeral_storage_limit,
-                                                                 instance_name=self.evaluate_machine_learning_instance_name,
-                                                                 max_cache_staleness=self.evaluate_machine_learning_max_cache_staleness
-                                                                 )
+            _task_3: dsl.ContainerOp = self._generate_supervised_model(model_name=_task_2.outputs['model_name'],
+                                                                       s3_output_path_model=_task_2.outputs['model_artifact_path'],
+                                                                       s3_output_path_param=_task_2.outputs['model_param_path'],
+                                                                       s3_output_path_metadata=_task_2.outputs['model_metadata_path'],
+                                                                       s3_output_path_evaluation_train_data=_task_2.outputs['evaluate_train_data_path'],
+                                                                       s3_output_path_evaluation_test_data=_task_2.outputs['evaluate_test_data_path'],
+                                                                       model_id=_task_2.outputs['id'],
+                                                                       model_param_path=_task_2.outputs['model_input_param_path'],
+                                                                       param_rate=_task_2.outputs['param_rate'],
+                                                                       warm_start=_task_2.outputs['warm_start']
+                                                                       )
+            _task_4: dsl.ContainerOp = self._evaluate_machine_learning(train_data_set_path=_task_2.outputs['evaluate_train_data_path'],
+                                                                       test_data_set_path=_task_2.outputs['evaluate_test_data_path'],
+                                                                       s3_output_path_metrics=_task_2.outputs['model_fitness_path'],
+                                                                       visualize=False
+                                                                       )
             _task_4.after(_task_3)
         _task_5: dsl.ContainerOp = serializer(action='evolutionary_algorithm',
                                               parallelized_obj=[self.s3_output_file_path_generator_instructions],
@@ -782,7 +860,7 @@ class EvolutionaryAlgorithm:
         if self.environment_reaction_path is not None:
             _arguments.extend(['-environment_reaction_path', self.environment_reaction_path])
         _task: dsl.ContainerOp = dsl.ContainerOp(name='evolutionary_algorithm',
-                                                 image=f'{self.aws_account_id}.dkr.ecr.eu-central-1.amazonaws.com/{self.evolutionary_algorithm_docker_image_name}:{self.evolutionary_algorithm_docker_image_tag}',
+                                                 image=f'{self.aws_account_id}.dkr.ecr.{self.aws_region}.amazonaws.com/{self.evolutionary_algorithm_docker_image_name}:{self.evolutionary_algorithm_docker_image_tag}',
                                                  command=["python", "task.py"],
                                                  arguments=_arguments,
                                                  init_containers=None,
@@ -812,17 +890,16 @@ class EvolutionaryAlgorithm:
                                     )
         return _task
 
-    def _interactive_visualizer(self) -> dsl.ContainerOp:
+    def _interactive_visualizer(self, s3_output_image_path: str, subplots_file_path: str) -> dsl.ContainerOp:
         """
         Get dsl.ContainerOp of interactive visualization component
 
         :return: dsl.ContainerOp
             Container operator for interactive visualization
         """
-        return interactive_visualizer(s3_output_image_path='',
+        return interactive_visualizer(s3_output_image_path=s3_output_image_path,
                                       data_set_path=None,
-                                      analytical_data_types_path='',
-                                      subplots_file_path=self.s3_output_file_path_visualization,
+                                      subplots_file_path=subplots_file_path,
                                       docker_image_name=self.interactive_visualizer_docker_image_name,
                                       docker_image_tag=self.interactive_visualizer_docker_image_tag,
                                       display_name=self.interactive_visualizer_display_name,
@@ -847,15 +924,31 @@ class EvolutionaryAlgorithm:
         """
         _task_0: dsl.ContainerOp = self._get_evolutionary_algorithm_container_op()
         _task_1: dsl.ContainerOp = self._iterate(idx=_task_0.outputs['idx'])
-        with dsl.Condition(condition=_task_0.outputs['evolve'] == 1, name='Stop-Evolution-Layer-0'):
-            _task_x: dsl.ContainerOp = self._gather_metadata()
-            _task_x.after(_task_1)
-        with dsl.Condition(condition=_task_0.outputs['evolve'] == 0, name='Stop-Evolution-Layer-1'):
-            _task_2: dsl.ContainerOp = self._gather_metadata()
-            _task_2.after(_task_1)
-            _task_3: dsl.ContainerOp = self._interactive_visualizer()
+        _task_2: dsl.ContainerOp = self._gather_metadata()
+        _task_2.after(_task_1)
+        with dsl.Condition(condition=_task_0.outputs['evolve'] == 0, name='Stop-Evolution-Layer'):
+            self.interactive_visualizer_display_name = 'Generate Evolution Plots'
+            _task_3: dsl.ContainerOp = self._interactive_visualizer(s3_output_image_path=self.s3_output_file_path_evolutionary_algorithm_images,
+                                                                    subplots_file_path=self.s3_output_file_path_visualization
+                                                                    )
             _task_3.after(_task_2)
-        return _task_0, _task_x
+            _task_4: dsl.ContainerOp = self._display_visualization(file_paths=_task_3.outputs['file_paths'])
+            _task_5: dsl.ContainerOp = self._evaluate_machine_learning(train_data_set_path=_task_2.outputs['evaluation_train_data_file_path'],
+                                                                       test_data_set_path=_task_2.outputs['evaluation_test_data_file_path'],
+                                                                       s3_output_path_metrics=_task_2.outputs['model_fitness_path'],
+                                                                       visualize=True
+                                                                       )
+            self.interactive_visualizer_display_name = 'Generate Best Model Results'
+            _task_6: dsl.ContainerOp = self._interactive_visualizer(s3_output_image_path=self.s3_output_file_path_best_model_images,
+                                                                    subplots_file_path=self.s3_output_file_path_visualization
+                                                                    )
+            _task_7: dsl.ContainerOp = self._display_visualization(file_paths=_task_6.outputs['file_paths'])
+            _display_metric_file_paths: List[str] = [self.s3_output_path_metric_table]
+            if self.s3_output_path_confusion_matrix is not None:
+                _display_metric_file_paths.append(self.s3_output_path_confusion_matrix)
+            _task_8: dsl.ContainerOp = self._display_metrics(file_paths=_display_metric_file_paths)
+            _task_8.after(_task_5)
+        return _task_0, _task_2
 
 
 def evolutionary_algorithm(s3_metadata_file_path: Union[str, dsl.PipelineParam],
@@ -867,6 +960,8 @@ def evolutionary_algorithm(s3_metadata_file_path: Union[str, dsl.PipelineParam],
                            s3_output_file_path_generator_instructions: Union[str, dsl.PipelineParam],
                            s3_output_file_path_modeling: Union[str, dsl.PipelineParam],
                            s3_output_file_path_visualization: Union[str, dsl.PipelineParam],
+                           aws_account_id: str,
+                           aws_region: str,
                            output_file_path_evolve: str = 'evolve.json',
                            output_file_path_stopping_reason: str = 'stopping_reason.json',
                            output_file_path_individual_idx: str = 'individual_idx.json',
@@ -899,7 +994,6 @@ def evolutionary_algorithm(s3_metadata_file_path: Union[str, dsl.PipelineParam],
                            fitness_evolution: bool = True,
                            fitness_dimensions: bool = True,
                            per_iteration: bool = True,
-                           aws_account_id: str = '711117404296',
                            docker_image_name: str = 'ml-ops-evolutionary-algorithm',
                            docker_image_tag: str = 'v1',
                            volume: dsl.VolumeOp = None,
@@ -945,6 +1039,12 @@ def evolutionary_algorithm(s3_metadata_file_path: Union[str, dsl.PipelineParam],
 
     :param s3_output_file_path_visualization: str
         Path of the output files of the following visualization step
+
+    :param aws_account_id: str
+        AWS account id
+
+    :param aws_region: str
+        AWS region name
 
     :param output_file_path_evolve: str
         File path of the evolution status output
@@ -1357,6 +1457,7 @@ def _gather_metadata(metadata_file_path: str,
                                                  ('fitness_metric', float),
                                                  ('fitness_score', float),
                                                  ('model_artifact_path', str),
+                                                 ('model_fitness_path', str),
                                                  ('evaluation_train_data_file_path', str),
                                                  ('evaluation_test_data_file_path', str),
                                                  ('evaluation_val_data_file_path', str)
@@ -1474,6 +1575,7 @@ def _gather_metadata(metadata_file_path: str,
     _model_artifact_path: str = os.path.join(modeling_file_path, f'model_artifact_{_id}.joblib')
     _model_param_path: str = os.path.join(modeling_file_path, f'model_param_{_id}.json')
     _model_metadata_path: str = os.path.join(modeling_file_path, f'model_metadata_{_id}.json')
+    _model_fitness_path: str = os.path.join(modeling_file_path, f'model_fitness_{_id}.json')
     _evaluate_train_data_path: str = os.path.join(modeling_file_path, f'evaluate_train_data_{_id}.json')
     _evaluate_test_data_path: str = os.path.join(modeling_file_path, f'evaluate_test_data_{_id}.json')
     _evaluate_val_data_path: str = os.path.join(modeling_file_path, f'evaluate_val_data_{_id}.json')
@@ -1485,6 +1587,7 @@ def _gather_metadata(metadata_file_path: str,
             _fitness_metric,
             _fitness_score,
             _model_artifact_path,
+            _model_fitness_path,
             _evaluate_train_data_path,
             _evaluate_test_data_path,
             _evaluate_val_data_path

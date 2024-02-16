@@ -49,9 +49,9 @@ def display_visualization(file_paths: Union[Dict[str, List[str]], dsl.PipelinePa
                           n_cpu_limit: str = None,
                           n_gpu: str = None,
                           gpu_vendor: str = 'nvidia',
-                          memory_request: str = '1G',
+                          memory_request: str = '100Mi',
                           memory_limit: str = None,
-                          ephemeral_storage_request: str = '5G',
+                          ephemeral_storage_request: str = '100Mi',
                           ephemeral_storage_limit: str = None,
                           instance_name: str = 'm5.xlarge',
                           max_cache_staleness: str = 'P0D'

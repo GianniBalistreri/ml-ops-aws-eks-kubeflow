@@ -13,6 +13,8 @@ def generate_clustering_model(model_name: str,
                               s3_output_path_model: str,
                               s3_output_path_metadata: str,
                               s3_output_path_evaluation_train_data: str,
+                              aws_account_id: str,
+                              aws_region: str,
                               model_id: int = None,
                               model_param_path: str = None,
                               param_rate: float = 0.0,
@@ -25,7 +27,6 @@ def generate_clustering_model(model_name: str,
                               suffix_parallel_mode: str = None,
                               s3_output_path_visualization_data: str = None,
                               output_path_training_status: str = 'training_status.json',
-                              aws_account_id: str = '711117404296',
                               docker_image_name: str = 'ml-ops-model-generator-clustering',
                               docker_image_tag: str = 'v1',
                               volume: dsl.VolumeOp = None,
@@ -58,8 +59,11 @@ def generate_clustering_model(model_name: str,
     :param s3_output_path_evaluation_train_data: str
         Complete file path of the evaluation training data set output
 
-    :param output_path_training_status: str
-        Path of the training status output
+    :param aws_account_id: str
+        AWS account id
+
+    :param aws_region: str
+        AWS region name
 
     :param model_id: int
         Model ID
@@ -97,8 +101,8 @@ def generate_clustering_model(model_name: str,
     :param s3_output_path_visualization_data: str
         Complete S3 file path of the visualization data
 
-    :param aws_account_id: str
-        AWS account id
+    :param output_path_training_status: str
+        Path of the training status output
 
     :param docker_image_name: str
         Name of the docker image repository
@@ -180,7 +184,7 @@ def generate_clustering_model(model_name: str,
     if kwargs is not None:
         _arguments.extend(['-kwargs', kwargs])
     _task: dsl.ContainerOp = dsl.ContainerOp(name='clustering_model_generator',
-                                             image=f'{aws_account_id}.dkr.ecr.eu-central-1.amazonaws.com/{docker_image_name}:{docker_image_tag}',
+                                             image=f'{aws_account_id}.dkr.ecr.{aws_region}.amazonaws.com/{docker_image_name}:{docker_image_tag}',
                                              command=["python", "task.py"],
                                              arguments=_arguments,
                                              init_containers=None,

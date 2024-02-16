@@ -11,6 +11,8 @@ from typing import Dict, Union
 
 def serializer(action: str,
                parallelized_obj: Union[list, dsl.PipelineParam],
+               aws_account_id: str,
+               aws_region: str,
                label_feature_name: str = None,
                labels: list = None,
                output_file_path_missing_data: str = None,
@@ -21,7 +23,6 @@ def serializer(action: str,
                output_file_path_new_target_feature: str = None,
                s3_output_file_path_parallelized_data: Union[str, dsl.PipelineParam] = None,
                sep: str = ',',
-               aws_account_id: str = '711117404296',
                docker_image_name: str = 'ml-ops-serializer',
                docker_image_tag: str = 'v1',
                volume: dsl.VolumeOp = None,
@@ -53,6 +54,12 @@ def serializer(action: str,
     :param parallelized_obj: list
         List of objects used in parallelization process
 
+    :param aws_account_id: str
+        AWS account id
+
+    :param aws_region: str
+        AWS region name
+
     :param label_feature_name: str
             Name of the label feature that contains given labels
 
@@ -82,9 +89,6 @@ def serializer(action: str,
 
     :param sep: str
         Separator
-
-    :param aws_account_id: str
-        AWS account id
 
     :param docker_image_name: str
         Name of the docker image repository
@@ -167,7 +171,7 @@ def serializer(action: str,
     if s3_output_file_path_parallelized_data is not None:
         _arguments.extend(['-s3_output_file_path_parallelized_data', s3_output_file_path_parallelized_data])
     _task: dsl.ContainerOp = dsl.ContainerOp(name='serializer',
-                                             image=f'{aws_account_id}.dkr.ecr.eu-central-1.amazonaws.com/{docker_image_name}:{docker_image_tag}',
+                                             image=f'{aws_account_id}.dkr.ecr.{aws_region}.amazonaws.com/{docker_image_name}:{docker_image_tag}',
                                              command=["python", "task.py"],
                                              arguments=_arguments,
                                              init_containers=None,

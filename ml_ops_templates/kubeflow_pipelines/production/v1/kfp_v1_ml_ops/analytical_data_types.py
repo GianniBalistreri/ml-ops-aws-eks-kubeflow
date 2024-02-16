@@ -10,7 +10,9 @@ from typing import List
 
 
 def analytical_data_types(data_set_path: str,
-                          s3_output_file_path_analytical_data_types,
+                          s3_output_file_path_analytical_data_types: str,
+                          aws_account_id: str,
+                          aws_region: str,
                           max_categories: int = 100,
                           date_edges: dict = None,
                           categorical: List[str] = None,
@@ -25,7 +27,6 @@ def analytical_data_types(data_set_path: str,
                           output_file_path_continuous_features: str = 'continuous_features.json',
                           output_file_path_date_features: str = 'date_features.json',
                           output_file_path_id_text_features: str = 'id_text_features.json',
-                          aws_account_id: str = '711117404296',
                           docker_image_name: str = 'ml-ops-analytical-data-types',
                           docker_image_tag: str = 'v1',
                           volume: dsl.VolumeOp = None,
@@ -48,26 +49,14 @@ def analytical_data_types(data_set_path: str,
     :param data_set_path: str
         Complete file path of the data set
 
-    :param output_file_path_analytical_data_types: str
-        File path of the analytical data types output
-
-    :param output_file_path_categorical_features: str
-        File path of the categorical features output
-
-    :param output_file_path_ordinal_features: str
-        File path of the ordinal features output
-
-    :param output_file_path_continuous_features: str
-        File path of the continuous features output
-
-    :param output_file_path_date_features: str
-        File path of the date features output
-
-    :param output_file_path_id_text_features: str
-        File path of the id / text features output
-
     :param s3_output_file_path_analytical_data_types: str
         Complete file path of the analytical data types output
+
+    :param aws_account_id: str
+        AWS account id
+
+    :param aws_region: str
+        AWS region name
 
     :param max_categories: int
         Maximum number of categories for identifying feature as categorical
@@ -93,8 +82,23 @@ def analytical_data_types(data_set_path: str,
     :param sep: str
         Separator
 
-    :param aws_account_id: str
-        AWS account id
+    :param output_file_path_analytical_data_types: str
+        File path of the analytical data types output
+
+    :param output_file_path_categorical_features: str
+        File path of the categorical features output
+
+    :param output_file_path_ordinal_features: str
+        File path of the ordinal features output
+
+    :param output_file_path_continuous_features: str
+        File path of the continuous features output
+
+    :param output_file_path_date_features: str
+        File path of the date features output
+
+    :param output_file_path_id_text_features: str
+        File path of the id / text features output
 
     :param docker_image_name: str
         Name of the docker image repository
@@ -171,7 +175,7 @@ def analytical_data_types(data_set_path: str,
     if id_text is not None:
         _arguments.extend(['-id_text', id_text])
     _task: dsl.ContainerOp = dsl.ContainerOp(name='analytical_data_types',
-                                             image=f'{aws_account_id}.dkr.ecr.eu-central-1.amazonaws.com/{docker_image_name}:{docker_image_tag}',
+                                             image=f'{aws_account_id}.dkr.ecr.{aws_region}.amazonaws.com/{docker_image_name}:{docker_image_tag}',
                                              command=["python", "task.py"],
                                              arguments=_arguments,
                                              init_containers=None,
