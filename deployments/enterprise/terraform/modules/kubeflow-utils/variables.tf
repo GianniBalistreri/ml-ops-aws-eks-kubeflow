@@ -158,14 +158,24 @@ variable "ecr_analytical_data_types" {
   description = "The name of the analytical data types Elastic Container Registry (ECR) repository"
 }
 
-variable "ecr_anomaly_detection" {
+variable "ecr_check_feature_distribution" {
   type        = string
-  description = "The name of the anomaly detection Elastic Container Registry (ECR) repository"
+  description = "The name of the check feature distribution Elastic Container Registry (ECR) repository"
+}
+
+variable "ecr_custom_predictor" {
+  type        = string
+  description = "The name of the custom predictor Elastic Container Registry (ECR) repository"
 }
 
 variable "ecr_data_health_check" {
   type        = string
   description = "The name of the data health check Elastic Container Registry (ECR) repository"
+}
+
+variable "ecr_data_typing" {
+  type        = string
+  description = "The name of the data typing Elastic Container Registry (ECR) repository"
 }
 
 variable "ecr_evolutionary_algorithm" {
@@ -181,6 +191,31 @@ variable "ecr_feature_engineering" {
 variable "ecr_feature_selector" {
   type        = string
   description = "The name of the feature selector Elastic Container Registry (ECR) repository"
+}
+
+variable "ecr_image_classification_generator" {
+  type        = string
+  description = "The name of the image classification generator Elastic Container Registry (ECR) repository"
+}
+
+variable "ecr_image_processor" {
+  type        = string
+  description = "The name of the image processor Elastic Container Registry (ECR) repository"
+}
+
+variable "ecr_image_translation" {
+  type        = string
+  description = "The name of the image translation Elastic Container Registry (ECR) repository"
+}
+
+variable "ecr_imputation" {
+  type        = string
+  description = "The name of the imputation Elastic Container Registry (ECR) repository"
+}
+
+variable "ecr_interactive_visualizer" {
+  type        = string
+  description = "The name of the interactive visualizer Elastic Container Registry (ECR) repository"
 }
 
 variable "ecr_model_evaluation" {
@@ -203,9 +238,19 @@ variable "ecr_model_generator_supervised" {
   description = "The name of the model generator supervised Elastic Container Registry (ECR) repository"
 }
 
+variable "ecr_model_registry" {
+  type        = string
+  description = "The name of the model registry Elastic Container Registry (ECR) repository"
+}
+
 variable "ecr_natural_language_processing" {
   type        = string
   description = "The name of the natural language processing Elastic Container Registry (ECR) repository"
+}
+
+variable "ecr_parallelizer" {
+  type        = string
+  description = "The name of the parallelizer Elastic Container Registry (ECR) repository"
 }
 
 variable "ecr_sampling" {
@@ -213,9 +258,19 @@ variable "ecr_sampling" {
   description = "The name of the sampling Elastic Container Registry (ECR) repository"
 }
 
+variable "ecr_serializer" {
+  type        = string
+  description = "The name of the serializer Elastic Container Registry (ECR) repository"
+}
+
 variable "ecr_slack_alerting" {
   type        = string
   description = "The name of the slack alerting Elastic Container Registry (ECR) repository"
+}
+
+variable "ecr_text_classification_generator" {
+  type        = string
+  description = "The name of the text classification generator Elastic Container Registry (ECR) repository"
 }
 
 ############

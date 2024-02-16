@@ -12,20 +12,6 @@ resource "aws_ecr_repository" "ecr_analytical_data_types" {
   }
 }
 
-resource "aws_ecr_repository" "ecr_anomaly_detection" {
-  name                 = "${var.ecr_suffix}-${var.ecr_anomaly_detection}"
-  image_tag_mutability = "MUTABLE"
-  force_delete         = true
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-
-  tags = {
-    Env = var.environment
-  }
-}
-
 resource "aws_ecr_repository" "ecr_data_health_check" {
   name                 = "${var.ecr_suffix}-${var.ecr_data_health_check}"
   image_tag_mutability = "MUTABLE"
