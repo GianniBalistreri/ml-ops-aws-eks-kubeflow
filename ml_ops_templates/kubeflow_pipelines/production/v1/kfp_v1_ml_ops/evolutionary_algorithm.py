@@ -666,6 +666,46 @@ class EvolutionaryAlgorithm:
                                          max_cache_staleness=self.evaluate_machine_learning_max_cache_staleness
                                          )
 
+    def _gather_metadata(self, evolve: dsl.PipelineParam) -> dsl.ContainerOp:
+        """
+        Get dsl.ContainerOp of gather metadata component
+
+        :param evolve: dsl.PipelineParam
+            Whether evolution process continues or not
+
+        :return: dsl.ContainerOp
+            Container operator for gather metadata
+        """
+        return gather_metadata(metadata_file_path=self.s3_metadata_file_path,
+                               modeling_file_path=self.s3_output_file_path_modeling,
+                               environment_reaction_file_path=self.environment_reaction_path,
+                               evolve=evolve,
+                               s3_output_file_path_visualization=self.s3_output_file_path_visualization,
+                               results_table=self.results_table,
+                               model_distribution=self.model_distribution,
+                               model_evolution=self.model_evolution,
+                               param_distribution=self.param_distribution,
+                               train_time_distribution=self.train_time_distribution,
+                               breeding_map=self.breeding_map,
+                               breeding_graph=self.breeding_graph,
+                               fitness_distribution=self.fitness_distribution,
+                               fitness_evolution=self.fitness_evolution,
+                               fitness_dimensions=self.fitness_dimensions,
+                               per_iteration=self.per_iteration,
+                               python_version=self.gather_metadata_python_version,
+                               display_name=self.gather_metadata_display_name,
+                               n_cpu_request=self.gather_metadata_n_cpu_request,
+                               n_cpu_limit=self.gather_metadata_n_cpu_limit,
+                               n_gpu=self.gather_metadata_n_gpu,
+                               gpu_vendor=self.gather_metadata_gpu_vendor,
+                               memory_request=self.gather_metadata_memory_request,
+                               memory_limit=self.gather_metadata_memory_limit,
+                               ephemeral_storage_request=self.gather_metadata_ephemeral_storage_request,
+                               ephemeral_storage_limit=self.gather_metadata_ephemeral_storage_limit,
+                               instance_name=self.gather_metadata_instance_name,
+                               max_cache_staleness=self.gather_metadata_max_cache_staleness
+                               )
+
     def _generate_supervised_model(self,
                                    model_name: dsl.PipelineParam,
                                    s3_output_path_model: dsl.PipelineParam,
@@ -715,93 +755,6 @@ class EvolutionaryAlgorithm:
                                          instance_name=self.generate_supervised_model_instance_name,
                                          max_cache_staleness=self.generate_supervised_model_max_cache_staleness
                                          )
-
-    def _iterate(self, idx: dsl.PipelineParam) -> dsl.ContainerOp:
-        """
-        Iteration of evolutionary algorithm using Kubeflow graph components
-
-        :param idx: dsl.PipelineParam
-            Index values used to iterate in parallelized loop
-
-        :return dsl.ContainerOp
-            Container operator of last component in iteration
-        """
-        with dsl.ParallelFor(loop_args=idx) as item:
-            _task_2: dsl.ContainerOp = extract_instruction(idx=item,
-                                                           generator_instructions_file_path=self.s3_output_file_path_generator_instructions,
-                                                           python_version=self.extract_instruction_python_version,
-                                                           display_name=self.extract_instruction_display_name,
-                                                           n_cpu_request=self.extract_instruction_n_cpu_request,
-                                                           n_cpu_limit=self.extract_instruction_n_cpu_limit,
-                                                           n_gpu=self.extract_instruction_n_gpu,
-                                                           gpu_vendor=self.extract_instruction_gpu_vendor,
-                                                           memory_request=self.extract_instruction_memory_request,
-                                                           memory_limit=self.extract_instruction_memory_limit,
-                                                           ephemeral_storage_request=self.extract_instruction_ephemeral_storage_request,
-                                                           ephemeral_storage_limit=self.extract_instruction_ephemeral_storage_limit,
-                                                           instance_name=self.extract_instruction_instance_name,
-                                                           max_cache_staleness=self.extract_instruction_max_cache_staleness
-                                                           )
-            _task_3: dsl.ContainerOp = self._generate_supervised_model(model_name=_task_2.outputs['model_name'],
-                                                                       s3_output_path_model=_task_2.outputs['model_artifact_path'],
-                                                                       s3_output_path_param=_task_2.outputs['model_param_path'],
-                                                                       s3_output_path_metadata=_task_2.outputs['model_metadata_path'],
-                                                                       s3_output_path_evaluation_train_data=_task_2.outputs['evaluate_train_data_path'],
-                                                                       s3_output_path_evaluation_test_data=_task_2.outputs['evaluate_test_data_path'],
-                                                                       model_id=_task_2.outputs['id'],
-                                                                       model_param_path=_task_2.outputs['model_input_param_path'],
-                                                                       param_rate=_task_2.outputs['param_rate'],
-                                                                       warm_start=_task_2.outputs['warm_start']
-                                                                       )
-            _task_4: dsl.ContainerOp = self._evaluate_machine_learning(train_data_set_path=_task_2.outputs['evaluate_train_data_path'],
-                                                                       test_data_set_path=_task_2.outputs['evaluate_test_data_path'],
-                                                                       s3_output_path_metrics=_task_2.outputs['model_fitness_path'],
-                                                                       visualize=False
-                                                                       )
-            _task_4.after(_task_3)
-        _task_5: dsl.ContainerOp = serializer(action='evolutionary_algorithm',
-                                              parallelized_obj=[self.s3_output_file_path_generator_instructions],
-                                              s3_output_file_path_parallelized_data=self.environment_reaction_path,
-                                              docker_image_name=self.serializer_docker_image_name,
-                                              docker_image_tag=self.serializer_docker_image_tag,
-                                              display_name=self.serializer_display_name,
-                                              n_cpu_request=self.serializer_n_cpu_request,
-                                              n_cpu_limit=self.serializer_n_cpu_limit,
-                                              n_gpu=self.serializer_n_gpu,
-                                              gpu_vendor=self.serializer_gpu_vendor,
-                                              memory_request=self.serializer_memory_request,
-                                              memory_limit=self.serializer_memory_limit,
-                                              ephemeral_storage_request=self.serializer_ephemeral_storage_request,
-                                              ephemeral_storage_limit=self.serializer_ephemeral_storage_limit,
-                                              instance_name=self.serializer_instance_name,
-                                              max_cache_staleness=self.serializer_max_cache_staleness
-                                              )
-        _task_5.after(_task_4)
-        return _task_5
-
-    def _gather_metadata(self) -> dsl.ContainerOp:
-        """
-        Get dsl.ContainerOp of gather metadata component
-
-        :return: dsl.ContainerOp
-            Container operator for gather metadata
-        """
-        return gather_metadata(metadata_file_path=self.s3_metadata_file_path,
-                               modeling_file_path=self.s3_output_file_path_modeling,
-                               environment_reaction_file_path=self.environment_reaction_path,
-                               python_version=self.gather_metadata_python_version,
-                               display_name=self.gather_metadata_display_name,
-                               n_cpu_request=self.gather_metadata_n_cpu_request,
-                               n_cpu_limit=self.gather_metadata_n_cpu_limit,
-                               n_gpu=self.gather_metadata_n_gpu,
-                               gpu_vendor=self.gather_metadata_gpu_vendor,
-                               memory_request=self.gather_metadata_memory_request,
-                               memory_limit=self.gather_metadata_memory_limit,
-                               ephemeral_storage_request=self.gather_metadata_ephemeral_storage_request,
-                               ephemeral_storage_limit=self.gather_metadata_ephemeral_storage_limit,
-                               instance_name=self.gather_metadata_instance_name,
-                               max_cache_staleness=self.gather_metadata_max_cache_staleness
-                               )
 
     def _get_evolutionary_algorithm_container_op(self,
                                                  output_file_path_evolve: str = 'evolve.json',
@@ -898,6 +851,8 @@ class EvolutionaryAlgorithm:
             Container operator for interactive visualization
         """
         return interactive_visualizer(s3_output_image_path=s3_output_image_path,
+                                      aws_account_id=self.aws_account_id,
+                                      aws_region=self.aws_region,
                                       data_set_path=None,
                                       subplots_file_path=subplots_file_path,
                                       docker_image_name=self.interactive_visualizer_docker_image_name,
@@ -914,6 +869,71 @@ class EvolutionaryAlgorithm:
                                       instance_name=self.interactive_visualizer_instance_name,
                                       max_cache_staleness=self.interactive_visualizer_max_cache_staleness
                                       )
+
+    def _iterate(self, idx: dsl.PipelineParam) -> dsl.ContainerOp:
+        """
+        Iteration of evolutionary algorithm using Kubeflow graph components
+
+        :param idx: dsl.PipelineParam
+            Index values used to iterate in parallelized loop
+
+        :return dsl.ContainerOp
+            Container operator of last component in iteration
+        """
+        with dsl.ParallelFor(loop_args=idx) as item:
+            _task_2: dsl.ContainerOp = extract_instruction(idx=item,
+                                                           generator_instructions_file_path=self.s3_output_file_path_generator_instructions,
+                                                           python_version=self.extract_instruction_python_version,
+                                                           display_name=self.extract_instruction_display_name,
+                                                           n_cpu_request=self.extract_instruction_n_cpu_request,
+                                                           n_cpu_limit=self.extract_instruction_n_cpu_limit,
+                                                           n_gpu=self.extract_instruction_n_gpu,
+                                                           gpu_vendor=self.extract_instruction_gpu_vendor,
+                                                           memory_request=self.extract_instruction_memory_request,
+                                                           memory_limit=self.extract_instruction_memory_limit,
+                                                           ephemeral_storage_request=self.extract_instruction_ephemeral_storage_request,
+                                                           ephemeral_storage_limit=self.extract_instruction_ephemeral_storage_limit,
+                                                           instance_name=self.extract_instruction_instance_name,
+                                                           max_cache_staleness=self.extract_instruction_max_cache_staleness
+                                                           )
+            _task_3: dsl.ContainerOp = self._generate_supervised_model(model_name=_task_2.outputs['model_name'],
+                                                                       s3_output_path_model=_task_2.outputs['model_artifact_path'],
+                                                                       s3_output_path_param=_task_2.outputs['model_param_path'],
+                                                                       s3_output_path_metadata=_task_2.outputs['model_metadata_path'],
+                                                                       s3_output_path_evaluation_train_data=_task_2.outputs['evaluate_train_data_path'],
+                                                                       s3_output_path_evaluation_test_data=_task_2.outputs['evaluate_test_data_path'],
+                                                                       model_id=_task_2.outputs['id'],
+                                                                       model_param_path=_task_2.outputs['model_input_param_path'],
+                                                                       param_rate=_task_2.outputs['param_rate'],
+                                                                       warm_start=_task_2.outputs['warm_start']
+                                                                       )
+            _task_4: dsl.ContainerOp = self._evaluate_machine_learning(train_data_set_path=_task_2.outputs['evaluate_train_data_path'],
+                                                                       test_data_set_path=_task_2.outputs['evaluate_test_data_path'],
+                                                                       s3_output_path_metrics=_task_2.outputs['model_fitness_path'],
+                                                                       visualize=False
+                                                                       )
+            _task_4.after(_task_3)
+        _task_5: dsl.ContainerOp = serializer(action='evolutionary_algorithm',
+                                              parallelized_obj=[self.s3_output_file_path_generator_instructions],
+                                              aws_account_id=self.aws_account_id,
+                                              aws_region=self.aws_region,
+                                              s3_output_file_path_parallelized_data=self.environment_reaction_path,
+                                              docker_image_name=self.serializer_docker_image_name,
+                                              docker_image_tag=self.serializer_docker_image_tag,
+                                              display_name=self.serializer_display_name,
+                                              n_cpu_request=self.serializer_n_cpu_request,
+                                              n_cpu_limit=self.serializer_n_cpu_limit,
+                                              n_gpu=self.serializer_n_gpu,
+                                              gpu_vendor=self.serializer_gpu_vendor,
+                                              memory_request=self.serializer_memory_request,
+                                              memory_limit=self.serializer_memory_limit,
+                                              ephemeral_storage_request=self.serializer_ephemeral_storage_request,
+                                              ephemeral_storage_limit=self.serializer_ephemeral_storage_limit,
+                                              instance_name=self.serializer_instance_name,
+                                              max_cache_staleness=self.serializer_max_cache_staleness
+                                              )
+        _task_5.after(_task_4)
+        return _task_5
 
     def hyperparameter_tuning(self) -> Tuple[dsl.ContainerOp, dsl.ContainerOp]:
         """
@@ -949,340 +969,6 @@ class EvolutionaryAlgorithm:
             _task_8: dsl.ContainerOp = self._display_metrics(file_paths=_display_metric_file_paths)
             _task_8.after(_task_5)
         return _task_0, _task_2
-
-
-def evolutionary_algorithm(s3_metadata_file_path: Union[str, dsl.PipelineParam],
-                           target: Union[str, dsl.PipelineParam],
-                           features: Union[List[str], dsl.PipelineParam],
-                           models: Union[List[str], dsl.PipelineParam],
-                           train_data_file_path: Union[str, dsl.PipelineParam],
-                           test_data_file_path: Union[str, dsl.PipelineParam],
-                           s3_output_file_path_generator_instructions: Union[str, dsl.PipelineParam],
-                           s3_output_file_path_modeling: Union[str, dsl.PipelineParam],
-                           s3_output_file_path_visualization: Union[str, dsl.PipelineParam],
-                           aws_account_id: str,
-                           aws_region: str,
-                           output_file_path_evolve: str = 'evolve.json',
-                           output_file_path_stopping_reason: str = 'stopping_reason.json',
-                           output_file_path_individual_idx: str = 'individual_idx.json',
-                           val_data_file_path: str = None,
-                           algorithm: str = 'ga',
-                           max_iterations: int = 10,
-                           pop_size: int = 64,
-                           burn_in_iterations: int = -1,
-                           warm_start: bool = True,
-                           change_rate: float = 0.1,
-                           change_prob: float = 0.85,
-                           parents_ratio: float = 0.5,
-                           crossover: bool = True,
-                           early_stopping: int = 0,
-                           convergence: bool = False,
-                           convergence_measure: str = 'min',
-                           timer_in_seconds: int = 43200,
-                           re_populate: bool = False,
-                           re_populate_threshold: float = 3.0,
-                           max_trials: int = 2,
-                           environment_reaction_path: str = None,
-                           results_table: bool = True,
-                           model_distribution: bool = True,
-                           model_evolution: bool = True,
-                           param_distribution: bool = False,
-                           train_time_distribution: bool = True,
-                           breeding_map: bool = False,
-                           breeding_graph: bool = False,
-                           fitness_distribution: bool = True,
-                           fitness_evolution: bool = True,
-                           fitness_dimensions: bool = True,
-                           per_iteration: bool = True,
-                           docker_image_name: str = 'ml-ops-evolutionary-algorithm',
-                           docker_image_tag: str = 'v1',
-                           volume: dsl.VolumeOp = None,
-                           volume_dir: str = '/mnt',
-                           display_name: str = 'Evolutionary Algorithm',
-                           n_cpu_request: str = None,
-                           n_cpu_limit: str = None,
-                           n_gpu: str = None,
-                           gpu_vendor: str = 'nvidia',
-                           memory_request: str = '1G',
-                           memory_limit: str = None,
-                           ephemeral_storage_request: str = '5G',
-                           ephemeral_storage_limit: str = None,
-                           instance_name: str = 'm5.xlarge',
-                           max_cache_staleness: str = 'P0D'
-                           ) -> dsl.ContainerOp:
-    """
-    Optimize machine learning models
-
-    :param s3_metadata_file_path: str
-        Complete file path of the metadata
-
-    :param target: str
-        Name of the target feature
-
-    :param features: List[str]
-        Name of the features
-
-    :param models: List[str]
-        Abbreviated name of the machine learning models
-
-    :param train_data_file_path: str
-        Complete file path of the training data
-
-    :param test_data_file_path: str
-        Complete file path of the test data
-
-    :param s3_output_file_path_generator_instructions: str
-        Path of the generator instruction output for the following modeling steps
-
-    :param s3_output_file_path_modeling: str
-        Path of the output files of the following modeling steps
-
-    :param s3_output_file_path_visualization: str
-        Path of the output files of the following visualization step
-
-    :param aws_account_id: str
-        AWS account id
-
-    :param aws_region: str
-        AWS region name
-
-    :param output_file_path_evolve: str
-        File path of the evolution status output
-
-    :param output_file_path_stopping_reason: str
-        File path of the stopping reason output
-
-    :param output_file_path_individual_idx: str
-        File path of the individual index of the instruction list to proceed output
-
-    :param val_data_file_path: str
-        Complete file path of the validation data set
-
-    :param algorithm: str
-        Abbreviated name of the evolutionary algorithm
-            -> ga: Genetic Algorithm
-            -> si: Swarm Intelligence (POS)
-
-    :param max_iterations: int
-        Maximum number of iterations
-
-    :param pop_size: int
-        Size of the population
-
-    :param burn_in_iterations: int
-        Number of burn-in iterations
-
-    :param warm_start: bool
-        Whether to run with warm start (one individual has standard hyperparameter settings)
-
-    :param change_rate: float
-        Rate of the hyperparameter change (mutation / adjustment)
-
-    :param change_prob: float
-        Probability of changing hyperparameter (mutation / adjustment)
-
-    :param parents_ratio: float
-        Ratio of parenthood
-
-    :param crossover: bool
-        Whether to apply crossover inheritance strategy or not (generic algorithm only)
-
-    :param early_stopping: bool
-        Whether to enable early stopping or not
-
-    :param convergence: bool
-        Whether to enable convergence
-
-    :param convergence_measure: str
-        Abbreviated name of the convergence measurement
-
-    :param timer_in_seconds: int
-        Timer in seconds for stopping evolution
-
-    :param re_populate: bool
-        Whether to re-populate because of poor performance of the entire population or not
-
-    :param re_populate_threshold: float
-        Threshold to decide to re-populate
-
-    :param max_trials: int
-        Maximum number of trials for re-population
-
-    :param environment_reaction_path: str
-        File path of the reaction of the environment to process in each interation
-
-    :param results_table: bool
-         Evolution results table
-            -> Table Chart
-
-    :param model_evolution: bool
-        Evolution of individuals
-            -> Scatter Chart
-
-    :param model_distribution: bool
-        Distribution of used model types
-            -> Bar Chart / Pie Chart
-
-    :param param_distribution: bool
-        Distribution of used model parameter combination
-            -> Tree Map / Sunburst
-
-    :param train_time_distribution: bool
-        Distribution of training time
-            -> Violin
-
-    :param breeding_map: bool
-        Breeding evolution as
-            -> Heat Map
-
-    :param breeding_graph: bool
-        Breeding evolution as
-            -> Network Graph
-
-    :param fitness_distribution: bool
-        Distribution of fitness metric
-            -> Ridge Line Chart
-
-    :param fitness_evolution: bool
-        Evolution of fitness metric
-            -> Line Chart
-
-    :param fitness_dimensions: bool
-        Calculated loss value for each dimension in fitness metric
-            -> Radar Chart
-            -> Tree Map
-
-    :param per_iteration: bool
-        Visualize results of each iteration in detail or visualize just evolutionary results
-
-    :param aws_account_id: str
-        AWS account id
-
-    :param docker_image_name: str
-        Name of the docker image repository
-
-    :param docker_image_tag: str
-        Name of the docker image tag
-
-    :param volume: dsl.VolumeOp
-        Attached container volume
-
-    :param volume_dir: str
-        Name of the volume directory
-
-    :param display_name: str
-        Display name of the Kubeflow Pipeline component
-
-    :param n_cpu_request: str
-        Number of requested CPU's
-
-    :param n_cpu_limit: str
-        Maximum number of requested CPU's
-
-    :param n_gpu: str
-        Maximum number of requested GPU's
-
-    :param gpu_vendor: str
-        Name of the GPU vendor
-            -> amd: AMD
-            -> nvidia: NVIDIA
-
-    :param memory_request: str
-        Memory request
-
-    :param memory_limit: str
-        Limit of the requested memory
-
-    :param ephemeral_storage_request: str
-        Ephemeral storage request (cloud based additional memory storage)
-
-    :param ephemeral_storage_limit: str
-        Limit of the requested ephemeral storage (cloud based additional memory storage)
-
-    :param instance_name: str
-        Name of the used AWS instance (value)
-
-    :param max_cache_staleness: str
-        Maximum of staleness days of the component cache
-
-    :return: dsl.ContainerOp
-        Container operator for evolutionary algorithm
-    """
-    _volume: dict = {volume_dir: volume if volume is None else volume.volume}
-    _arguments: list = ['-s3_metadata_file_path', s3_metadata_file_path,
-                        '-target', target,
-                        '-features', features,
-                        '-models', models,
-                        '-train_data_file_path', train_data_file_path,
-                        '-test_data_file_path', test_data_file_path,
-                        '-output_file_path_evolve', output_file_path_evolve,
-                        '-output_file_path_stopping_reason', output_file_path_stopping_reason,
-                        '-output_file_path_individual_idx', output_file_path_individual_idx,
-                        '-s3_output_file_path_generator_instructions', s3_output_file_path_generator_instructions,
-                        '-s3_output_file_path_modeling', s3_output_file_path_modeling,
-                        '-s3_output_file_path_visualization', s3_output_file_path_visualization,
-                        '-algorithm', algorithm,
-                        '-max_iterations', max_iterations,
-                        '-pop_size', pop_size,
-                        '-burn_in_iterations', burn_in_iterations,
-                        '-warm_start', int(warm_start),
-                        '-change_rate', change_rate,
-                        '-change_prob', change_prob,
-                        '-parents_ratio', parents_ratio,
-                        '-crossover', int(crossover),
-                        '-early_stopping', int(early_stopping),
-                        '-convergence', int(convergence),
-                        '-convergence_measure', convergence_measure,
-                        '-timer_in_seconds', timer_in_seconds,
-                        '-re_populate', int(re_populate),
-                        '-re_populate_threshold', re_populate_threshold,
-                        '-max_trials', max_trials,
-                        '-results_table', int(results_table),
-                        '-model_distribution', int(model_distribution),
-                        '-model_evolution', int(model_evolution),
-                        '-param_distribution', int(param_distribution),
-                        '-train_time_distribution', int(train_time_distribution),
-                        '-breeding_map', int(breeding_map),
-                        '-breeding_graph', int(breeding_graph),
-                        '-fitness_distribution', int(fitness_distribution),
-                        '-fitness_evolution', int(fitness_evolution),
-                        '-fitness_dimensions', int(fitness_dimensions),
-                        '-per_iteration', int(per_iteration)
-                        ]
-    if val_data_file_path is not None:
-        _arguments.extend(['-val_data_file_path', val_data_file_path])
-    if environment_reaction_path is not None:
-        _arguments.extend(['-environment_reaction_path', environment_reaction_path])
-    _task: dsl.ContainerOp = dsl.ContainerOp(name='evolutionary_algorithm',
-                                             image=f'{aws_account_id}.dkr.ecr.eu-central-1.amazonaws.com/{docker_image_name}:{docker_image_tag}',
-                                             command=["python", "task.py"],
-                                             arguments=_arguments,
-                                             init_containers=None,
-                                             sidecars=None,
-                                             container_kwargs=None,
-                                             artifact_argument_paths=None,
-                                             file_outputs={'evolve': output_file_path_evolve,
-                                                           'stopping_reason': output_file_path_stopping_reason,
-                                                           'idx': output_file_path_individual_idx
-                                                           },
-                                             output_artifact_paths=None,
-                                             is_exit_handler=False,
-                                             pvolumes=volume if volume is None else _volume
-                                             )
-    _task.set_display_name(display_name)
-    add_container_op_parameters(container_op=_task,
-                                n_cpu_request=n_cpu_request,
-                                n_cpu_limit=n_cpu_limit,
-                                n_gpu=n_gpu,
-                                gpu_vendor=gpu_vendor,
-                                memory_request=memory_request,
-                                memory_limit=memory_limit,
-                                ephemeral_storage_request=ephemeral_storage_request,
-                                ephemeral_storage_limit=ephemeral_storage_limit,
-                                instance_name=instance_name,
-                                max_cache_staleness=max_cache_staleness
-                                )
-    return _task
 
 
 def _extract(idx: Union[int, dsl.PipelineParam],
@@ -1448,7 +1134,20 @@ def extract_instruction(idx: Union[int, dsl.PipelineParam],
 
 def _gather_metadata(metadata_file_path: str,
                      modeling_file_path: str,
-                     environment_reaction_file_path: str
+                     environment_reaction_file_path: str,
+                     evolve: dsl.PipelineParam,
+                     s3_output_file_path_visualization: str,
+                     results_table: bool = True,
+                     model_distribution: bool = False,
+                     model_evolution: bool = True,
+                     param_distribution: bool = False,
+                     train_time_distribution: bool = True,
+                     breeding_map: bool = False,
+                     breeding_graph: bool = False,
+                     fitness_distribution: bool = True,
+                     fitness_evolution: bool = True,
+                     fitness_dimensions: bool = True,
+                     per_iteration: bool = True
                      ) -> NamedTuple('outputs', [('idx', int),
                                                  ('id', int),
                                                  ('model_name', str),
@@ -1472,6 +1171,56 @@ def _gather_metadata(metadata_file_path: str,
     :param environment_reaction_file_path: str
         File path of the reaction of the environment to process in each interation
 
+    :param evolve: dsl.PipelineParam
+        Whether evolution process continues or not
+
+    :param s3_output_file_path_visualization: str
+        Complete file path of the visualization file
+
+    :param results_table: bool
+        Evolution results table
+            -> Table Chart
+
+    :param model_evolution: bool
+        Evolution of individuals
+            -> Scatter Chart
+
+    :param model_distribution: bool
+        Distribution of used model types
+            -> Bar Chart / Pie Chart
+
+    :param param_distribution: bool
+        Distribution of used model parameter combination
+            -> Tree Map / Sunburst
+
+    :param train_time_distribution: bool
+        Distribution of training time
+            -> Violin
+
+    :param breeding_map: bool
+        Breeding evolution as
+            -> Heat Map
+
+    :param breeding_graph: bool
+        Breeding evolution as
+            -> Network Graph
+
+    :param fitness_distribution: bool
+        Distribution of fitness metric
+            -> Ridge Line Chart
+
+    :param fitness_evolution: bool
+        Evolution of fitness metric
+            -> Line Chart
+
+    :param fitness_dimensions: bool
+        Calculated loss value for each dimension in fitness metric
+            -> Radar Chart
+            -> Tree Map
+
+    :param per_iteration: bool
+        Visualize results of each iteration in detail or visualize just evolutionary results
+
     :return NamedTuple
         Extracted elements of best model generated by evolutionary algorithm
     """
@@ -1480,7 +1229,9 @@ def _gather_metadata(metadata_file_path: str,
     import json
     import numpy as np
     import os
+    import pandas as pd
     from datetime import datetime
+    from typing import Dict
     _logger_time: str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     _s3_resource: boto3 = boto3.resource('s3')
     # load metadata file from AWS S3:
@@ -1571,6 +1322,151 @@ def _gather_metadata(metadata_file_path: str,
     _param_changed: dict = _metadata['current_iteration_meta_data']['param_changed'][_idx]
     _fitness_metric: float = _metadata['current_iteration_meta_data']['fitness_metric'][_idx]
     _fitness_score: float = _metadata['current_iteration_meta_data']['fitness_score'][_idx]
+    # generate statistics for visualization:
+    #if not bool(evolve):
+    _complete_file_path_visualization: str = s3_output_file_path_visualization.replace('s3://', '')
+    _bucket_name_visualization: str = _complete_file_path_visualization.split('/')[0]
+    _file_path_visualization: str = _complete_file_path_visualization.replace(f'{_bucket_name_visualization}/', '')
+    _file_name_visualization: str = _complete_file_path_visualization.split('/')[-1]
+    _path: str = s3_output_file_path_visualization.replace(_file_name_visualization, '')
+    _charts: dict = {}
+    _evolution_history_data: pd.DataFrame = pd.DataFrame(data=_metadata['evolution_history'])
+    _m: List[str] = ['fitness_score', 'ml_metric', 'train_test_diff']
+    _evolution_history_data[_m] = _evolution_history_data[_m].round(decimals=2)
+    _evolution_history_data_analytical_data_types: Dict[str, List[str]] = dict(categorical=['model_name',
+                                                                                            'iteration',
+                                                                                            'parent',
+                                                                                            'change_type'
+                                                                                            ],
+                                                                               ordinal=[],
+                                                                               continuous=['fitness_score',
+                                                                                           'ml_metric',
+                                                                                           'train_test_diff',
+                                                                                           'train_time_in_seconds',
+                                                                                           'original_ml_train_metric',
+                                                                                           'original_ml_test_metric'
+                                                                                           ],
+                                                                               date=[],
+                                                                               id_text=['id']
+                                                                               )
+    _evolution_gradient_data: pd.DataFrame = pd.DataFrame(data=_metadata['evolution_gradient'])
+    _evolution_gradient_data['iteration'] = [i for i in range(0, len(_metadata['evolution_gradient'].get('max')), 1)]
+    if results_table:
+        _charts.update({'Results of Genetic Algorithm:': dict(df=_evolution_history_data.to_dict(),
+                                                              features=_evolution_history_data.columns.to_list(),
+                                                              plot_type='table',
+                                                              file_path=os.path.join(_path, 'ea_metadata_table.html'),
+                                                              feature_types=_evolution_history_data_analytical_data_types,
+                                                              kwargs={}
+                                                              )
+                        })
+    if model_evolution:
+        _charts.update({'Evolution of used ML Models:': dict(df=_evolution_history_data.to_dict(),
+                                                             features=['fitness_score', 'iteration'],
+                                                             color_feature='model_name',
+                                                             plot_type='scatter',
+                                                             melt=True,
+                                                             file_path=os.path.join(_path, 'ea_model_evolution.html'),
+                                                             feature_types=_evolution_history_data_analytical_data_types,
+                                                             kwargs={}
+                                                             )
+                        })
+    if model_distribution:
+        if _metadata.get('models') is None or len(_metadata.get('models')) > 1:
+            _charts.update({'Distribution of used ML Models:': dict(df=_evolution_history_data.to_dict(),
+                                                                    features=['model_name'],
+                                                                    group_by=['iteration'] if per_iteration else None,
+                                                                    plot_type='pie',
+                                                                    file_path=os.path.join(_path, 'ea_model_distribution.html'),
+                                                                    feature_types=_evolution_history_data_analytical_data_types,
+                                                                    kwargs={}
+                                                                    )
+                            })
+    if param_distribution:
+        _charts.update({'Distribution of ML Model parameters:': dict(data=_evolution_history_data.to_dict(),
+                                                                     features=['model_param'],
+                                                                     group_by=['iteration'] if per_iteration else None,
+                                                                     plot_type='tree',
+                                                                     file_path=os.path.join(_path, 'ea_parameter_treemap.html'),
+                                                                     feature_types=_evolution_history_data_analytical_data_types,
+                                                                     kwargs={}
+                                                                     )
+                        })
+    if train_time_distribution:
+        _charts.update({'Distribution of elapsed Training Time:': dict(df=_evolution_history_data.to_dict(),
+                                                                       features=['train_time_in_seconds'],
+                                                                       group_by=['model_name'],
+                                                                       melt=True,
+                                                                       plot_type='violin',
+                                                                       use_auto_extensions=False,
+                                                                       file_path=os.path.join(_path, 'ea_training_time_distribution.html'),
+                                                                       feature_types=_evolution_history_data_analytical_data_types,
+                                                                       kwargs={}
+                                                                       )
+                        })
+    if breeding_map:
+        _breeding_map: pd.DataFrame = pd.DataFrame(data=dict(gen_0=_metadata['generation_history']['population']['gen_0'].get('fitness')), index=[0])
+        for i in _metadata['iteration_history']['population'].keys():
+            if i != 'iter_0':
+                _breeding_map[i] = _metadata['iteration_history']['population'][i].get('fitness')
+        _charts.update({'Breeding Heat Map:': dict(df=_breeding_map.to_dict(),
+                                                   features=_breeding_map.columns.to_list(),
+                                                   plot_type='heat',
+                                                   file_path=os.path.join(_path, 'ea_breeding_heatmap.html'),
+                                                   kwargs={}
+                                                   )
+                        })
+    if breeding_graph:
+        _charts.update({'Breeding Network Graph:': dict(df=_evolution_history_data.to_dict(),
+                                                        features=['iteration', 'fitness_score'],
+                                                        graph_features=dict(node='id', edge='parent'),
+                                                        color_feature='model_name',
+                                                        plot_type='network',
+                                                        file_path=os.path.join(_path, 'ea_breeding_graph.html'),
+                                                        feature_types=_evolution_history_data_analytical_data_types,
+                                                        kwargs={}
+                                                        )
+                        })
+    if fitness_distribution:
+        _charts.update({'Distribution of Fitness Metric:': dict(df=_evolution_history_data.to_dict(),
+                                                                features=['fitness_score'],
+                                                                time_features=['iteration'],
+                                                                plot_type='ridgeline',
+                                                                file_path=os.path.join(_path, 'ea_fitness_score_distribution_per_generation.html'),
+                                                                feature_types=_evolution_history_data_analytical_data_types,
+                                                                kwargs={}
+                                                                )
+                        })
+    if fitness_dimensions:
+        _charts.update({'Evolution Meta Data:': dict(df=_evolution_history_data.to_dict(),
+                                                     features=['train_time_in_seconds',
+                                                               'ml_metric',
+                                                               'train_test_diff',
+                                                               'fitness_score',
+                                                               'parent',
+                                                               'id',
+                                                               'model_name',
+                                                               'iteration'
+                                                               ],
+                                                     color_feature='iteration',
+                                                     plot_type='parcoords',
+                                                     file_path=os.path.join(_path, 'ea_metadata_evolution_coords.html'),
+                                                     feature_types=_evolution_history_data_analytical_data_types,
+                                                     kwargs={}
+                                                     )
+                        })
+    if fitness_evolution:
+        _charts.update({'Fitness Evolution:': dict(df=_evolution_gradient_data.to_dict(),
+                                                   features=['min', 'median', 'mean', 'max'],
+                                                   time_features=['iteration'],
+                                                   melt=True,
+                                                   plot_type='line',
+                                                   file_path=os.path.join(_path, 'ea_evolution_fitness_score.html'),
+                                                   kwargs={}
+                                                   )
+                        })
+    _s3_client.put_object(Body=json.dumps(obj=_charts), Bucket=_bucket_name_visualization, Key=_file_path_visualization)
+    print(f'{_logger_time} Save visualization file: {s3_output_file_path_visualization}')
     # retrieve model related data from generator instructions file:
     _model_artifact_path: str = os.path.join(modeling_file_path, f'model_artifact_{_id}.joblib')
     _model_param_path: str = os.path.join(modeling_file_path, f'model_param_{_id}.json')
@@ -1597,6 +1493,19 @@ def _gather_metadata(metadata_file_path: str,
 def gather_metadata(metadata_file_path: str,
                     modeling_file_path: str,
                     environment_reaction_file_path: str,
+                    evolve: dsl.PipelineParam,
+                    s3_output_file_path_visualization: str,
+                    results_table: bool = True,
+                    model_distribution: bool = False,
+                    model_evolution: bool = True,
+                    param_distribution: bool = False,
+                    train_time_distribution: bool = True,
+                    breeding_map: bool = False,
+                    breeding_graph: bool = False,
+                    fitness_distribution: bool = True,
+                    fitness_evolution: bool = True,
+                    fitness_dimensions: bool = True,
+                    per_iteration: bool = True,
                     python_version: str = '3.9',
                     display_name: str = 'Gather Evolution Metadata',
                     n_cpu_request: str = None,
@@ -1621,6 +1530,56 @@ def gather_metadata(metadata_file_path: str,
 
     :param environment_reaction_file_path: str
         File path of the reaction of the environment to process in each interation
+
+    :param evolve: dsl.PipelineParam
+        Whether evolution process continues or not
+
+    :param s3_output_file_path_visualization: str
+        Complete file path of the visualization file
+
+    :param results_table: bool
+        Evolution results table
+            -> Table Chart
+
+    :param model_evolution: bool
+        Evolution of individuals
+            -> Scatter Chart
+
+    :param model_distribution: bool
+        Distribution of used model types
+            -> Bar Chart / Pie Chart
+
+    :param param_distribution: bool
+        Distribution of used model parameter combination
+            -> Tree Map / Sunburst
+
+    :param train_time_distribution: bool
+        Distribution of training time
+            -> Violin
+
+    :param breeding_map: bool
+        Breeding evolution as
+            -> Heat Map
+
+    :param breeding_graph: bool
+        Breeding evolution as
+            -> Network Graph
+
+    :param fitness_distribution: bool
+        Distribution of fitness metric
+            -> Ridge Line Chart
+
+    :param fitness_evolution: bool
+        Evolution of fitness metric
+            -> Line Chart
+
+    :param fitness_dimensions: bool
+        Calculated loss value for each dimension in fitness metric
+            -> Radar Chart
+            -> Tree Map
+
+    :param per_iteration: bool
+        Visualize results of each iteration in detail or visualize just evolutionary results
 
     :param python_version: str
         Python version of the base image
@@ -1667,13 +1626,26 @@ def gather_metadata(metadata_file_path: str,
                                                                      output_component_file=None,
                                                                      base_image=f'python:{python_version}',
                                                                      packages_to_install=['boto3==1.34.11',
-                                                                                          'numpy==1.26.4'
+                                                                                          'pandas==2.1.0'
                                                                                           ],
                                                                      annotations=None
                                                                      )
     _task: dsl.ContainerOp = _container_from_func(metadata_file_path=metadata_file_path,
                                                   modeling_file_path=modeling_file_path,
-                                                  environment_reaction_file_path=environment_reaction_file_path
+                                                  environment_reaction_file_path=environment_reaction_file_path,
+                                                  evolve=evolve,
+                                                  s3_output_file_path_visualization=s3_output_file_path_visualization,
+                                                  results_table=results_table,
+                                                  model_distribution=model_distribution,
+                                                  model_evolution=model_evolution,
+                                                  param_distribution=param_distribution,
+                                                  train_time_distribution=train_time_distribution,
+                                                  breeding_map=breeding_map,
+                                                  breeding_graph=breeding_graph,
+                                                  fitness_distribution=fitness_distribution,
+                                                  fitness_evolution=fitness_evolution,
+                                                  fitness_dimensions=fitness_dimensions,
+                                                  per_iteration=per_iteration
                                                   )
     _task.set_display_name(display_name)
     add_container_op_parameters(container_op=_task,
