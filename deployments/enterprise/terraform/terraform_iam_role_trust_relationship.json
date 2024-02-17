@@ -16,13 +16,6 @@
     {
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::$(AWS_ACCOUNT_ID):user/gitlab-ci-deploy"
-      },
-      "Action": "sts:AssumeRole"
-    },
-    {
-      "Effect": "Allow",
-      "Principal": {
         "AWS": "arn:aws:iam::$(AWS_ACCOUNT_ID):user/gitlab-ci"
       },
       "Action": "sts:AssumeRole"
@@ -30,14 +23,7 @@
     {
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::$(AWS_ACCOUNT_ID):user/CICD"
-      },
-      "Action": "sts:AssumeRole"
-    },
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:sts::$(AWS_ACCOUNT_ID):assumed-role/AWSReservedSSO_AdministratorAccess_26674d58888acdba/g.balistreri@shopware.com"
+        "AWS": "arn:aws:iam::$(AWS_ACCOUNT_ID):user/github-action"
       },
       "Action": "sts:AssumeRole"
     }
