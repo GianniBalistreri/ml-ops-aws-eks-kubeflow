@@ -414,8 +414,7 @@ def evaluate_machine_learning(ml_type: str,
                                                      )
         file_handler(file_path=output_path_sml_score_metric, obj=_evaluation['sml_score'])
         Log().log(msg=f'Supervised machine learning metric: sml_score={_evaluation["sml_score"]}')
-    _df_table = pd.DataFrame(_evaluation)
-    _df_table.to_csv(path_or_buf=s3_output_path_metrics, sep=sep)
+    save_file_to_s3(file_path=s3_output_path_metrics, obj=_evaluation)
     Log().log(msg=f'Save metrics: {s3_output_path_metrics}')
     if s3_output_path_visualization is not None:
         _file_name: str = s3_output_path_visualization.split('/')[-1]
