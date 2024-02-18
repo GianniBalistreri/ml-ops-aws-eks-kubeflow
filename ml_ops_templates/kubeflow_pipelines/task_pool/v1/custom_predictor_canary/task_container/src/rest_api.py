@@ -16,8 +16,8 @@ from typing import Dict
 
 PARSER = argparse.ArgumentParser(description="restful-api for generate predictions from non-neural network models")
 PARSER.add_argument('-model_name', type=str, required=True, default=None, help='name of the pre-trained machine learning model artifact')
-PARSER.add_argument('-bucket_name', type=str, required=False, default='shopware-ml-ops-model-store-dev', help='name of the s3 bucket')
-PARSER.add_argument('-file_path', type=str, required=False, default='occupancy/occupancy_xgb_model.joblib', help='file path of the model artifact')
+PARSER.add_argument('-bucket_name', type=str, required=True, default=None, help='name of the s3 bucket')
+PARSER.add_argument('-file_path', type=str, required=True, default=None, help='file path of the model artifact')
 PARSER.add_argument('-n_replicas', type=str, required=False, default="1", help='number of replicas to deploy')
 PARSER.add_argument('-canary', type=int, required=False, default=0, help='whether to deploy canary deployment or not')
 PARSER.add_argument('-canary_first_model_prob', type=float, required=False, default=0.9, help='probability of using first deployed model in canary delpoyment')

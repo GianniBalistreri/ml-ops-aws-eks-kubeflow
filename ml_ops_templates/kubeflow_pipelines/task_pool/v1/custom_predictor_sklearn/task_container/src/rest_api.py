@@ -14,8 +14,8 @@ from typing import Dict
 
 PARSER = argparse.ArgumentParser(description="restful-api for generate predictions from non-neural network models")
 PARSER.add_argument('-model_name', type=str, required=True, default=None, help='name of the pre-trained machine learning model artifact')
-PARSER.add_argument('-bucket_name', type=str, required=False, default='shopware-ml-ops-model-store-dev', help='name of the s3 bucket')
-PARSER.add_argument('-file_path', type=str, required=False, default='occupancy/occupancy_xgb_model.joblib', help='file path of the model artifact')
+PARSER.add_argument('-bucket_name', type=str, required=True, default=None, help='name of the s3 bucket')
+PARSER.add_argument('-file_path', type=str, required=True, default=None, help='file path of the model artifact')
 ARGS = PARSER.parse_args()
 
 
