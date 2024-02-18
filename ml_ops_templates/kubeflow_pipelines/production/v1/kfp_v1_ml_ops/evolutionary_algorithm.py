@@ -72,7 +72,6 @@ class EvolutionaryAlgorithm:
                  per_iteration: bool = True,
                  metric_values: List[float] = None,
                  metric_formats: List[str] = None,
-                 target_feature: str = None,
                  prediction_feature: str = None,
                  labels: List[str] = None,
                  evolutionary_algorithm_docker_image_name: str = 'ml-ops-evolutionary-algorithm',
@@ -426,7 +425,6 @@ class EvolutionaryAlgorithm:
         self.per_iteration: bool = per_iteration
         self.metric_values: List[float] = metric_values
         self.metric_formats: List[str] = metric_formats
-        self.target_feature: str = target_feature
         self.prediction_feature: str = prediction_feature
         self.labels: List[str] = labels
         self.header: List[str] = ['index', 'metric_name', 'metric_value', 'data_set']
@@ -582,7 +580,7 @@ class EvolutionaryAlgorithm:
                                metric_types=self.metric_types,
                                metric_values=self.metric_values,
                                metric_formats=self.metric_formats,
-                               target_feature=self.target_feature,
+                               target_feature=self.target,
                                prediction_feature=self.prediction_feature,
                                labels=self.labels,
                                header=self.header,
