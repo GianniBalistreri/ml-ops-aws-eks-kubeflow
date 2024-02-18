@@ -71,7 +71,9 @@ def _generate_kfp_metric_template(mlpipeline_ui_metadata_path: kfp.components.Ou
     """
     import ast
     import json
+    from datetime import datetime
     from typing import Dict, List
+    _logger_time: str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     _kfp_build_in_metric_type: List[str] = ['accuracy-score', 'roc-auc-score']
     _i: int = 0
     _file_paths: List[str] = ast.literal_eval(file_paths)
@@ -126,6 +128,7 @@ def _generate_kfp_metric_template(mlpipeline_ui_metadata_path: kfp.components.Ou
             _plot_config: Dict[str, str] = dict(name=metric_type, format=_metric_formats[_i], numberValue=metric_values)
         _metadata[_metric_type].append(_plot_config)
         _i += 1
+    print(f'{_logger_time} Kubeflow metric config: {_metadata}')
     with open(mlpipeline_ui_metadata_path, 'w') as _file:
         json.dump(_metadata, _file)
 
