@@ -504,6 +504,7 @@ class DataVisualizer:
                                                'xaxis_label': self.xaxis_label,
                                                'yaxis_label': self.yaxis_label,
                                                'annotations': self.annotations,
+                                               'feature_types': self.feature_types,
                                                'render': self.render,
                                                'file_path': self.file_path,
                                                'use_auto_extensions': self.use_auto_extensions,
@@ -3391,6 +3392,7 @@ class DataVisualizer:
             self.title = title
             self.plot = self.subplots.get(title)
             self.df = self.plot.get('data')
+            self.feature_types = self.plot.get('feature_types')
             if self.plot.get('xaxis_label') is not None:
                 self.plot['kwargs']['layout'].update({'xaxis': dict(title=dict(text=self.plot.get('xaxis_label')))})
             if self.plot.get('yaxis_label') is not None:
