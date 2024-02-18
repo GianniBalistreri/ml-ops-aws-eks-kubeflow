@@ -12,15 +12,6 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
 
-      - name: Install Terraform
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gnupg software-properties-common curl
-          curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-          sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-          sudo apt-get update && sudo apt-get install terraform
-          terraform --version
-
       - name: Install kubectl
         run: |
           sudo apt-get update
@@ -50,11 +41,15 @@ jobs:
       - name: Configure Kserve & Knative
         run: |
           cd ml_ops_templates/kubeflow_management/model_endpoint
-          python kubeflow_model_endpoint_management.py -s3_endpoint=s3.${{ secrets.AWS_REGION }}.amazonaws.com -profile_namespace=${{ secrets.PROFILE_NAMESPACE }} -top_level_domain_name=net -second_level_domain_name=shopware-kubeflow -subdomain_name=dev -service_account_name=sa -aws_region=eu-central-1 -cluster_name=kubeflow -ecr_iam_role_policy_name=AmazonEC2ContainerRegistryReadOnly -s3_iam_role_policy_name=AmazonS3ReadOnlyAccess -meth=add_domain
-          python kubeflow_model_endpoint_management.py -s3_endpoint=s3.eu-central-1.amazonaws.com -profile_namespace=production -top_level_domain_name=net -second_level_domain_name=shopware-kubeflow -subdomain_name=dev -service_account_name=sa -aws_region=eu-central-1 -cluster_name=kubeflow -ecr_iam_role_policy_name=AmazonEC2ContainerRegistryReadOnly -s3_iam_role_policy_name=AmazonS3ReadOnlyAccess -meth=enable_inference_service
+          python kubeflow_model_endpoint_management.py -s3_endpoint=s3.${{ secrets.AWS_REGION }}.amazonaws.com -profile_namespace=${{ secrets.PROFILE_NAMESPACE }} -top_level_domain_name=net -second_level_domain_name=shopware-kubeflow -subdomain_name=dev -service_account_name=sa -aws_region=${{ secrets.PROFILE_NAMESPACE }} -cluster_name=kubeflow -ecr_iam_role_policy_name=AmazonEC2ContainerRegistryReadOnly -s3_iam_role_policy_name=AmazonS3ReadOnlyAccess -meth=add_domain
+          python kubeflow_model_endpoint_management.py -s3_endpoint=s3.${{ secrets.AWS_REGION }}.amazonaws.com -profile_namespace=${{ secrets.PROFILE_NAMESPACE }} -top_level_domain_name=net -second_level_domain_name=shopware-kubeflow -subdomain_name=dev -service_account_name=sa -aws_region=${{ secrets.PROFILE_NAMESPACE }} -cluster_name=kubeflow -ecr_iam_role_policy_name=AmazonEC2ContainerRegistryReadOnly -s3_iam_role_policy_name=AmazonS3ReadOnlyAccess -meth=enable_inference_service
 
       - name: Configure Katib
-        run: python kubeflow_katib_management.py -aws_account_id=973450839031 -profile_namespace=production -service_account_name=default-editor -aws_region=eu-central-1 -cluster_name=kubeflow -s3_iam_role_policy_name=AmazonS3FullAccess
+        run: |
+          cd ml_ops_templates/kubeflow_management/katib
+          python kubeflow_katib_management.py -aws_account_id=${{ secrets.AWS_ACCOUNT_ID }} -profile_namespace=${{ secrets.PROFILE_NAMESPACE }} -service_account_name=sa -aws_region=${{ secrets.PROFILE_NAMESPACE }} -cluster_name=kubeflow -s3_iam_role_policy_name=AmazonS3FullAccess
 
       - name: Configure Tensorboard
-        run: terraform destroy -target="module.kubeflow_components" -auto-approve
+        run: |
+          cd ml_ops_templates/kubeflow_management/tensorboard
+          python kubeflow_katib_management.py -aws_account_id=${{ secrets.AWS_ACCOUNT_ID }} -service_account_name=sa -aws_region=${{ secrets.AWS_REGION }} -cluster_name=kubeflow
