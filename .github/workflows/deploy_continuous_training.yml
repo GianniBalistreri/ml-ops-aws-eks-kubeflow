@@ -1,0 +1,27 @@
+name: Deploy Continuous Training
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Install Python
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3
+
+      - name: Install Kubeflow ML-Ops Utils Library
+        run: |
+          cd ml_ops_templates/kubeflow_pipelines/production/v1
+          python -m pip install kfp_v1_ml_ops
+
+      - name: Deploy Continuous Training Pipeline
+        run: |
+          python training.py -aws_account_id=${{ secrets.AWS_ACCOUNT_ID }} -aws_region=${{ secrets.AWS_REGION }} -kf_url=${{ secrets.KF_URL }} -kf_user_name=${{ secrets.KF_USER_NAME }} -kf_user_pwd=${{ secrets.KF_USER_PWD }} -kf_user_namespace=${{ secrets.KF_USER_NAMESPACE }} -recurring=1
