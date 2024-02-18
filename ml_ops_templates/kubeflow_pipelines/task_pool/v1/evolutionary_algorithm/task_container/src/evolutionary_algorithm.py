@@ -38,6 +38,7 @@ class EvolutionaryAlgorithm:
         self.parent_child_pairs: List[tuple] = []
         self.plot: dict = {}
         if self.metadata is not None:
+            self.metadata['current_iteration'] += 1
             _current_time: datetime = datetime.now()
             _current_runtime_in_seconds: int = (_current_time - datetime.strptime(self.metadata['start_time'][-1], '%Y-%m-%d %H:%M:%S')).seconds
             if len(self.metadata['time_each_iteration']) == 0:
@@ -354,9 +355,7 @@ class EvolutionaryAlgorithm:
             _results['evolve'] = False
             _results['stopping_reason'] = 'max_iteration_evolved'
             Log().log(msg=f'Maximum number of iterations reached: {self.metadata["max_iterations"]}')
-        if _results.get('evolve'):
-            self.metadata['current_iteration'] += 1
-        else:
+        if not _results.get('evolve'):
             self.metadata['stopping_reason'].append(_results['stopping_reason'])
             self.metadata['end_time'].append(str(datetime.now()).split('.')[0])
         return _results

@@ -40,18 +40,6 @@ PARSER.add_argument('-timer_in_seconds', type=int, required=False, default=43200
 PARSER.add_argument('-re_populate', type=int, required=False, default=1, help='whether to re-populate initial population because of poor individual fitness score')
 PARSER.add_argument('-re_populate_threshold', type=float, required=False, default=3.0, help='fitness score threshold for re-population')
 PARSER.add_argument('-max_trials', type=int, required=False, default=2, help='number of trials for re-population before continuing evolution process')
-PARSER.add_argument('-environment_reaction_path', type=str, required=False, default=None, help='file path of action of the generator and the according reactions of the environment')
-PARSER.add_argument('-results_table', type=int, required=False, default=1, help='enable evolution results table visualization')
-PARSER.add_argument('-model_distribution', type=int, required=False, default=1, help='enable evolution model distribution visualization')
-PARSER.add_argument('-model_evolution', type=int, required=False, default=1, help='enable model evolution visualization')
-PARSER.add_argument('-param_distribution', type=int, required=False, default=0, help='enable evolution param distribution visualization')
-PARSER.add_argument('-train_time_distribution', type=int, required=False, default=1, help='enable evolution training time distribution visualization')
-PARSER.add_argument('-breeding_map', type=int, required=False, default=0, help='enable evolution breeding map visualization')
-PARSER.add_argument('-breeding_graph', type=int, required=False, default=0, help='enable evolution breeding graph visualization')
-PARSER.add_argument('-fitness_distribution', type=int, required=False, default=1, help='enable evolution fitness distribution visualization')
-PARSER.add_argument('-fitness_evolution', type=int, required=False, default=1, help='enable evolution fitness evolution visualization')
-PARSER.add_argument('-fitness_dimensions', type=int, required=False, default=1, help='enable evolution fitness dimension visualization')
-PARSER.add_argument('-per_iteration', type=int, required=False, default=1, help='enable evolution per iteration visualization')
 PARSER.add_argument('-output_file_path_evolve', type=str, required=True, default=None, help='file path of how to proceed with the evolutionary algorithm output')
 PARSER.add_argument('-output_file_path_stopping_reason', type=str, required=True, default=None, help='file path of the stopping reason output')
 PARSER.add_argument('-output_file_path_individual_idx', type=str, required=True, default=None, help='file path of the individual index of instruction list to proceed output')
@@ -89,19 +77,7 @@ def evolutionary_algorithm(s3_metadata_file_path: str,
                            timer_in_seconds: int = 43200,
                            re_populate: bool = False,
                            re_populate_threshold: float = 3.0,
-                           max_trials: int = 2,
-                           environment_reaction_path: str = None,
-                           results_table: bool = True,
-                           model_distribution: bool = True,
-                           model_evolution: bool = True,
-                           param_distribution: bool = False,
-                           train_time_distribution: bool = True,
-                           breeding_map: bool = False,
-                           breeding_graph: bool = False,
-                           fitness_distribution: bool = True,
-                           fitness_evolution: bool = True,
-                           fitness_dimensions: bool = True,
-                           per_iteration: bool = True
+                           max_trials: int = 2
                            ) -> NamedTuple('outputs', [('evolve', int),
                                                        ('stopping_reason', str),
                                                        ('idx', list)
@@ -202,53 +178,6 @@ def evolutionary_algorithm(s3_metadata_file_path: str,
     :param max_trials: int
         Maximum number of trials for re-population
 
-    :param environment_reaction_path: str
-        File path of the reaction of the environment to process in each interation
-
-    :param results_table: bool
-        Evolution results table
-            -> Table Chart
-
-    :param model_evolution: bool
-        Evolution of individuals
-            -> Scatter Chart
-
-    :param model_distribution: bool
-        Distribution of used model types
-            -> Bar Chart / Pie Chart
-
-    :param param_distribution: bool
-        Distribution of used model parameter combination
-            -> Tree Map / Sunburst
-
-    :param train_time_distribution: bool
-        Distribution of training time
-            -> Violin
-
-    :param breeding_map: bool
-        Breeding evolution as
-            -> Heat Map
-
-    :param breeding_graph: bool
-        Breeding evolution as
-            -> Network Graph
-
-    :param fitness_distribution: bool
-        Distribution of fitness metric
-            -> Ridge Line Chart
-
-    :param fitness_evolution: bool
-        Evolution of fitness metric
-            -> Line Chart
-
-    :param fitness_dimensions: bool
-        Calculated loss value for each dimension in fitness metric
-            -> Radar Chart
-            -> Tree Map
-
-    :param per_iteration: bool
-        Visualize results of each iteration in detail or visualize just evolutionary results
-
     :return: NamedTuple
         Whether to continue evolution or not and stopping reason if not continuing and individual index of instruction list
     """
@@ -262,10 +191,6 @@ def evolutionary_algorithm(s3_metadata_file_path: str,
             _stopping_reason: str = None
             _generator_instructions: List[dict] = _evolutionary_algorithm.main()
         else:
-            #if environment_reaction_path is not None:
-            #    _environment_reaction: dict = load_file_from_s3(file_path=environment_reaction_path)
-            #    Log().log(msg=f'Load environment reaction file: {environment_reaction_path}')
-            #    _evolutionary_algorithm.gather_metadata(environment_reaction=_environment_reaction)
             _re_populate: bool = _evolutionary_algorithm.check_for_re_population()
             if _re_populate:
                 Log().log(msg=f'Re-populate')
@@ -298,27 +223,8 @@ def evolutionary_algorithm(s3_metadata_file_path: str,
             else:
                 _check_for_stopping: dict = _evolutionary_algorithm.check_for_stopping()
                 _stopping_reason: str = _check_for_stopping.get('stopping_reason')
-                if _check_for_stopping.get('evolve'):
-                    _evolve: bool = True
-                    _generator_instructions: List[dict] = _evolutionary_algorithm.main()
-                else:
-                    _evolve: bool = False
-                    _generator_instructions: List[dict] = _evolutionary_algorithm.main()
-                    _evolutionary_algorithm.generate_visualization_config(path=s3_output_file_path_visualization,
-                                                                          results_table=results_table,
-                                                                          model_distribution=model_distribution,
-                                                                          model_evolution=model_evolution,
-                                                                          param_distribution=param_distribution,
-                                                                          train_time_distribution=train_time_distribution,
-                                                                          breeding_map=breeding_map,
-                                                                          breeding_graph=breeding_graph,
-                                                                          fitness_distribution=fitness_distribution,
-                                                                          fitness_evolution=fitness_evolution,
-                                                                          fitness_dimensions=fitness_dimensions,
-                                                                          per_iteration=per_iteration
-                                                                          )
-                    save_file_to_s3(file_path=s3_output_file_path_visualization, obj=_evolutionary_algorithm.plot)
-                    Log().log(msg=f'Save visualization file: {s3_output_file_path_visualization}')
+                _evolve: bool = _check_for_stopping.get('evolve')
+                _generator_instructions: List[dict] = _evolutionary_algorithm.main()
     else:
         Log().log(msg='Initialize population')
         _evolutionary_algorithm: EvolutionaryAlgorithm = EvolutionaryAlgorithm(metadata=None)
@@ -415,17 +321,5 @@ if __name__ == '__main__':
                            timer_in_seconds=ARGS.timer_in_seconds,
                            re_populate=bool(ARGS.re_populate),
                            re_populate_threshold=ARGS.re_populate_threshold,
-                           max_trials=ARGS.max_trials,
-                           environment_reaction_path=ARGS.environment_reaction_path,
-                           results_table=bool(ARGS.results_table),
-                           model_distribution=bool(ARGS.model_distribution),
-                           model_evolution=bool(ARGS.model_evolution),
-                           param_distribution=bool(ARGS.param_distribution),
-                           train_time_distribution=bool(ARGS.train_time_distribution),
-                           breeding_map=bool(ARGS.breeding_map),
-                           breeding_graph=bool(ARGS.breeding_graph),
-                           fitness_distribution=bool(ARGS.fitness_distribution),
-                           fitness_evolution=bool(ARGS.fitness_evolution),
-                           fitness_dimensions=bool(ARGS.fitness_dimensions),
-                           per_iteration=bool(ARGS.per_iteration)
+                           max_trials=ARGS.max_trials
                            )
