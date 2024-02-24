@@ -25,7 +25,7 @@ setuptools.setup(
     long_description_content_type='text/markdown',
     keywords='machine-learning ml-ops artificial-intelligence data-science kubeflow kubernetes',
     license='GNU',
-    url='https://gitlab.shopware.com/shopware/machine-learning/ml-ops/kubeflow-templates',
+    url='https://github.com/GianniBalistreri/ml-ops-aws-eks-kubeflow',
     include_package_data=True,
     packages=setuptools.find_packages(),
     package_data={'kfp_v1_ml_ops': ['LICENSE',
