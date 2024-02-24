@@ -1,5 +1,5 @@
 data "aws_route53_zone" "subdomain" {
-  name = "${var.namespace_sub_domain_name}.${var.environment_sub_domain_name}.${var.domain_name}.${var.top_level_domain_name}"
+  name = "${var.environment_sub_domain_name}.${var.domain_name}.${var.top_level_domain_name}"
 }
 
 resource "aws_route53_record" "pre_cognito_domain_a_record" {
