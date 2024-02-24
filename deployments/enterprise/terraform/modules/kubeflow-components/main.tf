@@ -168,6 +168,7 @@ module "ingress_cognito" {
   domain_name                                  = var.domain_name
   environment_sub_domain_name                  = var.environment_sub_domain_name
   namespace_sub_domain_name                    = var.namespace_sub_domain_name
+  callback_logout_sub_domain_name              = var.callback_logout_sub_domain_name
   load_balancer_scheme                         = var.load_balancer_scheme
   cluster_name                                 = var.cluster_name
   tags                                         = var.tags

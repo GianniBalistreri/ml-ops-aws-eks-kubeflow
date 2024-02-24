@@ -144,6 +144,11 @@ variable "namespace_sub_domain_name" {
   description = "Name of the namespace subdomain"
 }
 
+variable "callback_logout_sub_domain_name" {
+  type        = string
+  description = "Name of the callback and logout subdomain"
+}
+
 ############
 # Cognito: #
 ############
