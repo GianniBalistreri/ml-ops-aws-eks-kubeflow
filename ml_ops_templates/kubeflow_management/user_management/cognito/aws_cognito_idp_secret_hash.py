@@ -1,6 +1,9 @@
 """
+
 Generate Secret Hash for authenticate to AWS Cognito
+
 """
+
 import base64
 import hashlib
 import hmac
