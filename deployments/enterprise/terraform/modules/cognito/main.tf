@@ -1,5 +1,5 @@
 data "aws_acm_certificate" "subdomain" {
-  domain = "*.${var.namespace_sub_domain_name}.${var.environment_sub_domain_name}.${var.domain_name}.${var.top_level_domain_name}"
+  domain = "*.${var.environment_sub_domain_name}.${var.domain_name}.${var.top_level_domain_name}"
 }
 
 resource "null_resource" "istio_ingress" {
@@ -12,7 +12,7 @@ resource "null_resource" "istio_ingress" {
       printf '
       CognitoUserPoolArn='${aws_cognito_user_pool.kubeflow.arn}'
       CognitoAppClientId='${aws_cognito_user_pool_client.kubeflow.id}'
-      CognitoUserPoolDomain='auth.prod.shopware-kubeflow.io'
+      CognitoUserPoolDomain='auth.${var.environment_sub_domain_name}.${var.domain_name}.${var.top_level_domain_name}'
       certArn='${data.aws_acm_certificate.subdomain.arn}'
       ' > ../../../../awsconfigs/common/istio-ingress/overlays/cognito/params.env
       printf 'loadBalancerScheme='${var.load_balancer_scheme}'' > ../../../../awsconfigs/common/istio-ingress/base/params.env
