@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "kubeflow_dex_user_management"
+version = "0.1.0"
+description = "Streamlit web application for managing kubeflow user using dex as authentication provider"
+authors = ["gianni <xxx>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+boto3 = "^1.28.39"
+bcrypt = "^4.1.1"
+streamlit = "^1.31.1"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
