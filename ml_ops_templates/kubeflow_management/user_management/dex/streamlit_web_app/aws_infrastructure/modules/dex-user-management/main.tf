@@ -46,6 +46,9 @@ module "ecs_fargate" {
   source                                          = "./ecs_fargate"
   autoscaling_max_capacity                        = var.autoscaling_max_capacity
   autoscaling_min_capacity                        = var.autoscaling_min_capacity
+  aws_account_id                                  = var.aws_account_id
+  aws_access_key_id                               = var.aws_access_key_id
+  aws_secret_access_key                           = var.aws_secret_access_key
   aws_region                                      = var.aws_region
   ecr_image_tag_mutability                        = var.ecr_image_tag_mutability
   ecr_name                                        = var.ecr_name
