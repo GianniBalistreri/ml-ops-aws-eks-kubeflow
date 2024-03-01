@@ -4,7 +4,17 @@
 
 variable "aws_account_id" {
   type        = string
-  description = "AWS account id"
+  description = "AWS account ID"
+}
+
+variable "aws_access_key_id" {
+  type        = string
+  description = "AWS access key ID"
+}
+
+variable "aws_secret_access_key" {
+  type        = string
+  description = "AWS secret access key"
 }
 
 variable "aws_region" {
