@@ -6,6 +6,7 @@ Kubeflow Pipeline: Get session cookie for dex authentication
 
 import re
 import requests
+
 from urllib.parse import urlsplit
 
 
