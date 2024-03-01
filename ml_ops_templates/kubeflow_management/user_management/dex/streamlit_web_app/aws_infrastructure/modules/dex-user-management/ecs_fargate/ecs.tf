@@ -39,8 +39,24 @@ resource "aws_ecs_task_definition" "kubeflow" {
 
       environment : [
         {
+          "name": "AWS_ACCESS_KEY_ID"
+          "value": var.aws_access_key_id
+        },
+        {
+          "name": "AWS_SECRET_ACCESS_KEY"
+          "value": var.aws_secret_access_key
+        },
+        {
+          "name": "AWS_ACCOUNT_ID"
+          "value": var.aws_account_id
+        },
+        {
+          "name": "AWS_REGION"
+          "value": var.aws_region
+        },
+        {
           "name": "ENVIRONMENT"
-          "value": "prod"
+          "value": var.environment
         },
         {
           "name" : "GATEWAY_ADDRESS"
