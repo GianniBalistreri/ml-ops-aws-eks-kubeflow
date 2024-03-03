@@ -55,6 +55,10 @@ resource "aws_ecs_task_definition" "kubeflow" {
           "value": var.aws_region
         },
         {
+          "name": "CLUSTER_NAME"
+          "value": var.eks_cluster_name
+        },
+        {
           "name": "ENVIRONMENT"
           "value": var.environment
         },
