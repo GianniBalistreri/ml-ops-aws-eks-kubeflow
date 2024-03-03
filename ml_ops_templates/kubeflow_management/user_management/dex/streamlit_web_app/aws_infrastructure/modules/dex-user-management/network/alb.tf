@@ -28,7 +28,7 @@ resource "aws_alb_listener" "kubeflow" {
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-TLS-1-2-2017-01"
-  certificate_arn   = aws_acm_certificate.this.arn
+  certificate_arn   = aws_acm_certificate.root_domain.arn
 
   default_action {
     type             = "forward"
