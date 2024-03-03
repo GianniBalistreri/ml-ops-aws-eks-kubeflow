@@ -5,19 +5,19 @@ locals {
 }
 
 resource "aws_eip" "nat" {
-  count = length(data.aws_availability_zones.available.names)
+  count = 1
 
   tags = {
-    Name = "Tracking Gateway-EIP-${element(local.availability_zone_names, count.index)}"
+    Name = "Kubeflow User Management-EIP"
   }
 }
 
 resource "aws_nat_gateway" "nat" {
-  count         = length(data.aws_availability_zones.available.names)
-  subnet_id     = element(aws_subnet.public.*.id, count.index)
-  allocation_id = element(aws_eip.nat.*.id, count.index)
+  count         = 1
+  subnet_id     = aws_subnet.public[0].id
+  allocation_id = aws_eip.nat[0].id
 
   tags = {
-    Name = "Tracking Gateway-NAT gateway-${element(local.availability_zone_names, count.index)}"
+    Name = "Kubeflow User Management-NAT Gateway"
   }
 }
