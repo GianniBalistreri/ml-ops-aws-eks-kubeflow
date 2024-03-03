@@ -22,6 +22,11 @@ variable "aws_region" {
   description = "AWS region code"
 }
 
+variable "eks_cluster_name" {
+  type        = string
+  description = "EKS cluster name"
+}
+
 variable "environment" {
   type        = string
   description = "Name of the environment (prod, staging, dev, etc.)"
