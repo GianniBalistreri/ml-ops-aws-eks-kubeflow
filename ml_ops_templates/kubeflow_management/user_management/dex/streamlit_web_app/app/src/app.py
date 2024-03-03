@@ -140,6 +140,10 @@ def _check_text_input(email: str, namespace: str, pwd: str) -> bool:
         st.error(f"Namespace is empty")
         Log().log(msg=f'Namespace is empty')
         return False
+    if not re.search(r'^[a-z_]+$', namespace):
+        st.error("Namespace must contain only lower case characters and underscores")
+        Log().log(msg=f'Namespace must contain only lower case characters and underscores')
+        return False
     if len(pwd) == 0:
         st.error(f"Password is empty")
         Log().log(msg=f'Password is empty')
