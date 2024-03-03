@@ -91,3 +91,23 @@ variable "alb_target_group_name" {
   type        = string
   description = "Name of the application load balancer target group"
 }
+
+################
+# AWS Cognito: #
+################
+
+variable "callback_logout_sub_domain_name" {
+  type        = string
+  description = "Name of the callback and logout subdomain"
+}
+
+variable "cognito_user_pool_client_allowed_oauth_flows" {
+  type        = list(string)
+  description = "Allowed Oauth flows for cognito user pool client"
+}
+
+variable "cognito_user_pool_name" {
+  type        = string
+  description = "Cognito User Pool name"
+}
+
