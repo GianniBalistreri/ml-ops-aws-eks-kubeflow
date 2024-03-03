@@ -6,7 +6,7 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = false
 
   tags = {
-    Name = "Tracking Gateway-Public Subnet-${element(data.aws_availability_zones.available.names, count.index)}"
+    Name = "Kubeflow User Management-Public Subnet-${element(data.aws_availability_zones.available.names, count.index)}"
   }
 }
 
@@ -17,7 +17,7 @@ resource "aws_subnet" "private" {
   availability_zone = element(data.aws_availability_zones.available.names, count.index)
 
   tags = {
-    Name = "Tracking Gateway-Private Subnet-${element(data.aws_availability_zones.available.names, count.index)}"
+    Name = "Kubeflow User Management-Private Subnet-${element(data.aws_availability_zones.available.names, count.index)}"
   }
 }
 
@@ -26,7 +26,7 @@ resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name = "Tracking Gateway-Public Route Table-${element(data.aws_availability_zones.available.names, count.index)}"
+    Name = "Kubeflow User Management-Public Route Table-${element(data.aws_availability_zones.available.names, count.index)}"
   }
 }
 
@@ -35,7 +35,7 @@ resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name = "Tracking Gateway-Private Route Table-${element(data.aws_availability_zones.available.names, count.index)}"
+    Name = "Kubeflow User Management-Private Route Table-${element(data.aws_availability_zones.available.names, count.index)}"
   }
 }
 
