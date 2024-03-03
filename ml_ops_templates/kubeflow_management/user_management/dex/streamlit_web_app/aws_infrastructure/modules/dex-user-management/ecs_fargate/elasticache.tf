@@ -1,5 +1,5 @@
 resource "aws_security_group" "ecs_fargate" {
-  name   = "elasticache-sg"
+  name   = "${var.ecs_cluster_name}-elasticache-sg"
   vpc_id = var.vpc_id
 
   lifecycle {
@@ -30,7 +30,7 @@ resource "aws_security_group_rule" "ecs_fargate_ingress" {
 }
 
 resource "aws_elasticache_cluster" "ecs_fargate" {
-  cluster_id           = "elasticache-cluster"
+  cluster_id           = "${var.ecs_cluster_name}-elasticache"
   engine               = "redis"
   node_type            = "cache.t4g.micro"
   num_cache_nodes      = 1
@@ -42,6 +42,6 @@ resource "aws_elasticache_cluster" "ecs_fargate" {
 }
 
 resource "aws_elasticache_subnet_group" "elasticache" {
-  name       = "elasticache-subnet-group"
+  name       = "${var.ecs_cluster_name}-elasticache-subnet-group"
   subnet_ids = var.subnet_ids
 }
