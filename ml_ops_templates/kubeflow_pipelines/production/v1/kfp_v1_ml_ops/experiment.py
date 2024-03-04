@@ -195,11 +195,11 @@ class KubeflowExperiment:
                                                                                       description=self.kf_experiment_description,
                                                                                       namespace=self.kf_user_namespace
                                                                                       )
-        _pipeline_metadata: dict = dict(experiment=dict(created_at=_experiment.created_at,
+        _pipeline_metadata: dict = dict(experiment=dict(created_at=str(_experiment.created_at),
                                                         description=_experiment.description,
                                                         id=_experiment.id,
                                                         name=_experiment.name,
-                                                        resource_references=_experiment.resource_references,
+                                                        #resource_references=_experiment.resource_references,
                                                         storage_state=_experiment.storage_state
                                                         )
                                         )
@@ -225,15 +225,15 @@ class KubeflowExperiment:
                                                                                          enable_caching=self.kf_enable_caching,
                                                                                          service_account=self.service_account,
                                                                                          )
-            _pipeline_metadata.update({'run': dict(created_at=_recurring_run.created_at,
+            _pipeline_metadata.update({'run': dict(created_at=str(_recurring_run.created_at),
                                                    description=_recurring_run.description,
                                                    id=_recurring_run.id,
                                                    name=_recurring_run.name,
-                                                   resource_references=_recurring_run.resource_references,
+                                                   #resource_references=_recurring_run.resource_references,
                                                    status=_recurring_run.status,
                                                    mode=_recurring_run.mode,
                                                    trigger=_recurring_run.trigger,
-                                                   updated_at=_recurring_run.updated_at
+                                                   updated_at=str(_recurring_run.updated_at)
                                                    )
                                        })
         else:
