@@ -7,6 +7,7 @@ authors = ["gianni <xxx>"]
 [tool.poetry.dependencies]
 python = "^3.9"
 boto3 = "^1.28.39"
+kfp = "^1.8.22"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
