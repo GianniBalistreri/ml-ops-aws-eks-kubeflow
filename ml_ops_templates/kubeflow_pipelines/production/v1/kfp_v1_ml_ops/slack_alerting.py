@@ -126,9 +126,12 @@ def slack_alerting(exit_handler: bool,
         Container operator for serializer
     """
     _volume: dict = {volume_dir: volume if volume is None else volume.volume}
-    _arguments: list = ['-exit_handler', bool(exit_handler),
+    _arguments: list = ['-exit_handler', int(exit_handler),
                         '-aws_region', aws_region,
-                        '-secret_name', secret_name
+                        '-secret_name', secret_name,
+                        '-output_file_path_header', output_file_path_header,
+                        '-output_file_path_message', output_file_path_message,
+                        '-output_file_path_response_status_code', output_file_path_response_status_code
                         ]
     if header is not None:
         _arguments.extend(['-header', header])
