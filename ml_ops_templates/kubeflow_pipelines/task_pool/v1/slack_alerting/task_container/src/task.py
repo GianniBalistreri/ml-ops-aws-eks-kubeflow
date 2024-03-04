@@ -121,7 +121,7 @@ def slack_alerting(exit_handler: bool,
             {
                 "type": "header",
                 "text": {
-                    "type": "plain.text",
+                    "type": "plain_text",
                     "text": f"{_status_symbol} {_header}"
                 }
             },
