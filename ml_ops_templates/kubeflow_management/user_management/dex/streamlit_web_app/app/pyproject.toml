@@ -5,7 +5,7 @@ description = "Streamlit web application for managing kubeflow user using dex as
 authors = ["gianni <xxx>"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = ">=3.8,!=3.9.7"
 boto3 = "^1.28.39"
 bcrypt = "^4.1.1"
 streamlit = "^1.31.1"
