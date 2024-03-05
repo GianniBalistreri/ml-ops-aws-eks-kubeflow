@@ -249,7 +249,9 @@ class KubeflowExperiment:
                                                                  enable_caching=self.kf_enable_caching,
                                                                  service_account=self.service_account
                                                                  )
-            _pipeline_metadata.update({'run': dict(id=_run.run_id),
+            _pipeline_metadata.update({'run': dict(name=self.kf_experiment_run_name,
+                                                   id=_run.run_id
+                                                   ),
                                        'pipeline': dict(name=self.kf_pipeline_name,
                                                         id=None
                                                         )
