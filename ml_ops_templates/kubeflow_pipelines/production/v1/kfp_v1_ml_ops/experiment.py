@@ -229,12 +229,15 @@ class KubeflowExperiment:
                                                    description=_recurring_run.description,
                                                    id=_recurring_run.id,
                                                    name=_recurring_run.name,
-                                                   #resource_references=_recurring_run.resource_references,
+                                                   resource_references=_recurring_run.resource_references,
                                                    status=_recurring_run.status,
                                                    mode=_recurring_run.mode,
                                                    trigger=_recurring_run.trigger,
                                                    updated_at=str(_recurring_run.updated_at)
-                                                   )
+                                                   ),
+                                       'pipeline': dict(name=self.kf_pipeline_name,
+                                                        id=_pipeline.id
+                                                        )
                                        })
         else:
             _run = self.kfp_client.create_run_from_pipeline_func(pipeline_func=pipeline,
@@ -246,7 +249,12 @@ class KubeflowExperiment:
                                                                  enable_caching=self.kf_enable_caching,
                                                                  service_account=self.service_account
                                                                  )
-            _pipeline_metadata.update({'run': dict(id=_run.run_id)})
+            _pipeline_metadata.update({'run': dict(id=_run.run_id),
+                                       'pipeline': dict(name=self.kf_pipeline_name,
+                                                        id=None
+                                                        )
+                                       })
+        _pipeline_metadata.update({'namespace': self.kf_user_namespace})
         if self.pipeline_metadata_file_path is not None:
             _complete_file_path: str = self.pipeline_metadata_file_path.replace('s3://', '')
             _bucket_name: str = _complete_file_path.split('/')[0]
