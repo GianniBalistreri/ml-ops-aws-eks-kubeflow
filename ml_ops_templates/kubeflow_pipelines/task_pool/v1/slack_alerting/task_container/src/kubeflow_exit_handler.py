@@ -144,7 +144,7 @@ class KubeflowExitHandler:
                                 f'Run:\n' \
                                 f'Name: {_pipeline_metadata["run"].get("name")}\n' \
                                 f'ID: {_pipeline_metadata["run"].get("id")}\n' \
-                                f'Finish: {_end_time}\n' \
+                                f'Finished: {_end_time}\n' \
                                 f'\n' \
                                 f'Pipeline:\n' \
                                 f'Name: {_pipeline_metadata["pipeline"].get("name")}\n' \
