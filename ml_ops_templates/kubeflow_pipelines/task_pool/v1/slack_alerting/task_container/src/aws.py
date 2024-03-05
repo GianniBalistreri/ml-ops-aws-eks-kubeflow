@@ -8,6 +8,7 @@ import boto3
 import json
 import pickle
 
+from botocore.errorfactory import ClientError
 from typing import List, Tuple, Union
 
 
@@ -37,7 +38,7 @@ def _extract_file_path_elements(file_path: str) -> Tuple[str, str, str]:
 
 def file_exists(file_path: str) -> bool:
     """
-    Check whether file exists in given S3 bucket
+    Check whether file exists in given S3 bucket or not
 
     :param file_path: str
         Complete file path
@@ -45,12 +46,10 @@ def file_exists(file_path: str) -> bool:
     :return: bool
         File exists or not
     """
-    _bucket_name, _file_path, _file_type = _extract_file_path_elements(file_path=file_path)
-    _s3_resource: boto3 = boto3.resource('s3')
     try:
-        _s3_resource.head_object(Bucket=_bucket_name, Key=_file_path)
+        load_file_from_s3(file_path=file_path)
         return True
-    except:
+    except ClientError:
         return False
 
 
