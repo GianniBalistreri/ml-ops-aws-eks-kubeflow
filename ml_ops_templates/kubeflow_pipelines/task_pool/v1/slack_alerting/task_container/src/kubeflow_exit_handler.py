@@ -133,6 +133,7 @@ class KubeflowExitHandler:
                 else:
                     _pipeline_status['header'] = 'Kubeflow pipeline succeeded'
                     _failure_info: str = ''
+                    _succeeds -= 1
                 _components: int = _succeeds + _failures + _omits + _pending + _running
                 _message: str = f'Experiment:\n' \
                                 f'Name: {_pipeline_metadata["experiment"].get("name")}\n' \
