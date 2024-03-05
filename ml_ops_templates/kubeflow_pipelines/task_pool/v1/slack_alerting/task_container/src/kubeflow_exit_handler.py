@@ -84,7 +84,7 @@ class KubeflowExitHandler:
                 _end_time: str = str(datetime.now()).split('.')[0]
                 Log().log(msg=f'Finished pipeline tasks: {_end_time}')
                 _pipeline_status['footer'] = f'Namespace: {_pipeline_metadata.get("namespace")}'
-                _pipeline_status['status'] = 1
+                _pipeline_status['status'] = 3
                 _succeeds: int = 0
                 _failures: int = 0
                 _omits: int = 0
