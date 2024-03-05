@@ -110,15 +110,12 @@ class KubeflowExitHandler:
                                 if _phase == 'Succeeded':
                                     _succeeds += 1
                                 elif _phase == 'Failed':
-                                    _failures += 1
                                     _pipeline_status['status'] = 0
-                                    _failed_task_name.append(_task_name)
-                                    _failed_task_display_name.append(_task_display_name)
                                     if _phases[p + 1].find('message":') >= 0:
+                                        _failures += 1
+                                        _failed_task_name.append(_task_name)
+                                        _failed_task_display_name.append(_task_display_name)
                                         _error_message.append(_phases[p + 1].split('message":')[1].split(',')[0].replace('"', ''))
-                                    else:
-                                        _error_message.append('')
-                                    Log().log(msg=f'Error message: {_error_message[-1]}')
                                 elif _phase == 'Omitted':
                                     _omits += 1
                                 elif _phase == 'Pending':
