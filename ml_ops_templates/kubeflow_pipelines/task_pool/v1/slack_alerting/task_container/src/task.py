@@ -177,7 +177,7 @@ def slack_alerting(exit_handler: bool,
                 "elements": [
                     {
                         "type": "mrkdwn",
-                        "text": f"Region: *{_footer}*"
+                        "text": f"*{_footer}*"
                     }
                 ]
             }
