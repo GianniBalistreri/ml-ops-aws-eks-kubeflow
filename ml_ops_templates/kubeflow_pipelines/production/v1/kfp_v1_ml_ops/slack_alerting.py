@@ -11,13 +11,18 @@ from kfp import dsl
 def slack_alerting(exit_handler: bool,
                    aws_account_id: str,
                    aws_region: str,
-                   secret_name: str,
+                   secret_name_slack: str,
                    header: str = None,
                    msg: str = None,
+                   footer: str = None,
                    status: int = None,
                    pipeline_metadata_file_path: str = None,
+                   kf_url: str = None,
+                   kf_user_namespace: str = None,
+                   secret_name_kf: str = None,
                    output_file_path_header: str = 'header.json',
                    output_file_path_message: str = 'message.json',
+                   output_file_path_footer: str = 'footer.json',
                    output_file_path_response_status_code: str = 'response_status_code.json',
                    docker_image_name: str = 'ml-ops-slack-alerting',
                    docker_image_tag: str = 'v1',
@@ -47,14 +52,17 @@ def slack_alerting(exit_handler: bool,
     :param aws_region: str
         Code of the AWS region
 
-    :param secret_name: str
-        Secret name of the secret manager entry containing Slack channel
+    :param secret_name_slack: str
+        Secret name of the secret manager entry containing Slack channel credentials
 
     :param header: str
         Pre-defined header text
 
     :param msg: str
         Pre-defined message
+
+    :param footer: str
+        Pre-defined footer text
 
     :param status: int
         Status code of the message:
@@ -66,11 +74,23 @@ def slack_alerting(exit_handler: bool,
     :param pipeline_metadata_file_path: str
             Complete file path of the pipeline metadata
 
+    :param kf_url: str
+            URL of the Kubeflow deployment
+
+    :param kf_user_namespace: str
+        Kubeflow namespace
+
+    :param secret_name_kf: str
+        Secret name of the secret manager entry containing Kubeflow user credentials
+
     :param output_file_path_header: str
         File path of the header output
 
     :param output_file_path_message: str
         File path of the message output
+
+    :param output_file_path_footer: str
+        File path of the footer output
 
     :param output_file_path_response_status_code: str
         File path of the response status code output
@@ -128,19 +148,28 @@ def slack_alerting(exit_handler: bool,
     _volume: dict = {volume_dir: volume if volume is None else volume.volume}
     _arguments: list = ['-exit_handler', int(exit_handler),
                         '-aws_region', aws_region,
-                        '-secret_name', secret_name,
+                        '-secret_name_slack', secret_name_slack,
                         '-output_file_path_header', output_file_path_header,
                         '-output_file_path_message', output_file_path_message,
+                        '-output_file_path_footer', output_file_path_footer,
                         '-output_file_path_response_status_code', output_file_path_response_status_code
                         ]
     if header is not None:
         _arguments.extend(['-header', header])
     if msg is not None:
         _arguments.extend(['-msg', msg])
+    if footer is not None:
+        _arguments.extend(['-footer', footer])
     if status is not None:
         _arguments.extend(['-status', status])
     if pipeline_metadata_file_path is not None:
         _arguments.extend(['-pipeline_metadata_file_path', pipeline_metadata_file_path])
+    if kf_url is not None:
+        _arguments.extend(['-kf_url', kf_url])
+    if kf_user_namespace is not None:
+        _arguments.extend(['-kf_user_namespace', kf_user_namespace])
+    if secret_name_kf is not None:
+        _arguments.extend(['-secret_name_kf', secret_name_kf])
     _task: dsl.ContainerOp = dsl.ContainerOp(name='slack_alerting',
                                              image=f'{aws_account_id}.dkr.ecr.{aws_region}.amazonaws.com/{docker_image_name}:{docker_image_tag}',
                                              command=["python", "task.py"],
@@ -151,6 +180,7 @@ def slack_alerting(exit_handler: bool,
                                              artifact_argument_paths=None,
                                              file_outputs={'header': output_file_path_header,
                                                            'message': output_file_path_message,
+                                                           'footer': output_file_path_footer,
                                                            'response_status_code': output_file_path_response_status_code
                                                            },
                                              output_artifact_paths=None,
