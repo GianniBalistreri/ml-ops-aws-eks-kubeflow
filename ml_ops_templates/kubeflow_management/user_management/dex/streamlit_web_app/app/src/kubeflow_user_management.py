@@ -12,6 +12,11 @@ import subprocess
 
 from typing import Dict, List
 
+# Initial login example:
+# Email: 'user@example.com'
+# Namespace: 'kubeflow-user-example-com'
+# Password: '12341234'
+
 
 class KubeflowUserManagementException(Exception):
     """
@@ -395,11 +400,23 @@ class KubeflowUserManagement:
         _hashed_new_pwd: str = self._generate_bcrypt_hash(pwd=new_pwd)
         _hashed_old_pwd: str = self.get_user_password(user_email=user_email)
         _dex_config_yaml: str = self._get_dex_config_map_yaml()
-        _dex_config_yaml = _dex_config_yaml.replace(_hashed_old_pwd, _hashed_new_pwd)
+        _config_yaml: List[str] = ['apiVersion: v1', 'data:', '  config.yaml: |']
+        for line in _dex_config_yaml.split('\n'):
+            if line.find(_hashed_old_pwd) > 0:
+                _line: str = line
+                _config_yaml.append(f'    {_line.replace(_hashed_old_pwd, _hashed_new_pwd)}')
+            else:
+                _config_yaml.append(f'    {line}')
+        _config_yaml.append('kind: ConfigMap')
+        _config_yaml.append('metadata:')
+        _config_yaml.append('  name: dex')
+        _config_yaml.append('  namespace: auth')
+        _adjusted_dex_config_map_yaml: str = "\n".join(_config_yaml)
         with open('new_add_user_dex.yaml', 'w') as file:
-            file.write(_dex_config_yaml)
+            file.write(_adjusted_dex_config_map_yaml)
         subprocess.run('kubectl apply -f new_add_user_dex.yaml', shell=True, capture_output=False, text=True)
         os.remove('new_add_user_dex.yaml')
+        subprocess.run('kubectl rollout restart deployment dex -n auth', shell=True, capture_output=False, text=True)
 
     def password_exists(self, pwd: str) -> bool:
         """
@@ -419,18 +436,3 @@ class KubeflowUserManagement:
                 if self.check_password(pwd=pwd, hashed_pwd=_pwd):
                     _exists = True
         return _exists
-
-    def initial_deployment(self, pwd: str, hashed: bool = False) -> None:
-        """
-        Add new user and delete default user settings for initial deployment
-
-        :param pwd: str
-            Password
-
-        :param hashed: bool
-            Whether password in 'pwd' parameter is already hashed using bcrypt or not
-        """
-        self.add_user(pwd=pwd, hashed=hashed)
-        self.user_email = 'user@example.com'
-        self.user_name = 'kubeflow-user-example-com'
-        self.delete_user()
