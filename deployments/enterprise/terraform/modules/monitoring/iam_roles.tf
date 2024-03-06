@@ -72,7 +72,8 @@ data "aws_iam_policy_document" "grafana" {
       "aps:QueryMetrics",
       "aps:GetSeries",
       "aps:GetLabels",
-      "aps:GetMetricMetadata"
+      "aps:GetMetricMetadata",
+      "cloudwatch:*"
     ]
     resources = ["*"]
   }
