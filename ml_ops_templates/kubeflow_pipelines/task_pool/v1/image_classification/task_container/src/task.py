@@ -11,6 +11,7 @@ import os
 from aws import filter_files_from_s3, load_file_from_s3, save_file_to_s3
 from classifier import ImageClassifier
 from custom_logger import Log
+from resource_metrics import get_available_cpu, get_cpu_utilization, get_cpu_utilization_per_core, get_memory, get_memory_utilization
 from typing import Dict, List
 
 
@@ -175,6 +176,9 @@ def image_classification(train_data_set_path: str,
     :param kwargs: dict
         Key-word arguments for class ImageProcessor and compiling model configuration
     """
+    _cpu_available: int = get_available_cpu(logging=True)
+    _memory_total: float = get_memory(total=True, logging=True)
+    _memory_available: float = get_memory(total=False, logging=True)
     _train_folder: str = train_data_set_path.split('/')[-1]
     if len(_train_folder) == 0:
         _train_folder = train_data_set_path.split('/')[-2]
@@ -236,6 +240,10 @@ def image_classification(train_data_set_path: str,
     _image_classifier.model.save(filepath=_model_file_name)
     save_file_to_s3(file_path=s3_output_file_path_model_artifact, obj=None, input_file_path=_model_file_name)
     Log().log(msg=f'Save model artifact: {s3_output_file_path_model_artifact}')
+    _cpu_utilization: float = get_cpu_utilization(interval=1, logging=True)
+    _cpu_utilization_per_cpu: List[float] = get_cpu_utilization_per_core(interval=1, logging=True)
+    _memory_utilization: float = get_memory_utilization(logging=True)
+    _memory_available = get_memory(total=False, logging=True)
 
 
 if __name__ == '__main__':

@@ -11,6 +11,7 @@ from aws import load_file_from_s3, save_file_to_s3
 from custom_logger import Log
 from file_handler import file_handler
 from parallelizer import Parallelizer, ParallelizerException
+from resource_metrics import get_available_cpu, get_cpu_utilization, get_cpu_utilization_per_core, get_memory, get_memory_utilization
 from typing import Dict, List, NamedTuple
 
 
@@ -90,6 +91,9 @@ def parallelizer(action: str,
     :return: NamedTuple
         Distributed values
     """
+    _cpu_available: int = get_available_cpu(logging=True)
+    _memory_total: float = get_memory(total=True, logging=True)
+    _memory_available: float = get_memory(total=False, logging=True)
     if analytical_data_types_path is None:
         _analytical_data_types: Dict[str, List[str]] = None
     else:
@@ -121,6 +125,10 @@ def parallelizer(action: str,
     if s3_output_path_distribution is not None:
         save_file_to_s3(file_path=s3_output_path_distribution, obj=_distributed_values)
         Log().log(msg=f'Save distribution: {s3_output_path_distribution}')
+    _cpu_utilization: float = get_cpu_utilization(interval=1, logging=True)
+    _cpu_utilization_per_cpu: List[float] = get_cpu_utilization_per_core(interval=1, logging=True)
+    _memory_utilization: float = get_memory_utilization(logging=True)
+    _memory_available = get_memory(total=False, logging=True)
     return [_distributed_values]
 
 

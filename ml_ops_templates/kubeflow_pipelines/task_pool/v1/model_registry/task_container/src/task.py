@@ -10,6 +10,7 @@ import ast
 from aws import file_exists, load_file_from_s3, save_file_to_s3
 from model_registry import ModelRegistry
 from file_handler import file_handler
+from resource_metrics import get_available_cpu, get_cpu_utilization, get_cpu_utilization_per_core, get_memory, get_memory_utilization
 from typing import List, NamedTuple
 
 
@@ -120,8 +121,11 @@ def model_registry(registry_file_path: str,
     :param output_file_path_registry_customized: str
 
     :return: NamedTuple
-
+        Model registry metadata and model version
     """
+    _cpu_available: int = get_available_cpu(logging=True)
+    _memory_total: float = get_memory(total=True, logging=True)
+    _memory_available: float = get_memory(total=False, logging=True)
     if file_exists(file_path=registry_file_path):
         _metadata: dict = load_file_from_s3(file_path=registry_file_path)
     else:
@@ -148,6 +152,10 @@ def model_registry(registry_file_path: str,
         file_handler(file_path=file_path, obj=obj)
     if output_file_path_registry_customized is not None:
         save_file_to_s3(file_path=output_file_path_registry_customized, obj=_model_registry.metadata)
+    _cpu_utilization: float = get_cpu_utilization(interval=1, logging=True)
+    _cpu_utilization_per_cpu: List[float] = get_cpu_utilization_per_core(interval=1, logging=True)
+    _memory_utilization: float = get_memory_utilization(logging=True)
+    _memory_available = get_memory(total=False, logging=True)
     return [_model_registry.metadata,
             _model_registry.metadata['version'][-1]
             ]

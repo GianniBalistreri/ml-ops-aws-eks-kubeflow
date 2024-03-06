@@ -11,6 +11,7 @@ import pandas as pd
 from aws import load_file_from_s3_as_df, save_file_to_s3, save_file_to_s3_as_df
 from custom_logger import Log
 from file_handler import file_handler
+from resource_metrics import get_available_cpu, get_cpu_utilization, get_cpu_utilization_per_core, get_memory, get_memory_utilization
 from sampler import FileSampler, MLSampler, Sampler
 from typing import Dict, List, NamedTuple
 
@@ -153,6 +154,9 @@ def sampling(action: str,
     :return: NamedTuple
         Metadata about sampled data sets and file paths of the sampled files
     """
+    _cpu_available: int = get_available_cpu(logging=True)
+    _memory_total: float = get_memory(total=True, logging=True)
+    _memory_available: float = get_memory(total=False, logging=True)
     _df: pd.DataFrame = load_file_from_s3_as_df(file_path=data_set_file_path, sep=sep)
     Log().log(msg=f'Load data set: {data_set_file_path} -> Cases={_df.shape[0]}, Features={_df.shape[1]}')
     _file_paths: List[str] = []
@@ -221,6 +225,10 @@ def sampling(action: str,
     file_handler(file_path=output_file_path_sampling_file_paths, obj=_file_paths)
     if s3_output_file_path_sampling_metadata is not None:
         save_file_to_s3(file_path=s3_output_file_path_sampling_metadata, obj=_sampling_metadata)
+    _cpu_utilization: float = get_cpu_utilization(interval=1, logging=True)
+    _cpu_utilization_per_cpu: List[float] = get_cpu_utilization_per_core(interval=1, logging=True)
+    _memory_utilization: float = get_memory_utilization(logging=True)
+    _memory_available = get_memory(total=False, logging=True)
     return [_sampling_metadata, _file_paths]
 
 

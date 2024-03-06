@@ -8,6 +8,7 @@ import argparse
 import ast
 
 from image_processor import ImageProcessor
+from resource_metrics import get_available_cpu, get_cpu_utilization, get_cpu_utilization_per_core, get_memory, get_memory_utilization
 from typing import List, Tuple
 
 
@@ -128,6 +129,9 @@ def image_processor(file_paths: List[str],
     :param s3_output_file_path_array: str
         Complete file path of the processed image array output
     """
+    _cpu_available: int = get_available_cpu(logging=True)
+    _memory_total: float = get_memory(total=True, logging=True)
+    _memory_available: float = get_memory(total=False, logging=True)
     _image_processor: ImageProcessor = ImageProcessor(file_paths=file_paths,
                                                       n_channels=n_channels,
                                                       image_resolution=image_resolution,
@@ -152,6 +156,10 @@ def image_processor(file_paths: List[str],
                           image_path=s3_output_image_path,
                           file_path_array=s3_output_file_path_array
                           )
+    _cpu_utilization: float = get_cpu_utilization(interval=1, logging=True)
+    _cpu_utilization_per_cpu: List[float] = get_cpu_utilization_per_core(interval=1, logging=True)
+    _memory_utilization: float = get_memory_utilization(logging=True)
+    _memory_available = get_memory(total=False, logging=True)
 
 
 if __name__ == '__main__':

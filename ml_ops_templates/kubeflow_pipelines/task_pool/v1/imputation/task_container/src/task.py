@@ -12,6 +12,7 @@ from aws import load_file_from_s3, load_file_from_s3_as_df, save_file_to_s3_as_d
 from custom_logger import Log
 from file_handler import file_handler
 from imputation import Imputation
+from resource_metrics import get_available_cpu, get_cpu_utilization, get_cpu_utilization_per_core, get_memory, get_memory_utilization
 from typing import Dict, List, NamedTuple, Union
 
 
@@ -112,6 +113,9 @@ def imputation(data_set_path: str,
     :return: NamedTuple
         Names of the imputed features (not imputed features included)
     """
+    _cpu_available: int = get_available_cpu(logging=True)
+    _memory_total: float = get_memory(total=True, logging=True)
+    _memory_available: float = get_memory(total=False, logging=True)
     if analytical_data_types_path is None:
         _analytical_data_types: Dict[str, List[str]] = {}
     else:
@@ -156,6 +160,11 @@ def imputation(data_set_path: str,
     file_handler(file_path=output_file_path_imp_features, obj=_df_imp.columns.tolist())
     save_file_to_s3_as_df(file_path=s3_output_path_imputed_data_set, df=_df_imp, sep=sep)
     Log().log(msg=f'Save imputed data set: {s3_output_path_imputed_data_set}')
+    _cpu_utilization: float = get_cpu_utilization(interval=1, logging=True)
+    _cpu_utilization_per_cpu: List[float] = get_cpu_utilization_per_core(interval=1, logging=True)
+    _memory_utilization: float = get_memory_utilization(logging=True)
+    _memory_available = get_memory(total=False, logging=True)
+    return [_df_imp.columns.tolist()]
 
 
 if __name__ == '__main__':

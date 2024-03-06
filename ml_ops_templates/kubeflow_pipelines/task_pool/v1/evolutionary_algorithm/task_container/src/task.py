@@ -13,6 +13,7 @@ from aws import file_exists, load_file_from_s3, save_file_to_s3
 from custom_logger import Log
 from evolutionary_algorithm import EvolutionaryAlgorithm
 from file_handler import file_handler
+from resource_metrics import get_available_cpu, get_cpu_utilization, get_cpu_utilization_per_core, get_memory, get_memory_utilization
 from typing import List, NamedTuple
 
 
@@ -45,7 +46,6 @@ PARSER.add_argument('-output_file_path_stopping_reason', type=str, required=True
 PARSER.add_argument('-output_file_path_individual_idx', type=str, required=True, default=None, help='file path of the individual index of instruction list to proceed output')
 PARSER.add_argument('-s3_output_file_path_generator_instructions', type=str, required=True, default=None, help='S3 file path of the generator instruction output')
 PARSER.add_argument('-s3_output_file_path_modeling', type=str, required=True, default=None, help='S3 file path of the modeling steps output')
-PARSER.add_argument('-s3_output_file_path_visualization', type=str, required=True, default=None, help='S3 file path of the visualization output')
 ARGS = PARSER.parse_args()
 
 
@@ -60,7 +60,6 @@ def evolutionary_algorithm(s3_metadata_file_path: str,
                            output_file_path_individual_idx: str,
                            s3_output_file_path_generator_instructions: str,
                            s3_output_file_path_modeling: str,
-                           s3_output_file_path_visualization: str,
                            val_data_file_path: str = None,
                            algorithm: str = 'ga',
                            max_iterations: int = 10,
@@ -118,9 +117,6 @@ def evolutionary_algorithm(s3_metadata_file_path: str,
 
     :param s3_output_file_path_modeling: str
         Path of the output files of the following modeling steps
-
-    :param s3_output_file_path_visualization: str
-        Path of the output files of the following visualization step
 
     :param val_data_file_path: str
         Complete file path of the validation data set
@@ -181,6 +177,9 @@ def evolutionary_algorithm(s3_metadata_file_path: str,
     :return: NamedTuple
         Whether to continue evolution or not and stopping reason if not continuing and individual index of instruction list
     """
+    _cpu_available: int = get_available_cpu(logging=True)
+    _memory_total: float = get_memory(total=True, logging=True)
+    _memory_available: float = get_memory(total=False, logging=True)
     if file_exists(file_path=s3_metadata_file_path):
         _metadata: dict = load_file_from_s3(file_path=s3_metadata_file_path)
         Log().log(msg=f'Load metadata file: {s3_metadata_file_path}')
@@ -285,6 +284,10 @@ def evolutionary_algorithm(s3_metadata_file_path: str,
         Log().log(msg=f'Stopping reason: {_stopping_reason}')
     save_file_to_s3(file_path=s3_metadata_file_path, obj=_evolutionary_algorithm.metadata)
     Log().log(msg=f'Save evolutionary metadata: {s3_metadata_file_path}')
+    _cpu_utilization: float = get_cpu_utilization(interval=1, logging=True)
+    _cpu_utilization_per_cpu: List[float] = get_cpu_utilization_per_core(interval=1, logging=True)
+    _memory_utilization: float = get_memory_utilization(logging=True)
+    _memory_available = get_memory(total=False, logging=True)
     return [_evolve, _stopping_reason, _idx]
 
 
@@ -304,7 +307,6 @@ if __name__ == '__main__':
                            output_file_path_individual_idx=ARGS.output_file_path_individual_idx,
                            s3_output_file_path_generator_instructions=ARGS.s3_output_file_path_generator_instructions,
                            s3_output_file_path_modeling=ARGS.s3_output_file_path_modeling,
-                           s3_output_file_path_visualization=ARGS.s3_output_file_path_visualization,
                            val_data_file_path=ARGS.val_data_file_path,
                            algorithm=ARGS.algorithm,
                            max_iterations=ARGS.max_iterations,

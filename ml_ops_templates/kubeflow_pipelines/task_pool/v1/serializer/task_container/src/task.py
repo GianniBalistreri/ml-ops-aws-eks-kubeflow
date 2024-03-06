@@ -8,6 +8,7 @@ import argparse
 import ast
 
 from file_handler import file_handler
+from resource_metrics import get_available_cpu, get_cpu_utilization, get_cpu_utilization_per_core, get_memory, get_memory_utilization
 from serializer import Serializer, SerializerException
 from typing import List, NamedTuple
 
@@ -96,6 +97,9 @@ def serializer(action: str,
     :return: NamedTuple
         Serialized values
     """
+    _cpu_available: int = get_available_cpu(logging=True)
+    _memory_total: float = get_memory(total=True, logging=True)
+    _memory_available: float = get_memory(total=False, logging=True)
     _missing_data: List[str] = []
     _valid_features: List[str] = []
     _prop_valid_features: float = None
@@ -141,6 +145,10 @@ def serializer(action: str,
         file_handler(file_path=output_file_path_predictors, obj=_features)
     if output_file_path_new_target_feature is not None:
         file_handler(file_path=output_file_path_new_target_feature, obj=_new_target_feature)
+    _cpu_utilization: float = get_cpu_utilization(interval=1, logging=True)
+    _cpu_utilization_per_cpu: List[float] = get_cpu_utilization_per_core(interval=1, logging=True)
+    _memory_utilization: float = get_memory_utilization(logging=True)
+    _memory_available = get_memory(total=False, logging=True)
     return [_missing_data,
             _valid_features,
             _prop_valid_features,
