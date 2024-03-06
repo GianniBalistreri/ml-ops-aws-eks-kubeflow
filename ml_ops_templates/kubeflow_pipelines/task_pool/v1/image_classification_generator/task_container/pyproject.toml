@@ -12,6 +12,7 @@ keras = "^2.6.0"
 opencv-python = "^4.5.5.62"
 tensorflow = "^2.6.2"
 s3fs = "^2023.9.2"
+psutil = "^5.9.8"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

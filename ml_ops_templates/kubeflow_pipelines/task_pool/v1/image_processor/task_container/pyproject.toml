@@ -11,6 +11,7 @@ numpy = "^1.19.5"
 opencv-python = "^4.5.5.62"
 scikit-image = "^0.22.0"
 s3fs = "^2023.9.2"
+psutil = "^5.9.8"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
