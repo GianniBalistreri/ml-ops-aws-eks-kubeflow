@@ -13,7 +13,7 @@ from .model_generator_supervised import generate_supervised_model
 from .serializer import serializer
 from kfp import dsl
 from kfp.components import create_component_from_func
-from typing import List, NamedTuple, Tuple, Union
+from typing import List, NamedTuple, Union
 
 
 class EvolutionaryAlgorithm:
@@ -54,6 +54,8 @@ class EvolutionaryAlgorithm:
                  early_stopping: int = 0,
                  convergence: bool = False,
                  convergence_measure: str = 'min',
+                 stagnation: bool = False,
+                 stagnation_threshold: float = 98.0,
                  timer_in_seconds: int = 43200,
                  re_populate: bool = False,
                  re_populate_threshold: float = 3.0,
@@ -267,6 +269,12 @@ class EvolutionaryAlgorithm:
         :param convergence_measure: str
             Abbreviated name of the convergence measurement
 
+        :param stagnation: bool
+            Whether to enable gradient stagnation or not
+
+        :param stagnation_threshold: float
+            Threshold to identify stagnation
+
         :param timer_in_seconds: int
             Timer in seconds for stopping evolution
 
@@ -407,6 +415,8 @@ class EvolutionaryAlgorithm:
         self.early_stopping: int = early_stopping
         self.convergence: bool = convergence
         self.convergence_measure: str = convergence_measure
+        self.stagnation: bool = stagnation
+        self.stagnation_threshold: float = stagnation_threshold
         self.timer_in_seconds: int = timer_in_seconds
         self.re_populate: bool = re_populate
         self.re_populate_threshold: float = re_populate_threshold
@@ -664,12 +674,9 @@ class EvolutionaryAlgorithm:
                                          max_cache_staleness=self.evaluate_machine_learning_max_cache_staleness
                                          )
 
-    def _gather_metadata(self, evolve: dsl.PipelineParam) -> dsl.ContainerOp:
+    def _gather_metadata(self) -> dsl.ContainerOp:
         """
         Get dsl.ContainerOp of gather metadata component
-
-        :param evolve: dsl.PipelineParam
-            Whether evolution process continues or not
 
         :return: dsl.ContainerOp
             Container operator for gather metadata
@@ -677,7 +684,6 @@ class EvolutionaryAlgorithm:
         return gather_metadata(metadata_file_path=self.s3_metadata_file_path,
                                modeling_file_path=self.s3_output_file_path_modeling,
                                environment_reaction_file_path=self.environment_reaction_path,
-                               evolve=evolve,
                                s3_output_file_path_visualization=self.s3_output_file_path_visualization,
                                results_table=self.results_table,
                                model_distribution=self.model_distribution,
@@ -790,6 +796,8 @@ class EvolutionaryAlgorithm:
                             '-early_stopping', int(self.early_stopping),
                             '-convergence', int(self.convergence),
                             '-convergence_measure', self.convergence_measure,
+                            '-stagnation', int(self.stagnation),
+                            '-stagnation_threshold', self.stagnation_threshold,
                             '-timer_in_seconds', self.timer_in_seconds,
                             '-re_populate', int(self.re_populate),
                             '-re_populate_threshold', self.re_populate_threshold,
@@ -933,40 +941,54 @@ class EvolutionaryAlgorithm:
         _task_5.after(_task_4)
         return _task_5
 
-    def hyperparameter_tuning(self) -> Tuple[dsl.ContainerOp, dsl.ContainerOp]:
+    def generate_evolution_results(self, gather_metadata_component: dsl.ContainerOp) -> dsl.ContainerOp:
+        """
+        Generate results of the evolutionary algorithm
+
+        :param gather_metadata_component: dsl.ContainerOp
+            Gather metadata component used as input
+
+        :return: dsl.ContainerOp
+            Container operator of the last component
+        """
+        self.interactive_visualizer_display_name = 'Generate Evolution Plots'
+        _task_3: dsl.ContainerOp = self._interactive_visualizer(s3_output_image_path=self.s3_output_file_path_evolutionary_algorithm_images,
+                                                                subplots_file_path=self.s3_output_file_path_visualization
+                                                                )
+        _task_3.after(gather_metadata_component)
+        _task_4: dsl.ContainerOp = self._display_visualization(file_paths=_task_3.outputs['file_paths'])
+        _task_5: dsl.ContainerOp = self._evaluate_machine_learning(train_data_set_path=gather_metadata_component.outputs['evaluation_train_data_file_path'],
+                                                                   test_data_set_path=gather_metadata_component.outputs['evaluation_test_data_file_path'],
+                                                                   s3_output_path_metrics=gather_metadata_component.outputs['model_fitness_path'],
+                                                                   visualize=True
+                                                                   )
+        self.interactive_visualizer_display_name = 'Generate Best Model Results'
+        _task_6: dsl.ContainerOp = self._interactive_visualizer(s3_output_image_path=self.s3_output_file_path_best_model_images,
+                                                                subplots_file_path=self.s3_output_file_path_visualization
+                                                                )
+        _task_7: dsl.ContainerOp = self._display_visualization(file_paths=_task_6.outputs['file_paths'])
+        _display_metric_file_paths: List[str] = [self.s3_output_path_metric_table]
+        if self.s3_output_path_confusion_matrix is not None:
+            _display_metric_file_paths.append(self.s3_output_path_confusion_matrix)
+        _task_8: dsl.ContainerOp = self._display_metrics(file_paths=_display_metric_file_paths)
+        _task_8.after(_task_5)
+        return _task_8
+
+    def hyperparameter_tuning(self) -> dsl.ContainerOp:
         """
         Run hyperparameter tuning using evolutionary algorithm Kubeflow graph components
 
-        :return: Tuple[dsl.ContainerOp, dsl.ContainerOp]
-            Container operator of the first and the last component after complete iteration
+        :return: dsl.ContainerOp
+            Container operator of the last component after complete iteration
         """
         _task_0: dsl.ContainerOp = self._get_evolutionary_algorithm_container_op()
         _task_1: dsl.ContainerOp = self._iterate(idx=_task_0.outputs['idx'])
         _task_2: dsl.ContainerOp = self._gather_metadata()
         _task_2.after(_task_1)
         with dsl.Condition(condition=_task_0.outputs['evolve'] == 0, name='Stop-Evolution-Layer'):
-            self.interactive_visualizer_display_name = 'Generate Evolution Plots'
-            _task_3: dsl.ContainerOp = self._interactive_visualizer(s3_output_image_path=self.s3_output_file_path_evolutionary_algorithm_images,
-                                                                    subplots_file_path=self.s3_output_file_path_visualization
-                                                                    )
+            _task_3: dsl.ContainerOp = self.generate_evolution_results(gather_metadata_component=_task_2)
             _task_3.after(_task_2)
-            _task_4: dsl.ContainerOp = self._display_visualization(file_paths=_task_3.outputs['file_paths'])
-            _task_5: dsl.ContainerOp = self._evaluate_machine_learning(train_data_set_path=_task_2.outputs['evaluation_train_data_file_path'],
-                                                                       test_data_set_path=_task_2.outputs['evaluation_test_data_file_path'],
-                                                                       s3_output_path_metrics=_task_2.outputs['model_fitness_path'],
-                                                                       visualize=True
-                                                                       )
-            self.interactive_visualizer_display_name = 'Generate Best Model Results'
-            _task_6: dsl.ContainerOp = self._interactive_visualizer(s3_output_image_path=self.s3_output_file_path_best_model_images,
-                                                                    subplots_file_path=self.s3_output_file_path_visualization
-                                                                    )
-            _task_7: dsl.ContainerOp = self._display_visualization(file_paths=_task_6.outputs['file_paths'])
-            _display_metric_file_paths: List[str] = [self.s3_output_path_metric_table]
-            if self.s3_output_path_confusion_matrix is not None:
-                _display_metric_file_paths.append(self.s3_output_path_confusion_matrix)
-            _task_8: dsl.ContainerOp = self._display_metrics(file_paths=_display_metric_file_paths)
-            _task_8.after(_task_5)
-        return _task_0, _task_2
+        return _task_2
 
 
 def _extract(idx: Union[int, dsl.PipelineParam],
@@ -1133,7 +1155,6 @@ def extract_instruction(idx: Union[int, dsl.PipelineParam],
 def _gather_metadata(metadata_file_path: str,
                      modeling_file_path: str,
                      environment_reaction_file_path: str,
-                     evolve: dsl.PipelineParam,
                      s3_output_file_path_visualization: str,
                      results_table: bool = True,
                      model_distribution: bool = False,
@@ -1168,9 +1189,6 @@ def _gather_metadata(metadata_file_path: str,
 
     :param environment_reaction_file_path: str
         File path of the reaction of the environment to process in each interation
-
-    :param evolve: dsl.PipelineParam
-        Whether evolution process continues or not
 
     :param s3_output_file_path_visualization: str
         Complete file path of the visualization file
@@ -1237,7 +1255,8 @@ def _gather_metadata(metadata_file_path: str,
     _bucket_name_metadata: str = _complete_file_path_metadata.split('/')[0]
     _file_path_metadata: str = _complete_file_path_metadata.replace(f'{_bucket_name_metadata}/', '')
     _file_type_metadata: str = _complete_file_path_metadata.split('.')[-1]
-    _obj_metadata: bytes = _s3_resource.Bucket(_bucket_name_metadata).Object(_file_path_metadata).get()['Body'].read()
+    _file_path_metadata_temp: str = f'{_file_path_metadata.split(".")[0]}__temp__.{_file_type_metadata}'
+    _obj_metadata: bytes = _s3_resource.Bucket(_bucket_name_metadata).Object(_file_path_metadata_temp).get()['Body'].read()
     _metadata: dict = json.loads(_obj_metadata)
     # load environment reaction file from AWS S3:
     _complete_file_path_env_reaction: str = environment_reaction_file_path.replace('s3://', '')
@@ -1312,6 +1331,8 @@ def _gather_metadata(metadata_file_path: str,
     _s3_client: boto3.client = boto3.client('s3')
     _s3_client.put_object(Body=json.dumps(obj=_metadata), Bucket=_bucket_name_metadata, Key=_file_path_metadata)
     print(f'{_logger_time} Save metadata file: {metadata_file_path}')
+    _s3_client.delete_object(Bucket=_bucket_name_metadata, Key=_file_path_metadata_temp)
+    print(f'{_logger_time} Delete temporary metadata file: s3://{_bucket_name_metadata}/{_file_path_metadata_temp}')
     # retrieve currently evolved best model:
     _idx: int = np.array(_metadata['current_iteration_meta_data']['fitness_score']).argmax().item()
     _id: int = _metadata['current_iteration_meta_data']['id'][_idx]
@@ -1321,7 +1342,6 @@ def _gather_metadata(metadata_file_path: str,
     _fitness_metric: float = _metadata['current_iteration_meta_data']['fitness_metric'][_idx]
     _fitness_score: float = _metadata['current_iteration_meta_data']['fitness_score'][_idx]
     # generate statistics for visualization:
-    #if not bool(evolve):
     _complete_file_path_visualization: str = s3_output_file_path_visualization.replace('s3://', '')
     _bucket_name_visualization: str = _complete_file_path_visualization.split('/')[0]
     _file_path_visualization: str = _complete_file_path_visualization.replace(f'{_bucket_name_visualization}/', '')
@@ -1491,7 +1511,6 @@ def _gather_metadata(metadata_file_path: str,
 def gather_metadata(metadata_file_path: str,
                     modeling_file_path: str,
                     environment_reaction_file_path: str,
-                    evolve: dsl.PipelineParam,
                     s3_output_file_path_visualization: str,
                     results_table: bool = True,
                     model_distribution: bool = False,
@@ -1528,9 +1547,6 @@ def gather_metadata(metadata_file_path: str,
 
     :param environment_reaction_file_path: str
         File path of the reaction of the environment to process in each interation
-
-    :param evolve: dsl.PipelineParam
-        Whether evolution process continues or not
 
     :param s3_output_file_path_visualization: str
         Complete file path of the visualization file
@@ -1631,7 +1647,6 @@ def gather_metadata(metadata_file_path: str,
     _task: dsl.ContainerOp = _container_from_func(metadata_file_path=metadata_file_path,
                                                   modeling_file_path=modeling_file_path,
                                                   environment_reaction_file_path=environment_reaction_file_path,
-                                                  evolve=evolve,
                                                   s3_output_file_path_visualization=s3_output_file_path_visualization,
                                                   results_table=results_table,
                                                   model_distribution=model_distribution,
