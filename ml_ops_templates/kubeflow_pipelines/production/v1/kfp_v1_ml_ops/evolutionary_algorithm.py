@@ -13,7 +13,7 @@ from .model_generator_supervised import generate_supervised_model
 from .serializer import serializer
 from kfp import dsl
 from kfp.components import create_component_from_func
-from typing import List, NamedTuple, Union
+from typing import Dict, List, NamedTuple, Union
 
 
 class EvolutionaryAlgorithm:
@@ -608,11 +608,11 @@ class EvolutionaryAlgorithm:
                                max_cache_staleness=self.display_metric_max_cache_staleness
                                )
 
-    def _display_visualization(self, file_paths: dsl.PipelineParam) -> dsl.ContainerOp:
+    def _display_visualization(self, file_paths: Dict[str, dsl.PipelineParam]) -> dsl.ContainerOp:
         """
         Get dsl.ContainerOp of display visualization component
 
-        :param file_paths: dsl.PipelineParam
+        :param file_paths: Dict[str, dsl.PipelineParam]
             Complete file path of the images to display
 
         :return: dsl.ContainerOp
@@ -783,7 +783,6 @@ class EvolutionaryAlgorithm:
                             '-output_file_path_individual_idx', output_file_path_individual_idx,
                             '-s3_output_file_path_generator_instructions', self.s3_output_file_path_generator_instructions,
                             '-s3_output_file_path_modeling', self.s3_output_file_path_modeling,
-                            '-s3_output_file_path_visualization', self.s3_output_file_path_visualization,
                             '-algorithm', self.algorithm,
                             '-max_iterations', self.max_iterations,
                             '-pop_size', self.pop_size,
@@ -801,18 +800,7 @@ class EvolutionaryAlgorithm:
                             '-timer_in_seconds', self.timer_in_seconds,
                             '-re_populate', int(self.re_populate),
                             '-re_populate_threshold', self.re_populate_threshold,
-                            '-max_trials', self.max_trials,
-                            '-results_table', int(self.results_table),
-                            '-model_distribution', int(self.model_distribution),
-                            '-model_evolution', int(self.model_evolution),
-                            '-param_distribution', int(self.param_distribution),
-                            '-train_time_distribution', int(self.train_time_distribution),
-                            '-breeding_map', int(self.breeding_map),
-                            '-breeding_graph', int(self.breeding_graph),
-                            '-fitness_distribution', int(self.fitness_distribution),
-                            '-fitness_evolution', int(self.fitness_evolution),
-                            '-fitness_dimensions', int(self.fitness_dimensions),
-                            '-per_iteration', int(self.per_iteration)
+                            '-max_trials', self.max_trials
                             ]
         if self.val_data_file_path is not None:
             _arguments.extend(['-val_data_file_path', self.val_data_file_path])
@@ -956,7 +944,7 @@ class EvolutionaryAlgorithm:
                                                                 subplots_file_path=self.s3_output_file_path_visualization
                                                                 )
         _task_3.after(gather_metadata_component)
-        _task_4: dsl.ContainerOp = self._display_visualization(file_paths=_task_3.outputs['file_paths'])
+        _task_4: dsl.ContainerOp = self._display_visualization(file_paths=dict(a=_task_3.outputs['file_paths']))
         _task_5: dsl.ContainerOp = self._evaluate_machine_learning(train_data_set_path=gather_metadata_component.outputs['evaluation_train_data_file_path'],
                                                                    test_data_set_path=gather_metadata_component.outputs['evaluation_test_data_file_path'],
                                                                    s3_output_path_metrics=gather_metadata_component.outputs['model_fitness_path'],
@@ -966,7 +954,8 @@ class EvolutionaryAlgorithm:
         _task_6: dsl.ContainerOp = self._interactive_visualizer(s3_output_image_path=self.s3_output_file_path_best_model_images,
                                                                 subplots_file_path=self.s3_output_file_path_visualization
                                                                 )
-        _task_7: dsl.ContainerOp = self._display_visualization(file_paths=_task_6.outputs['file_paths'])
+        _task_6.after(_task_5)
+        _task_7: dsl.ContainerOp = self._display_visualization(file_paths=dict(a=_task_6.outputs['file_paths']))
         _display_metric_file_paths: List[str] = [self.s3_output_path_metric_table]
         if self.s3_output_path_confusion_matrix is not None:
             _display_metric_file_paths.append(self.s3_output_path_confusion_matrix)
@@ -974,19 +963,24 @@ class EvolutionaryAlgorithm:
         _task_8.after(_task_5)
         return _task_8
 
-    def hyperparameter_tuning(self) -> dsl.ContainerOp:
+    def hyperparameter_tuning(self, previous_task: dsl.ContainerOp) -> dsl.ContainerOp:
         """
         Run hyperparameter tuning using evolutionary algorithm Kubeflow graph components
+
+        :param previous_task: dsl.ContainerOp
+            Previous task component
 
         :return: dsl.ContainerOp
             Container operator of the last component after complete iteration
         """
         _task_0: dsl.ContainerOp = self._get_evolutionary_algorithm_container_op()
+        _task_0.after(previous_task)
         _task_1: dsl.ContainerOp = self._iterate(idx=_task_0.outputs['idx'])
         _task_2: dsl.ContainerOp = self._gather_metadata()
         _task_2.after(_task_1)
         with dsl.Condition(condition=_task_0.outputs['evolve'] == 0, name='Stop-Evolution-Layer'):
             _task_3: dsl.ContainerOp = self.generate_evolution_results(gather_metadata_component=_task_2)
+            _task_3.after(_task_2)
         return _task_2
 
 
