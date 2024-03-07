@@ -987,7 +987,6 @@ class EvolutionaryAlgorithm:
         _task_2.after(_task_1)
         with dsl.Condition(condition=_task_0.outputs['evolve'] == 0, name='Stop-Evolution-Layer'):
             _task_3: dsl.ContainerOp = self.generate_evolution_results(gather_metadata_component=_task_2)
-            _task_3.after(_task_2)
         return _task_2
 
 
