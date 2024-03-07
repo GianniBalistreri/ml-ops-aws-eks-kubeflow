@@ -21,7 +21,7 @@ To use the app locally the following steps must be carried out:
 - define environment variables:
   - AWS_ACCESS_KEY_ID=<>
   - AWS_SECRET_ACCESS_KEY=<>
-  - AWS_ACCOUNT_ID<>
+  - AWS_ACCOUNT_ID=<>
   - AWS_REGION=<>
   - CLUSTER_NAME<>
 - go to directory: "ml_ops_templates/kubeflow_management/user_management/dex/streamlit_web_app/app/src"
