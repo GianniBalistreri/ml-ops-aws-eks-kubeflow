@@ -184,16 +184,16 @@ class EvolutionaryAlgorithm:
         _stagnating: int = 0
         if min_fitness:
             _gradients += 1
-            _stagnating = int(len(self.metadata['evolution_gradient'].get('min')) - np.array(self.metadata['evolution_gradient'].get('min')).argmax() >= self.metadata['early_stopping'])
+            _stagnating = int(len(self.metadata['evolution_gradient'].get('min')) - np.array(self.metadata['evolution_gradient'].get('min')).argmax() >= self.metadata['stagnation_threshold'])
         if median_fitness:
             _gradients += 1
-            _stagnating = int(len(self.metadata['evolution_gradient'].get('median')) - np.array(self.metadata['evolution_gradient'].get('median')).argmax() >= self.metadata['early_stopping'])
+            _stagnating = int(len(self.metadata['evolution_gradient'].get('median')) - np.array(self.metadata['evolution_gradient'].get('median')).argmax() >= self.metadata['stagnation_threshold'])
         if mean_fitness:
             _gradients += 1
-            _stagnating = int(len(self.metadata['evolution_gradient'].get('mean')) - np.array(self.metadata['evolution_gradient'].get('mean')).argmax() >= self.metadata['early_stopping'])
+            _stagnating = int(len(self.metadata['evolution_gradient'].get('mean')) - np.array(self.metadata['evolution_gradient'].get('mean')).argmax() >= self.metadata['stagnation_threshold'])
         if max_fitness:
             _gradients += 1
-            _stagnating = int(len(self.metadata['evolution_gradient'].get('max')) - np.array(self.metadata['evolution_gradient'].get('max')).argmax() >= self.metadata['early_stopping'])
+            _stagnating = int(len(self.metadata['evolution_gradient'].get('max')) - np.array(self.metadata['evolution_gradient'].get('max')).argmax() >= self.metadata['stagnation_threshold'])
         if _gradients == _stagnating:
             return True
         else:
@@ -335,29 +335,30 @@ class EvolutionaryAlgorithm:
             Whether to stop algorithm or not
         """
         _results: dict = dict(evolve=True, stopping_reason=None)
-        if self.metadata['current_iteration'] > self.metadata['burn_in_iterations']:
-            if self.metadata['convergence']:
-                if self._is_gradient_converged(threshold=0.05):
-                    _results['evolve'] = False
-                    _results['stopping_reason'] = 'gradient_converged'
-                    Log().log(msg=f'Fitness metric (gradient) has converged. Therefore the evolution stops at iteration {self.metadata["current_iteration_meta_data"]["iteration"]}')
-            if self.metadata['early_stopping']:
-                if self._is_gradient_stagnating(min_fitness=True, median_fitness=True, mean_fitness=True, max_fitness=True):
-                    _results['evolve'] = False
-                    _results['stopping_reason'] = 'gradient_stagnating'
-                    Log().log(msg=f'Fitness metric (gradient) per iteration has not increased a certain amount of iterations ({self.metadata["early_stopping"]}). Therefore the evolution stops early at iteration {self.metadata["current_iteration_meta_data"]["iteration"]}')
-        _current_runtime_in_seconds: int = (datetime.now() - datetime.strptime(self.metadata['start_time'][-1], '%Y-%m-%d %H:%M:%S')).seconds
-        if _current_runtime_in_seconds >= self.metadata['timer_in_seconds']:
-            _results['evolve'] = False
-            _results['stopping_reason'] = 'time_exceeded'
-            Log().log(msg=f'Time exceeded:{self.metadata["timer_in_seconds"]} by {_current_runtime_in_seconds} seconds')
-        if self.metadata['current_iteration'] >= self.metadata['max_iterations']:
-            _results['evolve'] = False
-            _results['stopping_reason'] = 'max_iteration_evolved'
-            Log().log(msg=f'Maximum number of iterations reached: {self.metadata["max_iterations"]}')
-        if not _results.get('evolve'):
-            self.metadata['stopping_reason'].append(_results['stopping_reason'])
-            self.metadata['end_time'].append(str(datetime.now()).split('.')[0])
+        if self.metadata['early_stopping']:
+            if self.metadata['current_iteration'] > self.metadata['burn_in_iterations']:
+                if self.metadata['convergence']:
+                    if self._is_gradient_converged(threshold=0.05):
+                        _results['evolve'] = False
+                        _results['stopping_reason'] = 'gradient_converged'
+                        Log().log(msg=f'Fitness metric (gradient) has converged. Therefore the evolution stops at iteration {self.metadata["current_iteration_meta_data"]["iteration"]}')
+                if self.metadata['stagnation']:
+                    if self._is_gradient_stagnating(min_fitness=True, median_fitness=True, mean_fitness=True, max_fitness=True):
+                        _results['evolve'] = False
+                        _results['stopping_reason'] = 'gradient_stagnating'
+                        Log().log(msg=f'Fitness metric (gradient) per iteration has not increased a certain amount of iterations ({self.metadata["early_stopping"]}). Therefore the evolution stops early at iteration {self.metadata["current_iteration_meta_data"]["iteration"]}')
+            _current_runtime_in_seconds: int = (datetime.now() - datetime.strptime(self.metadata['start_time'][-1], '%Y-%m-%d %H:%M:%S')).seconds
+            if _current_runtime_in_seconds >= self.metadata['timer_in_seconds']:
+                _results['evolve'] = False
+                _results['stopping_reason'] = 'time_exceeded'
+                Log().log(msg=f'Time exceeded:{self.metadata["timer_in_seconds"]} by {_current_runtime_in_seconds} seconds')
+            if self.metadata['current_iteration'] >= self.metadata['max_iterations']:
+                _results['evolve'] = False
+                _results['stopping_reason'] = 'max_iteration_evolved'
+                Log().log(msg=f'Maximum number of iterations reached: {self.metadata["max_iterations"]}')
+            if not _results.get('evolve'):
+                self.metadata['stopping_reason'].append(_results['stopping_reason'])
+                self.metadata['end_time'].append(str(datetime.now()).split('.')[0])
         return _results
 
     def gather_metadata(self, environment_reaction: dict) -> None:
@@ -441,6 +442,8 @@ class EvolutionaryAlgorithm:
                                    early_stopping: bool,
                                    convergence: bool,
                                    convergence_measure: str,
+                                   stagnation: bool,
+                                   stagnation_threshold: float,
                                    timer_in_seconds: int,
                                    re_populate: bool,
                                    re_populate_threshold: float,
@@ -496,6 +499,12 @@ class EvolutionaryAlgorithm:
         :param convergence_measure: str
             Abbreviated name of the convergence measurement
 
+        :param stagnation: bool
+            Whether to enable gradient stagnation or not
+
+        :param stagnation_threshold: float
+            Threshold to identify stagnation
+
         :param timer_in_seconds: int
             Timer in seconds for stopping evolution
 
@@ -544,6 +553,8 @@ class EvolutionaryAlgorithm:
                              stopping_reason=[],
                              convergence=convergence,
                              convergence_measure=convergence_measure,
+                             stagnation=stagnation,
+                             stagnation_threshold=stagnation_threshold,
                              timer_in_seconds=timer_in_seconds,
                              time_each_iteration=[],
                              current_iteration=0,
