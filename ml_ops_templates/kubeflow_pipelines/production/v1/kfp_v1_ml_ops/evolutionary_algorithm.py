@@ -225,9 +225,6 @@ class EvolutionaryAlgorithm:
         :param s3_output_file_path_modeling: str
             Path of the output files of the following modeling steps
 
-        :param s3_output_file_path_visualization: str
-            Path of the output files of the following visualization step
-
         :param val_data_file_path: str
             Complete file path of the validation data set
 
@@ -398,7 +395,7 @@ class EvolutionaryAlgorithm:
         self.test_data_file_path: str = test_data_file_path
         self.s3_output_file_path_generator_instructions: str = s3_output_file_path_generator_instructions
         self.s3_output_file_path_modeling: str = s3_output_file_path_modeling
-        self.s3_output_file_path_visualization: str = s3_output_file_path_evolutionary_algorithm_visualization
+        self.s3_output_file_path_evolutionary_algorithm_visualization: str = s3_output_file_path_evolutionary_algorithm_visualization
         self.s3_output_file_path_evolutionary_algorithm_images: str = s3_output_file_path_evolutionary_algorithm_images
         self.s3_output_file_path_best_model_visualization: str = s3_output_file_path_best_model_visualization
         self.s3_output_file_path_best_model_images: str = s3_output_file_path_best_model_images
@@ -684,7 +681,7 @@ class EvolutionaryAlgorithm:
         return gather_metadata(metadata_file_path=self.s3_metadata_file_path,
                                modeling_file_path=self.s3_output_file_path_modeling,
                                environment_reaction_file_path=self.environment_reaction_path,
-                               s3_output_file_path_visualization=self.s3_output_file_path_visualization,
+                               s3_output_file_path_visualization=self.s3_output_file_path_evolutionary_algorithm_visualization,
                                results_table=self.results_table,
                                model_distribution=self.model_distribution,
                                model_evolution=self.model_evolution,
@@ -941,7 +938,7 @@ class EvolutionaryAlgorithm:
         """
         self.interactive_visualizer_display_name = 'Generate Evolution Plots'
         _task_3: dsl.ContainerOp = self._interactive_visualizer(s3_output_image_path=self.s3_output_file_path_evolutionary_algorithm_images,
-                                                                subplots_file_path=self.s3_output_file_path_visualization
+                                                                subplots_file_path=self.s3_output_file_path_evolutionary_algorithm_visualization
                                                                 )
         _task_3.after(gather_metadata_component)
         _task_4: dsl.ContainerOp = self._display_visualization(file_paths=dict(a=_task_3.outputs['file_paths']))
@@ -952,7 +949,7 @@ class EvolutionaryAlgorithm:
                                                                    )
         self.interactive_visualizer_display_name = 'Generate Best Model Results'
         _task_6: dsl.ContainerOp = self._interactive_visualizer(s3_output_image_path=self.s3_output_file_path_best_model_images,
-                                                                subplots_file_path=self.s3_output_file_path_visualization
+                                                                subplots_file_path=self.s3_output_file_path_best_model_visualization
                                                                 )
         _task_6.after(_task_5)
         _task_7: dsl.ContainerOp = self._display_visualization(file_paths=dict(a=_task_6.outputs['file_paths']))
