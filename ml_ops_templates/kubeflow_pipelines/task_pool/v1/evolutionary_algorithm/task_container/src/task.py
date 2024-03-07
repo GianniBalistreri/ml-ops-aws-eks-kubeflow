@@ -37,6 +37,8 @@ PARSER.add_argument('-crossover', type=int, required=False, default=1, help='whe
 PARSER.add_argument('-early_stopping', type=int, required=False, default=0, help='whether to stop evolution early if conditions are met or not')
 PARSER.add_argument('-convergence', type=int, required=False, default=0, help='whether to check convergence of the population or not')
 PARSER.add_argument('-convergence_measure', type=str, required=False, default='min', help='measurement for convergence')
+PARSER.add_argument('-stagnation', type=int, required=False, default=0, help='whether to check stagnation of the population or not')
+PARSER.add_argument('-stagnation_threshold', type=float, required=False, default=98.0, help='stagnation threshold')
 PARSER.add_argument('-timer_in_seconds', type=int, required=False, default=43200, help='maximum number of seconds for evolution')
 PARSER.add_argument('-re_populate', type=int, required=False, default=1, help='whether to re-populate initial population because of poor individual fitness score')
 PARSER.add_argument('-re_populate_threshold', type=float, required=False, default=3.0, help='fitness score threshold for re-population')
@@ -73,6 +75,8 @@ def evolutionary_algorithm(s3_metadata_file_path: str,
                            early_stopping: bool = False,
                            convergence: bool = False,
                            convergence_measure: str = 'min',
+                           stagnation: bool = False,
+                           stagnation_threshold: float = 98.0,
                            timer_in_seconds: int = 43200,
                            re_populate: bool = False,
                            re_populate_threshold: float = 3.0,
@@ -162,6 +166,12 @@ def evolutionary_algorithm(s3_metadata_file_path: str,
     :param convergence_measure: str
         Abbreviated name of the convergence measurement
 
+    :param stagnation: bool
+        Whether to enable gradient stagnation or not
+
+    :param stagnation_threshold: float
+        Threshold to identify stagnation
+
     :param timer_in_seconds: int
         Timer in seconds for stopping evolution
 
@@ -205,6 +215,8 @@ def evolutionary_algorithm(s3_metadata_file_path: str,
                                                                    early_stopping=early_stopping,
                                                                    convergence=convergence,
                                                                    convergence_measure=convergence_measure,
+                                                                   stagnation=stagnation,
+                                                                   stagnation_threshold=stagnation_threshold,
                                                                    timer_in_seconds=timer_in_seconds,
                                                                    target=target,
                                                                    features=features,
@@ -239,6 +251,8 @@ def evolutionary_algorithm(s3_metadata_file_path: str,
                                                            early_stopping=early_stopping,
                                                            convergence=convergence,
                                                            convergence_measure=convergence_measure,
+                                                           stagnation=stagnation,
+                                                           stagnation_threshold=stagnation_threshold,
                                                            timer_in_seconds=timer_in_seconds,
                                                            target=target,
                                                            features=features,
@@ -282,8 +296,11 @@ def evolutionary_algorithm(s3_metadata_file_path: str,
     file_handler(file_path=output_file_path_individual_idx, obj=_idx)
     if not _evolve:
         Log().log(msg=f'Stopping reason: {_stopping_reason}')
-    save_file_to_s3(file_path=s3_metadata_file_path, obj=_evolutionary_algorithm.metadata)
-    Log().log(msg=f'Save evolutionary metadata: {s3_metadata_file_path}')
+    #save_file_to_s3(file_path=s3_metadata_file_path, obj=_evolutionary_algorithm.metadata)
+    #Log().log(msg=f'Save evolutionary metadata: {s3_metadata_file_path}')
+    _s3_metadata_file_path_temp: str = f'{s3_metadata_file_path.split(".")[0]}__temp__.{s3_metadata_file_path.split(".")[-1]}'
+    save_file_to_s3(file_path=_s3_metadata_file_path_temp, obj=_evolutionary_algorithm.metadata)
+    Log().log(msg=f'Save temporary evolutionary metadata: {_s3_metadata_file_path_temp}')
     _cpu_utilization: float = get_cpu_utilization(interval=1, logging=True)
     _cpu_utilization_per_cpu: List[float] = get_cpu_utilization_per_core(interval=1, logging=True)
     _memory_utilization: float = get_memory_utilization(logging=True)
@@ -320,6 +337,8 @@ if __name__ == '__main__':
                            early_stopping=bool(ARGS.early_stopping),
                            convergence=bool(ARGS.convergence),
                            convergence_measure=ARGS.convergence_measure,
+                           stagnation=bool(ARGS.stagnation),
+                           stagnation_threshold=ARGS.stagnation_threshold,
                            timer_in_seconds=ARGS.timer_in_seconds,
                            re_populate=bool(ARGS.re_populate),
                            re_populate_threshold=ARGS.re_populate_threshold,
