@@ -42,7 +42,7 @@ def _generate_kfp_web_app_template(mlpipeline_ui_metadata_path: kfp.components.O
         json.dump(_metadata, _file)
 
 
-def display_visualization(file_paths: Union[Dict[str, List[str]], dsl.PipelineParam],
+def display_visualization(file_paths: Union[Dict[str, List[str]], Dict[str, dsl.PipelineParam]],
                           python_version: str = '3.9',
                           display_name: str = 'Display Visualization',
                           n_cpu_request: str = None,
@@ -59,7 +59,7 @@ def display_visualization(file_paths: Union[Dict[str, List[str]], dsl.PipelinePa
     """
     Display visualization
 
-    :param file_paths: Union[Dict[str, List[str]], dsl.PipelineParam]
+    :param file_paths: Union[Dict[str, List[str]], Dict[str, dsl.PipelineParam]]
         Complete file path of the plots
 
     :param python_version: str
