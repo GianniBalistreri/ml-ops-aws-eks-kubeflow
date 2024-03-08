@@ -90,6 +90,7 @@ class KubeflowExitHandler:
                 _omits: int = 0
                 _pending: int = 0
                 _running: int = 0
+                _skipping: int = 0
                 _failed_task_name: List[str] = []
                 _failed_task_display_name: List[str] = []
                 _error_message: List[str] = []
@@ -122,6 +123,8 @@ class KubeflowExitHandler:
                                     _pending += 1
                                 elif _phase == 'Running':
                                     _running += 1
+                                elif _phase == 'Skipped':
+                                    _skipping += 1
                 if _pipeline_status['status'] == 0:
                     _pipeline_status['header'] = 'Kubeflow pipeline aborted'
                     _failure_info: str = 'Failed tasks:'
@@ -134,7 +137,7 @@ class KubeflowExitHandler:
                     _pipeline_status['header'] = 'Kubeflow pipeline succeeded'
                     _failure_info: str = ''
                     _succeeds -= 1
-                _components: int = _succeeds + _failures + _omits + _pending + _running
+                _components: int = _succeeds + _failures + _omits + _pending + _running + _skipping
                 _message: str = f'Experiment:\n' \
                                 f'Name: {_pipeline_metadata["experiment"].get("name")}\n' \
                                 f'Description: {_pipeline_metadata["experiment"].get("description")}\n' \
@@ -156,6 +159,7 @@ class KubeflowExitHandler:
                                 f'Task omitted: {_omits}\n' \
                                 f'Task pending: {_pending}\n' \
                                 f'Task running: {_running}\n' \
+                                f'Task skipped: {_skipping}\n' \
                                 f'\n{_failure_info}'
                 _pipeline_status.update({'message': _message})
         return _pipeline_status
