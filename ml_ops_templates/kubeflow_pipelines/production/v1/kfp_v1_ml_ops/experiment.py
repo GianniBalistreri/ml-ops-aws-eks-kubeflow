@@ -204,6 +204,8 @@ class KubeflowExperiment:
                                                         )
                                         )
         if self.recurring:
+            if self.recurring_job_name is None or len(self.recurring_job_name) == 0:
+                raise KubeflowExperimentException('Recurring job name parameter is empty')
             _pipeline: kfp_server_api.ApiPipeline = self.kfp_client.upload_pipeline(pipeline_package_path=f"{self.kf_pipeline_name}.yaml",
                                                                                     pipeline_name=self.kf_pipeline_name,
                                                                                     description=self.recurring_job_description
