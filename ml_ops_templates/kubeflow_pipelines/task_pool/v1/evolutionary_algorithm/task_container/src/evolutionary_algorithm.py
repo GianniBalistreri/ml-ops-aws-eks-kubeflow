@@ -107,7 +107,10 @@ class EvolutionaryAlgorithm:
         _new_genes: dict = copy.deepcopy(self.metadata['current_iteration_meta_data']['param'][child])
         _inherit_genes: List[str] = list(self.metadata['current_iteration_meta_data']['param'][parent].keys())
         _x: int = 0
-        for _ in range(0, round(len(_inherit_genes) * self.metadata['parents_ratio']), 1):
+        _n_genes: int = round(len(_inherit_genes) * self.metadata['parents_ratio'])
+        if _n_genes < 1:
+            _n_genes = 1
+        for _ in range(0, _n_genes, 1):
             while True:
                 _gene: str = np.random.choice(_inherit_genes)
                 if self.metadata['current_iteration_meta_data']['param'][child][_gene] != self.metadata['current_iteration_meta_data']['param'][parent][_gene] or _x == 20:
@@ -267,14 +270,17 @@ class EvolutionaryAlgorithm:
         :return: dict
         """
         _new_characteristics: dict = copy.deepcopy(self.metadata['current_iteration_meta_data']['param'][idx])
-        _inherit_genes: List[str] = list(self.metadata['current_iteration_meta_data']['param'][idx].keys())
+        _inherit_characteristics: List[str] = list(self.metadata['current_iteration_meta_data']['param'][idx].keys())
         _x: int = 0
-        for _ in range(0, round(len(_inherit_genes) * self.metadata['change_rate']), 1):
+        _n_changes: int = round(len(_inherit_characteristics) * self.metadata['change_rate'])
+        if _n_changes < 1:
+            _n_changes = 1
+        for _ in range(0, _n_changes, 1):
             while True:
-                _gene: str = np.random.choice(_inherit_genes)
-                if self.metadata['current_iteration_meta_data']['param'][idx][_gene] != self.metadata['current_iteration_meta_data']['param'][self.metadata['best_global_idx'][-1]][_gene] or _x == 20:
+                _characteristic: str = np.random.choice(_inherit_characteristics)
+                if self.metadata['current_iteration_meta_data']['param'][idx][_characteristic] != self.metadata['current_iteration_meta_data']['param'][self.metadata['best_global_idx'][-1]][_characteristic] or _x == 20:
                     _x = 0
-                    _new_characteristics[_gene] = copy.deepcopy(self.metadata['current_iteration_meta_data']['param'][self.metadata['best_global_idx'][-1]][_gene])
+                    _new_characteristics[_characteristic] = copy.deepcopy(self.metadata['current_iteration_meta_data']['param'][self.metadata['best_global_idx'][-1]][_characteristic])
                     break
                 else:
                     _x += 1
@@ -303,7 +309,9 @@ class EvolutionaryAlgorithm:
         if self.metadata['algorithm'] == 'random':
             _algorithm: str = random.choice(EVOLUTIONARY_ALGORITHMS)
         elif self.metadata['algorithm'] in ['ga_si', 'si_ga']:
-            if self.metadata['current_iteration_algorithm'][-1] == 'ga':
+            if self.metadata['current_iteration_algorithm'][-1] == 'init':
+                _algorithm: str = self.metadata['algorithm'].split('_')[0]
+            elif self.metadata['current_iteration_algorithm'][-1] == 'ga':
                 _algorithm: str = 'si'
             else:
                 _algorithm: str = 'ga'
@@ -538,7 +546,7 @@ class EvolutionaryAlgorithm:
             Initially configured metadata template
         """
         self.metadata = dict(algorithm=algorithm,
-                             current_iteration_algorithm=[algorithm],
+                             current_iteration_algorithm=['init'],
                              continue_evolution=False,
                              max_iterations=max_iterations,
                              pop_size=pop_size,
