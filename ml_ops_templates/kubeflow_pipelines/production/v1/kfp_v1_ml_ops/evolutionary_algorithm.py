@@ -1014,28 +1014,46 @@ def _extract(idx: Union[int, dsl.PipelineParam],
     """
     import boto3
     import json
+    from datetime import datetime
+    _logger_time: str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     _complete_file_path: str = generator_instructions_file_path.replace('s3://', '')
     _bucket_name: str = _complete_file_path.split('/')[0]
     _file_path: str = _complete_file_path.replace(f'{_bucket_name}/', '')
     _file_type: str = _complete_file_path.split('.')[-1]
     _s3_resource: boto3 = boto3.resource('s3')
     _obj: bytes = _s3_resource.Bucket(_bucket_name).Object(_file_path).get()['Body'].read()
+    print(f'{_logger_time} Load generator instruction file: {generator_instructions_file_path}')
     _generator_instructions: dict = json.loads(_obj)[int(idx)]
     _idx: int = _generator_instructions.get('idx')
+    print(f'{_logger_time} Extract idx: {_idx}')
     _id: int = _generator_instructions.get('id')
+    print(f'{_logger_time} Extract id: {_id}')
     _parent: int = _generator_instructions.get('parent')
+    print(f'{_logger_time} Extract parent: {_parent}')
     _model_name: str = _generator_instructions.get('model_name')
+    print(f'{_logger_time} Extract model name: {_model_name}')
     _params: dict = {} if _generator_instructions.get('params') is None else _generator_instructions.get('params')
+    print(f'{_logger_time} Extract params: {_params}')
     _param_rate: float = _generator_instructions.get('param_rate')
+    print(f'{_logger_time} Extract param rate: {_param_rate}')
     _warm_start: int = _generator_instructions.get('warm_start')
+    print(f'{_logger_time} Extract warm start: {_warm_start}')
     _model_artifact_path: str = _generator_instructions.get('model_artifact_path')
+    print(f'{_logger_time} Extract model artifact path: {_model_artifact_path}')
     _model_input_param_path: str = '' if _generator_instructions.get('model_input_param_path') is None else _generator_instructions.get('model_input_param_path')
+    print(f'{_logger_time} Extract model input param path: {_model_input_param_path}')
     _model_param_path: str = _generator_instructions.get('model_param_path')
+    print(f'{_logger_time} Extract model param path: {_model_param_path}')
     _model_metadata_path: str = _generator_instructions.get('model_metadata_path')
+    print(f'{_logger_time} Extract model metadata path: {_model_metadata_path}')
     _model_fitness_path: str = _generator_instructions.get('model_fitness_path')
+    print(f'{_logger_time} Extract model fitness path: {_model_fitness_path}')
     _evaluate_train_data_path: str = _generator_instructions.get('evaluate_train_data_path')
+    print(f'{_logger_time} Extract evaluate train data path: {_evaluate_train_data_path}')
     _evaluate_test_data_path: str = _generator_instructions.get('evaluate_test_data_path')
+    print(f'{_logger_time} Extract evaluate test data path: {_evaluate_test_data_path}')
     _evaluate_val_data_path: str = _generator_instructions.get('evaluate_val_data_path')
+    print(f'{_logger_time} Extract evaluate val data path: {_evaluate_val_data_path}')
     return [_idx,
             _id,
             _parent,
