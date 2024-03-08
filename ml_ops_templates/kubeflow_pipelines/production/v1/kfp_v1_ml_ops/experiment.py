@@ -217,13 +217,11 @@ class KubeflowExperiment:
                                                                                          cron_expression=self.recurring_cron_expression,
                                                                                          max_concurrency=self.recurring_max_concurrency,
                                                                                          no_catchup=self.recurring_no_catchup,
-                                                                                         params=arguments,
-                                                                                         pipeline_package_path=f'{self.kf_experiment_name}.yaml',
-                                                                                         pipeline_id=_pipeline.id,
-                                                                                         version_id=_pipeline.default_version,
+                                                                                         params={} if arguments is None else arguments,
+                                                                                         pipeline_package_path=f'{self.kf_pipeline_name}.yaml',
                                                                                          enabled=self.recurring_enable,
                                                                                          enable_caching=self.kf_enable_caching,
-                                                                                         service_account=self.service_account,
+                                                                                         service_account=self.service_account
                                                                                          )
             _pipeline_metadata.update({'run': dict(created_at=str(_recurring_run.created_at),
                                                    description=_recurring_run.description,
