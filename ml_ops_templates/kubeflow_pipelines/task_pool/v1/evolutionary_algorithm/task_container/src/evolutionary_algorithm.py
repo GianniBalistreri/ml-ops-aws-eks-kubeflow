@@ -67,7 +67,7 @@ class EvolutionaryAlgorithm:
                 if np.random.uniform(low=0, high=1) > self.metadata['change_prob']:
                     _adjustment_instructions: dict = dict(idx=idx,
                                                           id=_new_id,
-                                                          parent=self.metadata['best_global_idx'],
+                                                          parent=self.metadata['best_global_idx'][-1],
                                                           model_name=random.choice(self.metadata['models']),
                                                           params=None,
                                                           param_rate=1.0,
