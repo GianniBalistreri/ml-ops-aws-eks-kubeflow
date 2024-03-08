@@ -92,7 +92,6 @@ class EvolutionaryAlgorithm:
                                                           change_type='param'
                                                           )
                     _adjustments[idx] = _adjustment_instructions
-                    Log().log(msg=f'Adjust individual {idx}')
         return _adjustments
 
     def _crossover(self, parent: int, child: int) -> dict:
