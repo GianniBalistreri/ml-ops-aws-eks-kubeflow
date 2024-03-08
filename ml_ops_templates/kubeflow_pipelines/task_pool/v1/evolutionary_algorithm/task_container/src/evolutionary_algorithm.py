@@ -61,7 +61,7 @@ class EvolutionaryAlgorithm:
         self._select_best_individual()
         _new_id: int = np.array(self.metadata['generated_individuals']).argmax().item()
         for idx in range(0, self.metadata['pop_size'], 1):
-            if idx != self.metadata['best_global_idx'] and idx != self.metadata['best_local_idx']:
+            if idx != self.metadata['best_global_idx'][-1] and idx != self.metadata['best_local_idx'][-1]:
                 _new_id += 1
                 self.metadata['generated_individuals'].append(_new_id)
                 if np.random.uniform(low=0, high=1) > self.metadata['change_prob']:
@@ -84,15 +84,15 @@ class EvolutionaryAlgorithm:
                         _param_rate: float = 0.0
                     _adjustment_instructions: dict = dict(idx=idx,
                                                           id=_new_id,
-                                                          parent=self.metadata['best_global_idx'],
+                                                          parent=self.metadata['best_global_idx'][-1],
                                                           model_name=self.metadata['current_iteration_meta_data']['model_name'][idx],
-                                                          params=_param,#self.metadata['current_iteration_meta_data']['param'][idx],
+                                                          params=_param,
                                                           param_rate=_param_rate,
                                                           warm_start=0,
                                                           change_type='param'
                                                           )
                     _adjustments[idx] = _adjustment_instructions
-                    #Log().log(msg=f'Adjust individual {idx}')
+                    Log().log(msg=f'Adjust individual {idx}')
         return _adjustments
 
     def _crossover(self, parent: int, child: int) -> dict:
@@ -292,8 +292,8 @@ class EvolutionaryAlgorithm:
         _best_local_idx: int = np.array(_other_idx).argmax().item()
         if _best_global_idx <= _best_local_idx:
             _best_local_idx += 1
-        self.metadata['best_global_idx'] = _best_global_idx
-        self.metadata['best_local_idx'] = _best_local_idx
+        self.metadata['best_global_idx'].append(_best_global_idx)
+        self.metadata['best_local_idx'].append(_best_local_idx)
         Log().log(msg=f'Best local individual {_best_local_idx}')
         Log().log(msg=f'Best global individual {_best_global_idx}')
 
@@ -778,8 +778,11 @@ class EvolutionaryAlgorithm:
         """
         Apply evolutionary algorithm
         """
-        Log().log(msg=f'Remaining time until algorithm ultimately stops: {self.metadata["timer_in_seconds"] - sum(self.metadata["time_each_iteration"])} seconds')
-        Log().log(msg=f'Current iteration: {self.metadata.get("current_iteration")} (Max iterations: {self.metadata.get("max_iterations")})')
+        if self.metadata['early_stopping']:
+            Log().log(msg=f'Remaining time until algorithm ultimately stops: {self.metadata["timer_in_seconds"] - sum(self.metadata["time_each_iteration"])} seconds')
+            Log().log(msg=f'Current iteration: {self.metadata.get("current_iteration")} (Max iterations: {self.metadata.get("max_iterations")})')
+        else:
+            Log().log(msg=f'Current iteration: {self.metadata.get("current_iteration")}')
         self._set_iteration_algorithm()
         _algorithm: str = self.metadata['current_iteration_algorithm'][-1]
         Log().log(msg=f'Apply evolutionary algorithm: {_algorithm}')
