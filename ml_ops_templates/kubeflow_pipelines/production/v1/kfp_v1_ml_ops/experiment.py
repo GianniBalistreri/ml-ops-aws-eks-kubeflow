@@ -139,6 +139,11 @@ class KubeflowExperiment:
         self.recurring_enable: bool = recurring_enable
         self.recurring_job_name: str = recurring_job_name
         self.recurring_job_description: str = recurring_job_description
+        if self.recurring:
+            if self.recurring_job_name is None or len(self.recurring_job_name) == 0:
+                raise KubeflowExperimentException('Job name for recurring run is empty')
+            if self.recurring_job_description is None or len(self.recurring_job_description) == 0:
+                raise KubeflowExperimentException('Job description for recurring run is empty')
         self.kfp_client: kfp.Client = None
         if auth_service_provider not in AUTH_SERVICE_PROVIDER:
             raise KubeflowExperimentException(f'Name of the authentication service provider ({auth_service_provider}) not supported')
@@ -233,7 +238,8 @@ class KubeflowExperiment:
                                                    status=_recurring_run.status,
                                                    mode=_recurring_run.mode,
                                                    trigger=_recurring_run.trigger,
-                                                   updated_at=str(_recurring_run.updated_at)
+                                                   updated_at=str(_recurring_run.updated_at),
+                                                   recurring=self.recurring
                                                    ),
                                        'pipeline': dict(name=self.kf_pipeline_name,
                                                         id=_pipeline.id
@@ -250,7 +256,8 @@ class KubeflowExperiment:
                                                                  service_account=self.service_account
                                                                  )
             _pipeline_metadata.update({'run': dict(name=self.kf_experiment_run_name,
-                                                   id=_run.run_id
+                                                   id=_run.run_id,
+                                                   recurring=self.recurring
                                                    ),
                                        'pipeline': dict(name=self.kf_pipeline_name,
                                                         id=None
