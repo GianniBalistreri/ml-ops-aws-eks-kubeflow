@@ -80,7 +80,6 @@ class KubeflowExitHandler:
                 _pipeline_metadata: dict = load_file_from_s3(file_path=self.pipeline_metadata_file_path)
                 Log().log(msg=f'Load pipeline metadata: {self.pipeline_metadata_file_path}')
                 Log().log(msg=f'Experiment information: {_pipeline_metadata.get("experiment")}')
-                Log().log(msg=f'Run id: {_pipeline_metadata["run"]["id"]}')
                 _end_time: str = str(datetime.now()).split('.')[0]
                 Log().log(msg=f'Finished pipeline tasks: {_end_time}')
                 _pipeline_status['footer'] = f'Namespace: {_pipeline_metadata.get("namespace")}'
@@ -94,7 +93,18 @@ class KubeflowExitHandler:
                 _failed_task_name: List[str] = []
                 _failed_task_display_name: List[str] = []
                 _error_message: List[str] = []
-                _run_children = self.kfp_client.get_run(run_id=_pipeline_metadata['run']['id']).pipeline_runtime.workflow_manifest.split('children')
+                if _pipeline_metadata['run']['recurring']:
+                    _runs: list = self.kfp_client.list_runs(experiment_id=_pipeline_metadata['experiment']['id'], sort_by="created_at desc").runs
+                    _run_id: str = _runs[0].id
+                    if _pipeline_metadata['run']['description'] != _runs[0].description:
+                        for run in _runs:
+                            if _pipeline_metadata['run']['description'] == run.description:
+                                _run_id = run.id
+                                break
+                else:
+                    _run_id: str = _pipeline_metadata['run']['id']
+                Log().log(msg=f'Run id: {_run_id}')
+                _run_children = self.kfp_client.get_run(run_id=_run_id).pipeline_runtime.workflow_manifest.split('children')
                 for c in range(0, len(_run_children), 1):
                     if c == 0:
                         continue
