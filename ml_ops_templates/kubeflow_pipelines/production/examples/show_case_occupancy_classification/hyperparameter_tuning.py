@@ -7,10 +7,10 @@ Kubeflow Pipeline: Occupancy
 import argparse
 
 from kfp import dsl
-from shopware_kfp_utils.display_visualization import display_visualization
-from shopware_kfp_utils.evolutionary_algorithm import EvolutionaryAlgorithm
-from shopware_kfp_utils.experiment import KubeflowExperiment
-from shopware_kfp_utils.interactive_visualizer import interactive_visualizer
+from kfp_v1_ml_ops.display_visualization import display_visualization
+from kfp_v1_ml_ops.evolutionary_algorithm import EvolutionaryAlgorithm
+from kfp_v1_ml_ops.experiment import KubeflowExperiment
+from kfp_v1_ml_ops.interactive_visualizer import interactive_visualizer
 
 
 PARSER = argparse.ArgumentParser(description="occupancy_hyperparameter_tuning")

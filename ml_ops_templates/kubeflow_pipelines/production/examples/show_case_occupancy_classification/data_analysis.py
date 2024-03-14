@@ -7,13 +7,13 @@ Kubeflow Pipeline: Occupancy
 import argparse
 
 from kfp import dsl
-from shopware_kfp_utils.analytical_data_types import analytical_data_types
-from shopware_kfp_utils.data_health_check import data_health_check
-from shopware_kfp_utils.data_typing import data_typing
-from shopware_kfp_utils.display_visualization import display_visualization
-from shopware_kfp_utils.experiment import KubeflowExperiment
-from shopware_kfp_utils.interactive_visualizer import interactive_visualizer
-from shopware_kfp_utils.serializer import serializer
+from kfp_v1_ml_ops.analytical_data_types import analytical_data_types
+from kfp_v1_ml_ops.data_health_check import data_health_check
+from kfp_v1_ml_ops.data_typing import data_typing
+from kfp_v1_ml_ops.display_visualization import display_visualization
+from kfp_v1_ml_ops.experiment import KubeflowExperiment
+from kfp_v1_ml_ops.interactive_visualizer import interactive_visualizer
+from kfp_v1_ml_ops.serializer import serializer
 
 
 PARSER = argparse.ArgumentParser(description="occupancy_data_analysis")

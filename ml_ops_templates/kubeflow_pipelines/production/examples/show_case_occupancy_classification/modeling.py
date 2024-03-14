@@ -7,12 +7,12 @@ Kubeflow Pipeline: Occupancy
 import argparse
 
 from kfp import dsl
-from shopware_kfp_utils.display_ml_metrics import display_metrics
-from shopware_kfp_utils.display_visualization import display_visualization
-from shopware_kfp_utils.experiment import KubeflowExperiment
-from shopware_kfp_utils.interactive_visualizer import interactive_visualizer
-from shopware_kfp_utils.model_evaluation import evaluate_machine_learning
-from shopware_kfp_utils.model_generator_supervised import generate_supervised_model
+from kfp_v1_ml_ops.display_ml_metrics import display_metrics
+from kfp_v1_ml_ops.display_visualization import display_visualization
+from kfp_v1_ml_ops.experiment import KubeflowExperiment
+from kfp_v1_ml_ops.interactive_visualizer import interactive_visualizer
+from kfp_v1_ml_ops.model_evaluation import evaluate_machine_learning
+from kfp_v1_ml_ops.model_generator_supervised import generate_supervised_model
 
 
 PARSER = argparse.ArgumentParser(description="occupancy_modeling")
