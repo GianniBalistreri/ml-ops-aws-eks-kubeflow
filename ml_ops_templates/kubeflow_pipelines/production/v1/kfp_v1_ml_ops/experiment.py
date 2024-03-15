@@ -5,11 +5,15 @@ Kubeflow Pipeline: Run (recurring) experiment
 """
 
 import boto3
+import io
 import json
+
 import kfp
 import kfp_server_api
+import os
 
 from .get_session_cookie_dex import get_istio_auth_session
+from botocore.errorfactory import ClientError
 from kfp.compiler import compiler
 from typing import Any, List
 
@@ -49,7 +53,9 @@ class KubeflowExperiment:
                  recurring_job_description: str = None,
                  auth_service_provider: str = 'dex',
                  service_account: str = None,
-                 pipeline_metadata_file_path: str = None
+                 pipeline_metadata_file_path: str = None,
+                 s3_experiment_run_file_path: str = None,
+                 outside_cluster: bool = True
                  ):
         """
         :param kf_url: str
@@ -119,6 +125,12 @@ class KubeflowExperiment:
 
         :param pipeline_metadata_file_path: str
             Complete file path of the pipeline metadata
+
+        :param s3_experiment_run_file_path: str
+            File path of the created experiment run yaml config to persist
+
+        :param outside_cluster: bool
+            Whether to build and run pipelines from outside the cluster or not
         """
         self.kf_url: str = kf_url
         self.kf_user_name: str = kf_user_name
@@ -150,6 +162,8 @@ class KubeflowExperiment:
         self.auth_service_provider: str = auth_service_provider
         self.service_account: str = service_account
         self.pipeline_metadata_file_path: str = pipeline_metadata_file_path
+        self.s3_experiment_run_file_path: str = s3_experiment_run_file_path
+        self.outside_cluster: bool = outside_cluster
 
     def _dex_auth(self) -> str:
         """
@@ -167,18 +181,21 @@ class KubeflowExperiment:
         """
         Set kfp client
         """
-        self.kfp_client = kfp.Client(host=f"{self.kf_url}/pipeline",
-                                     client_id=None,
-                                     namespace=self.kf_user_namespace,
-                                     other_client_id=None,
-                                     other_client_secret=None,
-                                     existing_token=None,
-                                     cookies=self._dex_auth(),
-                                     proxy=None,
-                                     ssl_ca_cert=None,
-                                     kube_context=None,
-                                     credentials=None
-                                     )
+        if self.outside_cluster:
+            self.kfp_client = kfp.Client(host=f"{self.kf_url}/pipeline",
+                                         client_id=None,
+                                         namespace=self.kf_user_namespace,
+                                         other_client_id=None,
+                                         other_client_secret=None,
+                                         existing_token=None,
+                                         cookies=self._dex_auth(),
+                                         proxy=None,
+                                         ssl_ca_cert=None,
+                                         kube_context=None,
+                                         credentials=None
+                                         )
+        else:
+            self.kfp_client = kfp.Client()
 
     def main(self, pipeline: Any, arguments: dict = None) -> None:
         """
@@ -275,3 +292,22 @@ class KubeflowExperiment:
                 _s3_obj.put(Body=json.dumps(obj=_pipeline_metadata))
             else:
                 raise KubeflowExperimentException(f'Saving file type ({_file_type}) not supported')
+        if self.s3_experiment_run_file_path is not None:
+            _complete_file_path: str = self.s3_experiment_run_file_path.replace('s3://', '')
+            _bucket_name: str = _complete_file_path.split('/')[0]
+            _file_path: str = _complete_file_path.replace(f'{_bucket_name}/', '')
+            _extended_file_path: str = os.path.join(_file_path, f'{self.kf_user_namespace}/{self.kf_experiment_name}/{self.kf_pipeline_name}.yaml')
+            _s3_client: boto3 = boto3.client('s3')
+            _s3_resource: boto3 = boto3.resource('s3')
+            _i: int = 2
+            while True:
+                try:
+                    _obj: bytes = _s3_resource.Bucket(_bucket_name).Object(_extended_file_path).get()['Body'].read()
+                    break
+                except ClientError:
+                    _extended_file_path = _extended_file_path.replace(f'{self.kf_pipeline_name}.yaml', f'{self.kf_pipeline_name}_{_i}.yaml')
+                    _i += 1
+            _response: dict = _s3_client.upload_file(f"{self.kf_pipeline_name}.yaml",
+                                                     _bucket_name,
+                                                     _extended_file_path
+                                                     )
