@@ -43,6 +43,11 @@ variable "cluster_name" {
   description = "The name of the EKS cluster"
 }
 
+variable "cluster_region" {
+  type        = string
+  description = "Region to create the cluster"
+}
+
 variable "http_header_name" {
   type        = string
   description = "Name of the http header"
