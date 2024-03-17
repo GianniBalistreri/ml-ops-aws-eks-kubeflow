@@ -123,4 +123,5 @@ if __name__ == '__main__':
                                                          pwd=os.environ.get('PWD'),
                                                          auth_provider=os.environ.get('AUTH_PROVIDER', 'dex')
                                                          )
-    _kserve_inference.main()
+    _prediction: list = _kserve_inference.main()
+    print(_prediction)
