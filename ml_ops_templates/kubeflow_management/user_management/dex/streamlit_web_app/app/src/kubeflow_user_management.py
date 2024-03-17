@@ -380,9 +380,9 @@ class KubeflowUserManagement:
         else:
             return False
 
-    def login_to_eks_cluster(self) -> None:
+    def update_kube_config(self) -> None:
         """
-        Login to running EKS cluster
+        Update kubeconfig file
         """
         _cmd: str = f"aws eks --region {self.aws_region} update-kubeconfig --name {self.cluster_name}"
         subprocess.run(_cmd, shell=True, capture_output=False, text=True)

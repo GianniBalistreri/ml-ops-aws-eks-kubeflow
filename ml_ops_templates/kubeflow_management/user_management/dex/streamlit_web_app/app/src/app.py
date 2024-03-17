@@ -187,7 +187,7 @@ def main() -> None:
             if len(_new_password) > 0:
                 if _check_text_input(email=_email, namespace=_namespace, pwd=_password):
                     if _check_password(pwd=_new_password):
-                        KUBEFLOW_USER_MANAGEMENT.login_to_eks_cluster()
+                        KUBEFLOW_USER_MANAGEMENT.update_kube_config()
                         if _check_credentials(email=_email, namespace=_namespace, pwd=_password):
                             if KUBEFLOW_USER_MANAGEMENT.password_exists(pwd=_new_password):
                                 st.error(f"Invalid password")
@@ -202,7 +202,7 @@ def main() -> None:
             else:
                 if _check_text_input(email=_email, namespace=_namespace, pwd=_password):
                     if _check_password(pwd=_password):
-                        KUBEFLOW_USER_MANAGEMENT.login_to_eks_cluster()
+                        KUBEFLOW_USER_MANAGEMENT.update_kube_config()
                         if _check_email(email=_email):
                             st.error(f"Email ({_email}) already registered")
                             Log().log(msg=f'Email ({_email}) already registered')
@@ -222,7 +222,7 @@ def main() -> None:
     with _col_4:
         if st.button(label="Delete"):
             if _check_text_input(email=_email, namespace=_namespace, pwd=_password):
-                KUBEFLOW_USER_MANAGEMENT.login_to_eks_cluster()
+                KUBEFLOW_USER_MANAGEMENT.update_kube_config()
                 if _check_credentials(email=_email, namespace=_namespace, pwd=_password):
                     KUBEFLOW_USER_MANAGEMENT.delete_user(user_email=_email, user_name=_namespace)
                     st.success("Kubeflow user and namespace deleted")

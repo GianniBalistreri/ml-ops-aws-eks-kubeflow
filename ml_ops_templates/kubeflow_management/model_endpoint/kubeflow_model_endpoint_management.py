@@ -5,6 +5,7 @@ Management of model endpoints in KServe & Knative
 """
 
 import argparse
+import os
 import subprocess
 
 from typing import List
@@ -16,7 +17,7 @@ PARSER.add_argument('-top_level_domain_name', type=str, required=True, default=N
 PARSER.add_argument('-second_level_domain_name', type=str, required=True, default=None, help='name of the second level domain')
 PARSER.add_argument('-subdomain_name', type=str, required=True, default=None, help='name of the subdomain')
 PARSER.add_argument('-s3_endpoint', type=str, required=False, default='s3.eu-central-1.amazonaws.com', help='Name of the S3 endpoint')
-PARSER.add_argument('-service_account_name', type=str, required=False, default='sa', help='name of the service account')
+PARSER.add_argument('-service_account_name', type=str, required=False, default='inference', help='name of the service account')
 PARSER.add_argument('-aws_region', type=str, required=False, default='eu-central-1', help='AWS region code')
 PARSER.add_argument('-cluster_name', type=str, required=False, default='kubeflow', help='name of the EKS cluster')
 PARSER.add_argument('-ecr_iam_role_policy_name', type=str, required=False, default='AmazonEC2ContainerRegistryReadOnly', help='name of the ECR IAM policy attached to IAM role for service account (IRSA)')
@@ -42,7 +43,7 @@ class KubeflowModelEndpointManagement:
                  second_level_domain_name: str,
                  subdomain_name: str = None,
                  s3_endpoint: str = 's3.eu-central-1.amazonaws.com',
-                 service_account_name: str = 'sa',
+                 service_account_name: str = 'inference',
                  aws_region: str = 'eu-central-1',
                  cluster_name: str = 'kubeflow',
                  ecr_iam_role_policy_name: str = 'AmazonEC2ContainerRegistryReadOnly',
@@ -87,7 +88,7 @@ class KubeflowModelEndpointManagement:
         self.s3_endpoint: str = s3_endpoint
         self.ecr_iam_role_policy_name: str = ecr_iam_role_policy_name
         self.s3_iam_role_policy_name: str = s3_iam_role_policy_name
-        self._login_to_eks_cluster()
+        self._update_kube_config()
 
     def _adjust_default_domain_knative_services(self) -> str:
         """
@@ -138,10 +139,11 @@ class KubeflowModelEndpointManagement:
         with open('new_secret.yaml', 'w') as file:
             file.write(_secret_yaml)
         subprocess.run('kubectl apply -f new_secret.yaml', shell=True, capture_output=False, text=True)
+        os.remove('new_secret.yaml')
 
-    def _login_to_eks_cluster(self) -> None:
+    def _update_kube_config(self) -> None:
         """
-        Login to running EKS cluster
+        Update kubeconfig file
         """
         _cmd: str = f"aws eks --region {self.aws_region} update-kubeconfig --name {self.cluster_name}"
         subprocess.run(_cmd, shell=True, capture_output=False, text=True)
@@ -154,6 +156,7 @@ class KubeflowModelEndpointManagement:
         with open('new_knative_service_configmap.yaml', 'w') as file:
             file.write(_adjusted_knative_service_configmap_yaml)
         subprocess.run('kubectl apply -f new_knative_service_configmap.yaml', shell=True, capture_output=False, text=True)
+        os.remove('new_knative_service_configmap.yaml')
 
     def enable_inference_service(self) -> None:
         """

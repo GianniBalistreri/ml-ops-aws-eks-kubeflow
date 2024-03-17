@@ -76,7 +76,7 @@ class KubeflowUserManagement:
         self.aws_region: str = aws_region
         self.aws_account_id: str = aws_account_id
         self.iam_role_name: str = iam_role_name
-        self._login_to_eks_cluster()
+        self._update_kube_config()
 
     def _adjust_dex_config_yaml(self, action: str, pwd: str = None, hashed: bool = True) -> str:
         """
@@ -264,9 +264,9 @@ class KubeflowUserManagement:
         if not re.search(r'[A-Z]', pwd):
             raise KubeflowUserManagementException('Password must contain capital characters')
 
-    def _login_to_eks_cluster(self) -> None:
+    def _update_kube_config(self) -> None:
         """
-        Login to running EKS cluster
+        Update kubeconfig file
         """
         _cmd: str = f"aws eks --region {self.aws_region} update-kubeconfig --name {self.cluster_name}"
         subprocess.run(_cmd, shell=True, capture_output=False, text=True)
