@@ -62,7 +62,7 @@ data:
         class_name: nginx
         override_yaml:
           metadata: {}
-      ingress_enabled: false
+      ingress_enabled: true
       instance_name: kiali
       logger:
         log_format: text
@@ -85,7 +85,7 @@ data:
       secret_name: kiali
       security_context: {}
       service_annotations: {}
-      service_type: ""
+      service_type: LoadBalancer
       tolerations: []
       version_label: v$(KIALI_VERSION)
       view_only_mode: false
@@ -177,7 +177,7 @@ data:
             skip_verify: false
             tls_enabled: false
       port: 20001
-      #web_fqdn: $(KIALI_DOMAIN_URL)
+      web_fqdn: $(KIALI_DOMAIN_URL)
       #web_port: 8080
       web_root: /kiali
 ...
@@ -474,6 +474,7 @@ metadata:
     app.kubernetes.io/part-of: "kiali"
   annotations:
 spec:
+  type: LoadBalancer
   ports:
     - name: http
       protocol: TCP
@@ -611,4 +612,58 @@ spec:
           configMap:
             name: kiali-cabundle
             optional: true
+...
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: kiali-gateway
+  namespace: istio-system
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - hosts: [$(KIALI_DOMAIN_URL)]
+    - port:
+        number: 80
+        name: http-kiali
+        protocol: HTTP
+      # https://istio.io/latest/docs/reference/config/networking/gateway/#ServerTLSSettings
+      tls:
+        httpsRedirect: false
+    - port:
+        number: 443
+        name: https-kiali
+        protocol: HTTPS
+      tls: {}
+...
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: kiali-virtualservice
+  namespace: istio-system
+spec:
+  gateways:
+    - kiali-gateway
+  hosts: [$(KIALI_DOMAIN_URL)]
+  http:
+    - route:
+        - destination:
+            host: kiali.istio-system.svc.cluster.local
+            port:
+              number: 20001
+          weight: 100
+...
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: kiali-destinationrule
+  namespace: istio-system
+spec:
+  host: kiali
+  trafficPolicy:
+    tls:
+      mode: DISABLE
 ...
