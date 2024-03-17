@@ -184,8 +184,8 @@ class Kiali:
         Create eks iam service account for AWS OpenTelemetry EKS addon
         """
         _cmd: str = f'eksctl create iamserviceaccount \
-        --name aws-otel-eks \
-        --namespace adot-collector \
+        --name aws-otel-collector \
+        --namespace aws-otel-eks \
         --cluster {self.cluster_name} \
         --region {self.aws_region} \
         --role-name EKS-ADOT-ServiceAccount-Role \
@@ -313,6 +313,8 @@ class Kiali:
         subprocess.run('kubectl delete deployment kiali -n istio-system', shell=True)
         subprocess.run('kubectl delete service kiali -n istio-system', shell=True)
         _cmd_delete_iam_service_account: str = f'eksctl delete iamserviceaccount --name {self.amp_sigv4_kiali_proxy_role_name} --namespace istio-system --cluster {self.cluster_name}'
+        subprocess.run(_cmd_delete_iam_service_account, shell=True)
+        _cmd_delete_iam_service_account: str = f'eksctl delete iamserviceaccount --name adot-collector --namespace aws-otel-eks --cluster {self.cluster_name}'
         subprocess.run(_cmd_delete_iam_service_account, shell=True)
         subprocess.run(f'eksctl delete addon --cluster={self.cluster_name} --name=adot', shell=True)
 
