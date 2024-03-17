@@ -4,7 +4,7 @@ metadata:
   name: "$(MODEL_ENDPOINT_NAME)"
   namespace: "$(KF_NAMESPACE)"
   annotations:
-    sidecar.istio.io/inject: "false"
+    sidecar.istio.io/inject: "true"
 spec:
   predictor:
     serviceAccountName: inference
@@ -16,9 +16,13 @@ spec:
           - "rest_api.py"
         args:
           - "-model_name"
-          - "occupancy-xgb-replicated"
+          - "$(MODEL_ENDPOINT_NAME)"
+          - "-bucket_name"
+          - "$(BUCKET_NAME)"
+          - "-file_path"
+          - "$(MODEL_FILE_PATH)"
           - "-n_replicas"
-          - "2"
+          - "$(NUMBER_OF_REPLICAS)"
         resources:
           requests:
             memory: "512Mi"
