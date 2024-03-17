@@ -1,9 +1,11 @@
 provider "aws" {
-  alias = "aws"
+  alias  = "aws"
+  region = var.cluster_region
 }
 
 provider "aws" {
-  alias = "virginia"
+  alias  = "virginia"
+  region = "us-east-1"
 }
 
 resource "kubernetes_namespace" "kubeflow" {
