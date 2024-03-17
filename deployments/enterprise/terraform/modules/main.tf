@@ -82,6 +82,7 @@ module "kubeflow_components" {
   source                                       = "./kubeflow-components"
   addon_context                                = module.eks_blueprints_outputs.addon_context
   cluster_name                                 = var.cluster_name
+  cluster_region                               = var.cluster_region
   callback_logout_sub_domain_name              = var.callback_logout_sub_domain_name
   cognito_user_pool_client_allowed_oauth_flows = var.cognito_user_pool_client_allowed_oauth_flows
   cognito_user_pool_name                       = var.cognito_user_pool_name
