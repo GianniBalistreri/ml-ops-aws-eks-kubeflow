@@ -163,13 +163,13 @@ class Kiali:
         _output = subprocess.run(_cmd_get_iam_serviceaccount, shell=True, capture_output=True, text=True)
         _role_arn: str = _output.stdout.splitlines()[1].split()[-1]
         #_cmd_create_addon: str = f"aws eks create-addon --addon-name adot --cluster-name {self.cluster_name} --service-account-role-arn {_role_arn}"
-        subprocess.run(f"aws eks create-addon --addon-name adot --cluster-name {self.cluster_name}", shell=True)
+        subprocess.run(f"aws eks create-addon --addon-name adot --cluster-name {self.cluster_name} --region {self.aws_region} > /dev/null", shell=True)
 
     def _create_cloudwatch_observability_addon(self) -> None:
         """
         Create Amazon CloudWatch Observability addon
         """
-        subprocess.run(f"aws eks create-addon --addon-name amazon-cloudwatch-observability --cluster-name {self.cluster_name} --region {self.aws_region}", shell=True)
+        subprocess.run(f"aws eks create-addon --addon-name amazon-cloudwatch-observability --cluster-name {self.cluster_name} --region {self.aws_region} > /dev/null", shell=True)
 
     def _create_iam_service_account_amp_sigv4_kiali_proxy(self) -> None:
         """
@@ -214,7 +214,7 @@ class Kiali:
         with open('new_otel_collector_xray_prometheus_complete.yaml', 'w') as file:
             file.write(_adjusted_otel_collector_config_yaml)
         subprocess.run('kubectl apply -f new_otel_collector_xray_prometheus_complete.yaml', shell=True)
-        #os.remove('new_otel_collector_xray_prometheus_complete.yaml')
+        os.remove('new_otel_collector_xray_prometheus_complete.yaml')
 
     def _get_amg_api_key(self) -> str:
         """
@@ -307,7 +307,7 @@ class Kiali:
         with open('new_kiali.yaml', 'w') as file:
             file.write(_adjusted_kiali_config_yaml)
         subprocess.run('kubectl apply -f new_kiali.yaml', shell=True)
-        #os.remove('new_kiali.yaml')
+        os.remove('new_kiali.yaml')
         #_kiali_token: str = subprocess.run('kubectl -n istio-system create token kiali', shell=True, capture_output=True, text=True).stdout
         #self._update_secret_manager_secret(kiali_token=_kiali_token)
 
@@ -321,7 +321,7 @@ class Kiali:
         subprocess.run('kubectl delete service kiali -n istio-system', shell=True)
         _cmd_delete_iam_service_account: str = f'eksctl delete iamserviceaccount --name {self.amp_sigv4_kiali_proxy_role_name} --namespace istio-system --cluster {self.cluster_name}'
         subprocess.run(_cmd_delete_iam_service_account, shell=True)
-        _cmd_delete_iam_service_account: str = f'eksctl delete iamserviceaccount --name adot-collector --namespace aws-otel-eks --cluster {self.cluster_name}'
+        _cmd_delete_iam_service_account: str = f'eksctl delete iamserviceaccount --name aws-otel-collector --namespace aws-otel-eks --cluster {self.cluster_name}'
         subprocess.run(_cmd_delete_iam_service_account, shell=True)
         subprocess.run(f'eksctl delete addon --cluster={self.cluster_name} --name=adot', shell=True)
         subprocess.run(f'eksctl delete addon --cluster={self.cluster_name} --name=amazon-cloudwatch-observability', shell=True)
