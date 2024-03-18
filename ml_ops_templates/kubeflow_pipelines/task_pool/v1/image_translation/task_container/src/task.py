@@ -10,7 +10,6 @@ import ast
 from auto_encoder import AutoEncoder
 from custom_logger import Log
 from cycle_gan import CycleGAN
-from resource_metrics import get_available_cpu, get_cpu_utilization, get_cpu_utilization_per_core, get_memory, get_memory_utilization
 from typing import List
 
 
@@ -240,9 +239,6 @@ def image_translation(train_data_set_a_path: str,
     :param kwargs: dict
         Key-word arguments for class ImageProcessor and compiling model configuration
     """
-    _cpu_available: int = get_available_cpu(logging=True)
-    _memory_total: float = get_memory(total=True, logging=True)
-    _memory_available: float = get_memory(total=False, logging=True)
     if unpaired:
         _cycle_gan: CycleGAN = CycleGAN(file_path_train_clean_images=train_data_set_a_path,
                                         file_path_train_noisy_images=train_data_set_b_path,
@@ -300,10 +296,6 @@ def image_translation(train_data_set_a_path: str,
                             n_epoch=n_epoch,
                             early_stopping_patience=early_stopping_batch
                             )
-    _cpu_utilization: float = get_cpu_utilization(interval=1, logging=True)
-    _cpu_utilization_per_cpu: List[float] = get_cpu_utilization_per_core(interval=1, logging=True)
-    _memory_utilization: float = get_memory_utilization(logging=True)
-    _memory_available = get_memory(total=False, logging=True)
 
 
 if __name__ == '__main__':

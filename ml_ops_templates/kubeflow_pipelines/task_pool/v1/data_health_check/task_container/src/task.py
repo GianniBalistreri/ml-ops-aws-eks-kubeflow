@@ -12,7 +12,6 @@ from aws import load_file_from_s3, load_file_from_s3_as_df, save_file_to_s3
 from custom_logger import Log
 from data_health_check import DataHealthCheck
 from file_handler import file_handler
-from resource_metrics import get_available_cpu, get_cpu_utilization, get_cpu_utilization_per_core, get_memory, get_memory_utilization
 from typing import List, NamedTuple
 
 
@@ -97,9 +96,6 @@ def data_health_check(data_set_path: str,
     :return: NamedTuple
         Data health check of given features, invalid and valid features, proportion of valid features
     """
-    _cpu_available: int = get_available_cpu(logging=True)
-    _memory_total: float = get_memory(total=True, logging=True)
-    _memory_available: float = get_memory(total=False, logging=True)
     _analytical_data_types: dict = load_file_from_s3(file_path=analytical_data_types_path)
     Log().log(msg=f'Load analytical data types: {analytical_data_types_path}')
     _df: pd.DataFrame = load_file_from_s3_as_df(file_path=data_set_path, sep=sep)
@@ -163,10 +159,6 @@ def data_health_check(data_set_path: str,
             _s3_output_file_path_data_health_check: str = s3_output_file_path_data_health_check.replace('.', f'_{_suffix}.')
         save_file_to_s3(file_path=_s3_output_file_path_data_health_check, obj=_data_health_check_output)
         Log().log(msg=f'Save data health check: {_s3_output_file_path_data_health_check}')
-    _cpu_utilization: float = get_cpu_utilization(interval=1, logging=True)
-    _cpu_utilization_per_cpu: List[float] = get_cpu_utilization_per_core(interval=1, logging=True)
-    _memory_utilization: float = get_memory_utilization(logging=True)
-    _memory_available = get_memory(total=False, logging=True)
     return [_numeric_features_containing_missing_data,
             _invariant_features,
             _duplicated_features,

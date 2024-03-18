@@ -13,7 +13,6 @@ from aws import load_file_from_s3, load_file_from_s3_as_df, save_file_to_s3
 from custom_logger import Log
 from file_handler import file_handler
 from interactive_visualizer import InteractiveVisualizer, InteractiveVisualizerException
-from resource_metrics import get_available_cpu, get_cpu_utilization, get_cpu_utilization_per_core, get_memory, get_memory_utilization
 from typing import Dict, List, NamedTuple
 
 PARSER = argparse.ArgumentParser(description="interactive visualizer")
@@ -202,9 +201,6 @@ def interactive_visualizer(s3_output_image_path: str,
     :return: NamedTuple
         Paths of the visualization
     """
-    _cpu_available: int = get_available_cpu(logging=True)
-    _memory_total: float = get_memory(total=True, logging=True)
-    _memory_available: float = get_memory(total=False, logging=True)
     if data_set_path is None:
         _df: pd.DataFrame = None
         if subplots_file_path is None:
@@ -260,10 +256,6 @@ def interactive_visualizer(s3_output_image_path: str,
         else:
             _new_file_paths.append(file_path)
     file_handler(file_path=output_file_paths, obj=_new_file_paths)
-    _cpu_utilization: float = get_cpu_utilization(interval=1, logging=True)
-    _cpu_utilization_per_cpu: List[float] = get_cpu_utilization_per_core(interval=1, logging=True)
-    _memory_utilization: float = get_memory_utilization(logging=True)
-    _memory_available = get_memory(total=False, logging=True)
     return [_new_file_paths]
 
 

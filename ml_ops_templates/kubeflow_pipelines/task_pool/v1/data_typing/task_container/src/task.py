@@ -11,7 +11,6 @@ import pandas as pd
 from aws import load_file_from_s3, load_file_from_s3_as_df, save_file_to_s3, save_file_to_s3_as_df
 from custom_logger import Log
 from data_typing import DataTyping
-from resource_metrics import get_available_cpu, get_cpu_utilization, get_cpu_utilization_per_core, get_memory, get_memory_utilization
 from typing import Dict, List
 
 
@@ -58,9 +57,6 @@ def data_typing(data_set_path: str,
     :param s3_output_file_path_data_typing: str
         Complete file path of the data typing output
     """
-    _cpu_available: int = get_available_cpu(logging=True)
-    _memory_total: float = get_memory(total=True, logging=True)
-    _memory_available: float = get_memory(total=False, logging=True)
     _analytical_data_types: Dict[str, List[str]] = load_file_from_s3(file_path=analytical_data_types_path)
     Log().log(msg=f'Load analytical data types: {analytical_data_types_path}')
     _df: pd.DataFrame = load_file_from_s3_as_df(file_path=data_set_path, sep=sep)
@@ -78,10 +74,6 @@ def data_typing(data_set_path: str,
     if s3_output_file_path_data_typing is not None:
         save_file_to_s3(file_path=s3_output_file_path_data_typing, obj=_data_typing.data_types_config)
         Log().log(msg=f'Save data typing: {s3_output_file_path_data_typing}')
-    _cpu_utilization: float = get_cpu_utilization(interval=1, logging=True)
-    _cpu_utilization_per_cpu: List[float] = get_cpu_utilization_per_core(interval=1, logging=True)
-    _memory_utilization: float = get_memory_utilization(logging=True)
-    _memory_available = get_memory(total=False, logging=True)
 
 
 if __name__ == '__main__':

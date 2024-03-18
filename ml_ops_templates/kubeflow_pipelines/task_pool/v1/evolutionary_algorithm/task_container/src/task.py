@@ -13,7 +13,6 @@ from aws import file_exists, load_file_from_s3, save_file_to_s3
 from custom_logger import Log
 from evolutionary_algorithm import EvolutionaryAlgorithm
 from file_handler import file_handler
-from resource_metrics import get_available_cpu, get_cpu_utilization, get_cpu_utilization_per_core, get_memory, get_memory_utilization
 from typing import List, NamedTuple
 
 
@@ -187,9 +186,6 @@ def evolutionary_algorithm(s3_metadata_file_path: str,
     :return: NamedTuple
         Whether to continue evolution or not and stopping reason if not continuing and individual index of instruction list
     """
-    _cpu_available: int = get_available_cpu(logging=True)
-    _memory_total: float = get_memory(total=True, logging=True)
-    _memory_available: float = get_memory(total=False, logging=True)
     if file_exists(file_path=s3_metadata_file_path):
         _metadata: dict = load_file_from_s3(file_path=s3_metadata_file_path)
         Log().log(msg=f'Load metadata file: {s3_metadata_file_path}')
@@ -301,10 +297,6 @@ def evolutionary_algorithm(s3_metadata_file_path: str,
     _s3_metadata_file_path_temp: str = f'{s3_metadata_file_path.split(".")[0]}__temp__.{s3_metadata_file_path.split(".")[-1]}'
     save_file_to_s3(file_path=_s3_metadata_file_path_temp, obj=_evolutionary_algorithm.metadata)
     Log().log(msg=f'Save temporary evolutionary metadata: {_s3_metadata_file_path_temp}')
-    _cpu_utilization: float = get_cpu_utilization(interval=1, logging=True)
-    _cpu_utilization_per_cpu: List[float] = get_cpu_utilization_per_core(interval=1, logging=True)
-    _memory_utilization: float = get_memory_utilization(logging=True)
-    _memory_available = get_memory(total=False, logging=True)
     return [_evolve, _stopping_reason, _idx]
 
 

@@ -13,7 +13,6 @@ from aws import load_file_from_s3, load_file_from_s3_as_df, save_file_to_s3, sav
 from custom_logger import Log
 from file_handler import file_handler
 from supervised_machine_learning import ModelGeneratorClf, ModelGeneratorReg
-from resource_metrics import get_available_cpu, get_cpu_utilization, get_cpu_utilization_per_core, get_memory, get_memory_utilization
 from typing import List, NamedTuple
 
 MODEL_ARTIFACT_FILE_TYPE: List[str] = ['joblib', 'p', 'pkl', 'pickle']
@@ -164,9 +163,6 @@ def generate_model(ml_type: str,
     :return: NamedTuple
         Training status
     """
-    _cpu_available: int = get_available_cpu(logging=True)
-    _memory_total: float = get_memory(total=True, logging=True)
-    _memory_available: float = get_memory(total=False, logging=True)
     _file_type: str = s3_output_path_model.split('.')[-1]
     if _file_type not in MODEL_ARTIFACT_FILE_TYPE:
         raise ModelGeneratorException(f'Model artifact file type ({_file_type}) not supported. Supported types are: {MODEL_ARTIFACT_FILE_TYPE}')
@@ -284,10 +280,6 @@ def generate_model(ml_type: str,
     save_file_to_s3(file_path=_s3_output_path_metadata, obj=_metadata)
     Log().log(msg=f'Save metadata: {_s3_output_path_metadata}')
     file_handler(file_path=output_path_training_status, obj=_training_status)
-    _cpu_utilization: float = get_cpu_utilization(interval=1, logging=True)
-    _cpu_utilization_per_cpu: List[float] = get_cpu_utilization_per_core(interval=1, logging=True)
-    _memory_utilization: float = get_memory_utilization(logging=True)
-    _memory_available = get_memory(total=False, logging=True)
     return [_training_status]
 
 

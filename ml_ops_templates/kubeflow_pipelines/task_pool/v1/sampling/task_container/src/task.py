@@ -11,7 +11,6 @@ import pandas as pd
 from aws import load_file_from_s3_as_df, save_file_to_s3, save_file_to_s3_as_df
 from custom_logger import Log
 from file_handler import file_handler
-from resource_metrics import get_available_cpu, get_cpu_utilization, get_cpu_utilization_per_core, get_memory, get_memory_utilization
 from sampler import FileSampler, MLSampler, Sampler
 from typing import Dict, List, NamedTuple
 

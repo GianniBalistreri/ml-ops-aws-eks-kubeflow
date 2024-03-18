@@ -15,7 +15,6 @@ from aws import load_file_from_s3_as_df, save_file_to_s3
 from custom_logger import Log
 from evaluate_machine_learning import EvalClf, EvalReg, ML_METRIC, sml_fitness_score, SML_SCORE
 from file_handler import file_handler
-from resource_metrics import get_available_cpu, get_cpu_utilization, get_cpu_utilization_per_core, get_memory, get_memory_utilization
 from typing import List, NamedTuple
 
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -307,9 +306,6 @@ def evaluate_machine_learning(ml_type: str,
     :return: NamedTuple
         Train and test metric results
     """
-    _cpu_available: int = get_available_cpu(logging=True)
-    _memory_total: float = get_memory(total=True, logging=True)
-    _memory_available: float = get_memory(total=False, logging=True)
     _metric_output_paths: dict = dict(r2=output_path_r2_metric,
                                       rmse_norm=output_path_rmse_norm_metric,
                                       accuracy=output_path_accuracy_metric,
@@ -458,10 +454,6 @@ def evaluate_machine_learning(ml_type: str,
     _df_table.to_csv(path_or_buf=s3_output_path_metric_table, sep=sep, header=False, index=True)
     Log().log(msg=f'Save metric table: {s3_output_path_metric_table}')
     file_handler(file_path=output_path_metadata, obj=_evaluation)
-    _cpu_utilization: float = get_cpu_utilization(interval=1, logging=True)
-    _cpu_utilization_per_cpu: List[float] = get_cpu_utilization_per_core(interval=1, logging=True)
-    _memory_utilization: float = get_memory_utilization(logging=True)
-    _memory_available = get_memory(total=False, logging=True)
     return [_evaluation,
             _evaluation['test'].get('r2'),
             _evaluation['test'].get('rmse_norm'),

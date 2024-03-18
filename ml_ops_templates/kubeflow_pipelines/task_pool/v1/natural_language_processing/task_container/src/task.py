@@ -13,7 +13,6 @@ import pickle
 
 from datetime import datetime
 from natural_language_processing import TextMiner, TextMinerException
-from resource_metrics import get_available_cpu, get_cpu_utilization, get_cpu_utilization_per_core, get_memory, get_memory_utilization
 from typing import NamedTuple, List
 
 
@@ -99,9 +98,6 @@ def natural_language_processing(data_set_path: str,
     :return: NamedTuple
         Path of the cleaned data set
     """
-    _cpu_available: int = get_available_cpu(logging=True)
-    _memory_total: float = get_memory(total=True, logging=True)
-    _memory_available: float = get_memory(total=False, logging=True)
     _df: pd.DataFrame = pd.read_csv(filepath_or_buffer=data_set_path, sep=sep)
     _text_miner: TextMiner = TextMiner(df=_df,
                                        features=_df.columns.tolist(),
@@ -129,8 +125,4 @@ def natural_language_processing(data_set_path: str,
         _df.to_csv(path_or_buf=output_data_path, index=False, sep=sep)
     else:
         raise TextMinerException(f'Action ({action}) not supported')
-    _cpu_utilization: float = get_cpu_utilization(interval=1, logging=True)
-    _cpu_utilization_per_cpu: List[float] = get_cpu_utilization_per_core(interval=1, logging=True)
-    _memory_utilization: float = get_memory_utilization(logging=True)
-    _memory_available = get_memory(total=False, logging=True)
     return [output_data_path]

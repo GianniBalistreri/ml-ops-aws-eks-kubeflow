@@ -12,7 +12,6 @@ import urllib3
 from custom_logger import Log
 from file_handler import file_handler
 from kubeflow_exit_handler import KubeflowExitHandler
-from resource_metrics import get_available_cpu, get_cpu_utilization, get_cpu_utilization_per_core, get_memory, get_memory_utilization
 from typing import NamedTuple
 
 PARSER = argparse.ArgumentParser(description="slack messaging and alerting")
@@ -117,9 +116,6 @@ def slack_alerting(exit_handler: bool,
     :return: NamedTuple
         Status code of the request, header, footer and message text
     """
-    _cpu_available: int = get_available_cpu(logging=True)
-    _memory_total: float = get_memory(total=True, logging=True)
-    _memory_available: float = get_memory(total=False, logging=True)
     _client: boto3 = boto3.client('secretsmanager', region_name=aws_region)
     _secret_value: dict = _client.get_secret_value(SecretId=secret_name_slack)
     _slack_channel_name: str = _secret_value['SecretString'].split('"')[1]
@@ -194,10 +190,6 @@ def slack_alerting(exit_handler: bool,
     file_handler(file_path=output_file_path_message, obj=_message)
     file_handler(file_path=output_file_path_footer, obj=_footer)
     file_handler(file_path=output_file_path_response_status_code, obj=_response.status)
-    _cpu_utilization: float = get_cpu_utilization(interval=1, logging=True)
-    _cpu_utilization_per_cpu: List[float] = get_cpu_utilization_per_core(interval=1, logging=True)
-    _memory_utilization: float = get_memory_utilization(logging=True)
-    _memory_available = get_memory(total=False, logging=True)
     return [_header, _message, _footer, _response.status]
 
 
