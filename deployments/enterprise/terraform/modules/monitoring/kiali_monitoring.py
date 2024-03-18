@@ -308,8 +308,8 @@ class Kiali:
             file.write(_adjusted_kiali_config_yaml)
         subprocess.run('kubectl apply -f new_kiali.yaml', shell=True)
         #os.remove('new_kiali.yaml')
-        _kiali_token: str = subprocess.run('kubectl -n istio-system create token kiali', shell=True, capture_output=True, text=True).stdout
-        self._update_secret_manager_secret(kiali_token=_kiali_token)
+        #_kiali_token: str = subprocess.run('kubectl -n istio-system create token kiali', shell=True, capture_output=True, text=True).stdout
+        #self._update_secret_manager_secret(kiali_token=_kiali_token)
 
     def delete(self) -> None:
         """
