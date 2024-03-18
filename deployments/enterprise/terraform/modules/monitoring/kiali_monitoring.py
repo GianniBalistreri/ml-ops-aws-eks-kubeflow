@@ -125,14 +125,14 @@ class Kiali:
         with open('kiali.yaml', 'r') as file:
             _kiali_config_yaml = file.read()
         _amp_workspace_id: str = self._get_amp_workspace_id()
-        _amg_workspace_info: Dict[str, str] = self._get_amg_workspace_info()
-        self.amg_workspace_id = _amg_workspace_info.get('id')
-        _amg_api_key: str = self._get_amg_api_key()
-        self._update_secret_manager_secret(amg_api_key=_amg_api_key)
+        #_amg_workspace_info: Dict[str, str] = self._get_amg_workspace_info()
+        #self.amg_workspace_id = _amg_workspace_info.get('id')
+        #_amg_api_key: str = self._get_amg_api_key()
+        #self._update_secret_manager_secret(amg_api_key=_amg_api_key)
         _kiali_config_yaml = _kiali_config_yaml.replace("$(KIALI_VERSION)", self.kiali_version)
         _kiali_config_yaml = _kiali_config_yaml.replace("$(AMP_WORKSPACE_ID)", _amp_workspace_id)
-        _kiali_config_yaml = _kiali_config_yaml.replace("$(AMG_API_KEY)", _amg_api_key)
-        _kiali_config_yaml = _kiali_config_yaml.replace("$(AMG_WORKSPACE_URL)", _amg_workspace_info.get('url'))
+        #_kiali_config_yaml = _kiali_config_yaml.replace("$(AMG_API_KEY)", _amg_api_key)
+        #_kiali_config_yaml = _kiali_config_yaml.replace("$(AMG_WORKSPACE_URL)", _amg_workspace_info.get('url'))
         _kiali_config_yaml = _kiali_config_yaml.replace("$(KIALI_DOMAIN_URL)", self.kiali_domain_name)
         return _kiali_config_yaml
 
@@ -164,6 +164,12 @@ class Kiali:
         _role_arn: str = _output.stdout.splitlines()[1].split()[-1]
         #_cmd_create_addon: str = f"aws eks create-addon --addon-name adot --cluster-name {self.cluster_name} --service-account-role-arn {_role_arn}"
         subprocess.run(f"aws eks create-addon --addon-name adot --cluster-name {self.cluster_name}", shell=True)
+
+    def _create_cloudwatch_observability_addon(self) -> None:
+        """
+        Create Amazon CloudWatch Observability addon
+        """
+        subprocess.run(f"aws eks create-addon --addon-name amazon-cloudwatch-observability --cluster-name {self.cluster_name} --region {self.aws_region}", shell=True)
 
     def _create_iam_service_account_amp_sigv4_kiali_proxy(self) -> None:
         """
@@ -290,6 +296,7 @@ class Kiali:
         Deploy Kiali as well as periphery services
         """
         self._deploy_adot()
+        self._create_cloudwatch_observability_addon()
         self._create_iam_service_account_amp_sigv4_kiali_proxy()
         _adjusted_kiali_sigv4_config_yaml: str = self._adjust_kiali_sigv4_config_yaml()
         with open('new_kiali_sigv4.yaml', 'w') as file:
@@ -317,6 +324,7 @@ class Kiali:
         _cmd_delete_iam_service_account: str = f'eksctl delete iamserviceaccount --name adot-collector --namespace aws-otel-eks --cluster {self.cluster_name}'
         subprocess.run(_cmd_delete_iam_service_account, shell=True)
         subprocess.run(f'eksctl delete addon --cluster={self.cluster_name} --name=adot', shell=True)
+        subprocess.run(f'eksctl delete addon --cluster={self.cluster_name} --name=amazon-cloudwatch-observability', shell=True)
 
 
 if __name__ == '__main__':
