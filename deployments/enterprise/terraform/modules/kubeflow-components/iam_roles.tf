@@ -179,7 +179,8 @@ resource "aws_iam_policy" "istio_ingress" {
         "elasticloadbalancing:DescribeLoadBalancers",
         "ec2:DescribeAvailabilityZones",
         "acm:GetCertificate",
-        "acm:ListCertificates"
+        "acm:ListCertificates",
+        "ec2:DescribeVolumes"
       ],
       "Resource": "*"
     }
@@ -192,6 +193,13 @@ resource "aws_iam_policy_attachment" "kubeflow_managed_ondemand_cpu" {
   name       = "istio-ingress-attachment"
   policy_arn = aws_iam_policy.istio_ingress.arn
   roles      = [data.aws_iam_role.kubeflow_managed_ondemand_cpu.name]
+}
+
+resource "aws_iam_policy_attachment" "aws_container_insights" {
+  name       = "cloudwatch-agent-server-attachment"
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+  roles      = [data.aws_iam_role.kubeflow_managed_ondemand_cpu.name]
+  depends_on = [aws_iam_policy_attachment.kubeflow_managed_ondemand_cpu]
 }
 
 resource "aws_iam_policy" "alb_controller_subnet_access" {
