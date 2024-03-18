@@ -9,6 +9,6 @@ validate-logs:
 	export kp=$(kubectl -n istio-system get pod -l app=kiali -o jsonpath='{.items[0].metadata.name}')
 	kubectl logs -f $kp -n istio-system
 
-port-forward:
+forward-port:
 	export ks=$(kubectl -n istio-system get service -l app=kiali -o jsonpath='{.items[0].metadata.name}')
 	kubectl port-forward -n istio-system svc/$ks 20001:20001
