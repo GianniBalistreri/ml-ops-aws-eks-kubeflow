@@ -1,13 +1,13 @@
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:
-  name: "occupancy-xgb-replicated"
-  namespace: "production"
+  name: "$(MODEL_ENDPOINT_NAME)"
+  namespace: "$(KF_NAMESPACE)"
   annotations:
-    sidecar.istio.io/inject: "false"
+    sidecar.istio.io/inject: "true"
 spec:
   predictor:
-    serviceAccountName: sa
+    serviceAccountName: inference
     containers:
       #- name: kserve-container
       - image: $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_VERSION)
@@ -16,9 +16,13 @@ spec:
           - "rest_api.py"
         args:
           - "-model_name"
-          - "occupancy-xgb-replicated"
+          - "$(MODEL_ENDPOINT_NAME)"
+          - "-bucket_name"
+          - "$(BUCKET_NAME)"
+          - "-file_path"
+          - "$(MODEL_FILE_PATH)"
           - "-n_replicas"
-          - "2"
+          - "$(NUMBER_OF_REPLICAS)"
         resources:
           requests:
             memory: "512Mi"
