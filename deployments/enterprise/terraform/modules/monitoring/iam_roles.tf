@@ -1,3 +1,46 @@
+##########################
+# AMP SigV4 Kiali Proxy: #
+##########################
+
+resource "aws_iam_role" "amp_sigv4_kiali_proxy" {
+  name = "amp-sigv4-kiali-proxy"
+
+  assume_role_policy = jsonencode({
+    Version   = "2012-10-17",
+    Statement = [
+      {
+        Action    = "sts:AssumeRole",
+        Effect    = "Allow",
+        Principal = {
+          Service = "eks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+data "aws_iam_policy_document" "amp_sigv4_kiali_proxy" {
+  statement {
+    actions   = [
+      "aps:*",
+      "cloudwatch:*",
+      "grafana:*"
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "amp_sigv4_kiali_proxy" {
+  name        = "amp-sigv4-kiali-proxy"
+  description = "IAM policy for enabling Kiali to communicate wih AMP via Sigv4 proxy"
+  policy      = data.aws_iam_policy_document.amp_sigv4_kiali_proxy.json
+}
+
+resource "aws_iam_role_policy_attachment" "amp_sigv4_kiali_proxy" {
+  policy_arn = aws_iam_policy.amp_sigv4_kiali_proxy.arn
+  role       = aws_iam_role.amp_sigv4_kiali_proxy.name
+}
+
 ########
 # AMP: #
 ########
@@ -22,12 +65,14 @@ resource "aws_iam_role" "prometheus" {
 data "aws_iam_policy_document" "prometheus" {
   statement {
     actions   = [
-      "aps:RemoteWrite",
-      "aps:DescribeWorkspace",
-      "aps:QueryMetrics",
-      "aps:GetSeries",
-      "aps:GetLabels",
-      "aps:GetMetricMetadata"
+      "aps:*",
+      "cloudwatch:*"
+      #"aps:RemoteWrite",
+      #"aps:DescribeWorkspace",
+      #"aps:QueryMetrics",
+      #"aps:GetSeries",
+      #"aps:GetLabels",
+      #"aps:GetMetricMetadata"
     ]
     resources = ["*"]
   }
@@ -67,13 +112,15 @@ resource "aws_iam_role" "grafana" {
 data "aws_iam_policy_document" "grafana" {
   statement {
     actions   = [
-      "aps:ListWorkspaces",
-      "aps:DescribeWorkspace",
-      "aps:QueryMetrics",
-      "aps:GetSeries",
-      "aps:GetLabels",
-      "aps:GetMetricMetadata",
-      "cloudwatch:*"
+      "aps:*",
+      "cloudwatch:*",
+      "grafana:*"
+      #"aps:ListWorkspaces",
+      #"aps:DescribeWorkspace",
+      #"aps:QueryMetrics",
+      #"aps:GetSeries",
+      #"aps:GetLabels",
+      #"aps:GetMetricMetadata"
     ]
     resources = ["*"]
   }
