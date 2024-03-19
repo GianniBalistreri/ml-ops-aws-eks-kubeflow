@@ -107,6 +107,7 @@ module "kubeflow_components" {
   use_cognito                                  = var.use_cognito
   use_rds                                      = var.use_rds
   use_s3                                       = var.use_s3
+  use_gpu_ng                                   = var.eks_gpu_node_instance_type != null && var.eks_gpu_node_instance_type != "" ? 1 : 0
   vpc_id                                       = module.vpc.vpc_id
 }
 
