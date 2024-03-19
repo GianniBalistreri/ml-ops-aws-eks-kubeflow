@@ -16,11 +16,11 @@ resource "aws_iam_role" "kubeflow_user" {
         }
       },
       {
-        "Effect": "Allow",
-        "Principal": {
-          "Federated": module.kubeflow_pipeline_irsa[0].eks_oidc_provider_arn
+        "Effect" : "Allow",
+        "Principal" : {
+          "Federated" : module.kubeflow_pipeline_irsa[0].eks_oidc_provider_arn
         },
-        "Action": "sts:AssumeRoleWithWebIdentity"
+        "Action" : "sts:AssumeRoleWithWebIdentity"
       }
     ]
   })
@@ -35,7 +35,7 @@ resource "aws_iam_policy" "s3" {
   description = "Policy for S3 permissions"
 
   policy = jsonencode({
-    Version = "2012-10-17",
+    Version   = "2012-10-17",
     Statement = [
       {
         Action   = "s3:*",
@@ -159,9 +159,18 @@ resource "aws_iam_role_policy_attachment" "glue" {
   role       = aws_iam_role.kubeflow_user.name
 }
 
-data "aws_iam_role" "kubeflow_managed_ondemand_cpu" {
-  name = "kubeflow-managed-ondemand-cpu"
+##################
+# EKS Node Group #
+##################
 
+data "aws_iam_role" "kubeflow_managed_ondemand_cpu" {
+  name       = "kubeflow-managed-ondemand-cpu"
+  depends_on = [kubernetes_namespace.kubeflow]
+}
+
+data "aws_iam_role" "kubeflow_managed_ondemand_gpu" {
+  count      = var.use_gpu_ng
+  name       = "kubeflow-managed-ondemand-gpu"
   depends_on = [kubernetes_namespace.kubeflow]
 }
 
@@ -178,9 +187,9 @@ resource "aws_iam_policy" "istio_ingress" {
       "Action": [
         "elasticloadbalancing:DescribeLoadBalancers",
         "ec2:DescribeAvailabilityZones",
+        "ec2:DescribeVolumes",
         "acm:GetCertificate",
-        "acm:ListCertificates",
-        "ec2:DescribeVolumes"
+        "acm:ListCertificates"
       ],
       "Resource": "*"
     }
@@ -190,17 +199,36 @@ EOF
 }
 
 resource "aws_iam_policy_attachment" "kubeflow_managed_ondemand_cpu" {
-  name       = "istio-ingress-attachment"
+  name       = "istio-ingress-attachment-cpu"
   policy_arn = aws_iam_policy.istio_ingress.arn
   roles      = [data.aws_iam_role.kubeflow_managed_ondemand_cpu.name]
 }
 
-resource "aws_iam_policy_attachment" "aws_container_insights" {
-  name       = "cloudwatch-agent-server-attachment"
+resource "aws_iam_policy_attachment" "aws_container_insights_cpu" {
+  name       = "cloudwatch-agent-server-attachment-cpu"
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
   roles      = [data.aws_iam_role.kubeflow_managed_ondemand_cpu.name]
   depends_on = [aws_iam_policy_attachment.kubeflow_managed_ondemand_cpu]
 }
+
+resource "aws_iam_policy_attachment" "kubeflow_managed_ondemand_gpu" {
+  count      = var.use_gpu_ng
+  name       = "istio-ingress-attachment-gpu"
+  policy_arn = aws_iam_policy.istio_ingress.arn
+  roles      = [data.aws_iam_role.kubeflow_managed_ondemand_gpu[count.index].name]
+}
+
+resource "aws_iam_policy_attachment" "aws_container_insights_gpu" {
+  count      = var.use_gpu_ng
+  name       = "cloudwatch-agent-server-attachment-gpu"
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+  roles      = [data.aws_iam_role.kubeflow_managed_ondemand_gpu[count.index].name]
+  depends_on = [aws_iam_policy_attachment.kubeflow_managed_ondemand_gpu]
+}
+
+#############################
+# Application Load Balancer #
+#############################
 
 resource "aws_iam_policy" "alb_controller_subnet_access" {
   name        = "alb-controller-subnet-access"
