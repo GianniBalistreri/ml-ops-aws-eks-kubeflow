@@ -34,11 +34,11 @@ create-eks-cluster:
 deploy-eks-blueprints-k8s-addons:
 	terraform apply -target="module.eks_blueprints_kubernetes_addons" -auto-approve
 
-deploy-kubeflow-components:
-	terraform apply -target="module.kubeflow_components" -auto-approve
-
 deploy-kubeflow-utils:
 	terraform apply -target="module.kubeflow_utils" -auto-approve
+
+deploy-kubeflow-components:
+	terraform apply -target="module.kubeflow_components" -auto-approve
 
 deploy-monitoring:
 	terraform apply -target="module.monitoring" -auto-approve
@@ -53,11 +53,11 @@ delete-eks-cluster:
 delete-eks-blueprints-k8s-addons:
 	terraform destroy -target="module.eks_blueprints_kubernetes_addons" -auto-approve
 
-delete-kubeflow-components:
-	terraform destroy -target="module.kubeflow_components" -auto-approve
-
 delete-kubeflow-utils:
 	terraform destroy -target="module.kubeflow_utils" -auto-approve
+
+delete-kubeflow-components:
+	terraform destroy -target="module.kubeflow_components" -auto-approve
 
 delete-monitoring:
 	terraform destroy -target="module.monitoring" -auto-approve
