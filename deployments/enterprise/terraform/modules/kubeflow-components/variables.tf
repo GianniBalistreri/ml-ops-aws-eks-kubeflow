@@ -58,6 +58,11 @@ variable "load_balancer_scheme" {
   description = "Scheme of the load balancer"
 }
 
+variable "use_gpu_ng" {
+  type        = number
+  description = "Whether to have GPU node group or not"
+}
+
 ########################
 # Kubeflow Components: #
 ########################
