@@ -9,7 +9,7 @@ spec:
   predictor:
     serviceAccountName: inference
     containers:
-      #- name: kserve-container
+      - name: kserve-container
       - image: $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_VERSION)
         command:
           - "python"
@@ -25,8 +25,8 @@ spec:
           - "$(NUMBER_OF_REPLICAS)"
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "2"
+            memory: "$(MEMORY_REQUEST)"
+            cpu: "$(N_CPU_REQUEST)"
           limits:
-            memory: "2Gi"
-            cpu: "3"
+            memory: "$(MEMORY_LIMIT)"
+            cpu: "$(N_CPU_LIMIT)"
