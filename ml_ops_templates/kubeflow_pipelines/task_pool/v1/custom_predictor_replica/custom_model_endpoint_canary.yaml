@@ -1,0 +1,33 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: "$(EXISTING_MODEL_ENDPOINT_NAME)"
+  namespace: "$(KF_NAMESPACE)"
+  annotations:
+    sidecar.istio.io/inject: "true"
+spec:
+  predictor:
+    canaryTrafficPercent: $(CANARY_TRAFFIC_PERCENT_NEW_MODEL)
+    serviceAccountName: inference
+    containers:
+      - name: kserve-container
+      - image: $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_VERSION)
+        command:
+          - "python"
+          - "rest_api.py"
+        args:
+          - "-model_name"
+          - "$(EXISTING_MODEL_ENDPOINT_NAME)"
+          - "-bucket_name"
+          - "$(BUCKET_NAME)"
+          - "-file_path"
+          - "$(NEW_MODEL_FILE_PATH)"
+          - "-n_replicas"
+          - "$(NUMBER_OF_REPLICAS)"
+        resources:
+          requests:
+            memory: "$(MEMORY_REQUEST)"
+            cpu: "$(N_CPU_REQUEST)"
+          limits:
+            memory: "$(MEMORY_LIMIT)"
+            cpu: "$(N_CPU_LIMIT)"
