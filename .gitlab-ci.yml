@@ -2,6 +2,7 @@ stages:
   - aws_infra_deploy
   - aws_infra_destroy
   - misc
+  - kubeflow_task
 
 iac_plan_prod:
   stage: .pre
@@ -217,3 +218,25 @@ dex_user_registration_prod:
     - if: $CI_COMMIT_BRANCH == 'main' && $DEX_PWD != '' && $DEX_USER != ''
       when: manual
     - when: never
+
+build_docker_image_ml_pipeline_task:
+  stage: kubeflow_task
+  image: $TOOLING_IMAGE_DOCKER
+  tags:
+    - xxx
+  variables:
+    GIT_DEPTH: 1
+    GIT_STRATEGY: fetch
+  before_script:
+    - export IMAGE_NAME=ml-ops-xxx
+    - export IMAGE_TAG=v1
+    - aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID_PRODUCTION
+    - aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY_PRODUCTION
+    - aws configure set region $AWS_REGION
+    - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID_PRODUCTION.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME
+  script:
+    - docker buildx create --use
+    - docker buildx build --push --tag $AWS_ACCOUNT_ID_PRODUCTION.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:$IMAGE_TAG --file kubeflow_pipelines/task_pool/v1/xxx/task_container/Dockerfile .
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main'
+      when: manual
