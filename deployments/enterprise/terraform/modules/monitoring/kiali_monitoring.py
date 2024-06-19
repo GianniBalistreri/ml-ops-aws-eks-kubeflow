@@ -159,9 +159,9 @@ class Kiali:
         """
         Create AWS Distro OpenTelemetry EKS addon
         """
-        _cmd_get_iam_serviceaccount: str = f"eksctl get iamserviceaccount --cluster={self.cluster_name} --namespace=opentelemetry-operator-system"
-        _output = subprocess.run(_cmd_get_iam_serviceaccount, shell=True, capture_output=True, text=True)
-        _role_arn: str = _output.stdout.splitlines()[1].split()[-1]
+        #_cmd_get_iam_serviceaccount: str = f"eksctl get iamserviceaccount --cluster={self.cluster_name} --namespace=opentelemetry-operator-system"
+        #_output = subprocess.run(_cmd_get_iam_serviceaccount, shell=True, capture_output=True, text=True)
+        #_role_arn: str = _output.stdout.splitlines()[1].split()[-1]
         #_cmd_create_addon: str = f"aws eks create-addon --addon-name adot --cluster-name {self.cluster_name} --service-account-role-arn {_role_arn}"
         subprocess.run(f"aws eks create-addon --addon-name adot --cluster-name {self.cluster_name} --region {self.aws_region} > /dev/null", shell=True)
 
